@@ -99,16 +99,18 @@ export const DataModel = <I = BaseItem, F = BaseFieldName>(props: DataModelProps
     throw new Error('Error: <DataModel ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
 
+  // NOTE: the DataModelsContext stores a heterogeneous of `DataModel<..., ...>` entries in an array
+  // However, downstream stuff expects a `DataModel<I, F>` - so cast it explicitly below
   const [dataModel, setDataModel] = useMemo(() => {
     const [dataModels, setDataModels] = dataModelsContextData;
 
     return [
       (dataModels.get(props.name) as any) as DataModel<I, F>,
-      (updateFn: (old: DataModel<I, F> | null) => DataModel<I, F>) => {
+      (updateFn: (old: DataModel<I, F> | null) => DataModel<I, F> | null) => {
         setDataModels(old => {
           const copy = new Map(old);
           const dataModel = ((copy.get(props.name) as any) as DataModel<I, F> | undefined)
-          const result = updateFn(dataModel || null)
+          const result = (updateFn(dataModel || null) as any) as DataModel;
           if (result) {
             copy.set(props.name, result);
             return copy;
@@ -156,9 +158,12 @@ export const DataModel = <I = BaseItem, F = BaseFieldName>(props: DataModelProps
     props.createLink,
   ]);
 
+  // NOTE: similarly to the above, `dataModel.fields` is Array<FieldMetadata<I, F>> but the data
+  // that needs to be explosed down below doesn't have the generics because I can't figure out how
+  // to make that work with a react context.
   const fieldsContextData = useMemo(
-    () => [
-      dataModel ? dataModel.fields as Array<FieldMetadata<I, F>> : [],
+    () => ([
+      dataModel ? dataModel.fields : [],
       (updateFn: (old: Array<FieldMetadata<I, F>>) => Array<FieldMetadata<I, F>>) => {
         setDataModel(old => {
           if (old) {
@@ -168,7 +173,7 @@ export const DataModel = <I = BaseItem, F = BaseFieldName>(props: DataModelProps
           }
         });
       },
-    ] as [
+    ] as any) as [
       Array<FieldMetadata>,
       (fields: (old: Array<FieldMetadata>) => Array<FieldMetadata>) => void,
     ],
@@ -205,7 +210,7 @@ const NavigationButton: React.FunctionComponent<{
 };
 
 const imperativelyNavigateToNavigatable = (navigatable: Navigatable | null) => {
-  switch (navigatable.type) {
+  switch (navigatable?.type) {
     case 'href':
       if (navigatable.target === '_blank') {
         window.open(navigatable.href, '_blank');
@@ -373,7 +378,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
   if (!dataModelsContextData) {
     throw new Error('Error: <List ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
-  const dataModel = dataModelsContextData[0].get(name);
+  const dataModel = dataModelsContextData[0].get(name) as DataModel<I, BaseFieldName> | undefined;
   const singularDisplayName = props.singularDisplayName || dataModel?.singularDisplayName || '';
   const pluralDisplayName = props.pluralDisplayName || dataModel?.pluralDisplayName || '';
   const fetchPageOfData = props.fetchPageOfData || dataModel?.fetchPageOfData || null;
@@ -628,6 +633,9 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
   );
 
   const dataContextData: DataContextList<I, BaseFieldName> | null = useMemo(() => {
+    if (!sort) {
+      return null;
+    }
     if (!keyGenerator) {
       return null;
     }
@@ -689,7 +697,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
   }
 
   return (
-    <DataContext.Provider value={dataContextData as DataContextList}>
+    <DataContext.Provider value={(dataContextData as any) as DataContextList<BaseItem, BaseFieldName>}>
       <FilterMetadataContext.Provider value={filterMetadataContextData}>
         <div className={styles.list}>
           {children}
@@ -781,13 +789,15 @@ export const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props
       displayMarkup: props.displayMarkup,
       modifyMarkup: props.modifyMarkup,
     };
-    setFields(old => [
-      ...old,
-      fieldMetadata as (typeof old)[0], // FIXME: the generics make this complex, maybe more complex than it should be
-    ]);
+
+    // NOTE: convert FieldMetadata<I, F, S> into a generic `FieldMetadata` with base values so it
+    // can be put into the field state
+    const castedFieldMetadata = (fieldMetadata as any) as FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>;
+
+    setFields(old => [ ...old, castedFieldMetadata ]);
 
     return () => {
-      setFields(old => old.filter(f => f !== fieldMetadata));
+      setFields(old => old.filter(f => f !== castedFieldMetadata));
     };
   }, [
     props.name,
@@ -805,8 +815,13 @@ export const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props
   return null;
 };
 
-type InputFieldProps<I = BaseItem, F = BaseFieldName> = Pick<
-  FieldMetadata<I, F, string>,
+type InputFieldProps<
+  Item = BaseItem,
+  Field = BaseFieldName,
+  Nullable = false,
+  State = Nullable extends true ? (string | null) : string,
+> = Pick<
+  FieldMetadata<Item, Field, State>,
   | 'name'
   | 'singularDisplayName'
   | 'pluralDisplayName'
@@ -814,13 +829,13 @@ type InputFieldProps<I = BaseItem, F = BaseFieldName> = Pick<
   | 'sortable'
   | 'getInitialStateWhenCreating'
 > & {
-  getInitialStateFromItem?: (item: I) => string;
-  getInitialStateWhenCreating?: () => string | undefined;
-  serializeStateToItem?: (initialItem: Partial<I>, state: string) => Partial<I>;
+  getInitialStateFromItem?: (item: Item) => State;
+  getInitialStateWhenCreating?: () => State | undefined;
+  serializeStateToItem?: (initialItem: Partial<Item>, state: State) => Partial<Item>;
 
   type?: HTMLInputElement['type'];
-  nullable?: boolean;
-  inputMarkup?: FieldMetadata<I, F, string>['modifyMarkup'];
+  nullable?: Nullable;
+  inputMarkup?: FieldMetadata<Item, Field, State>['modifyMarkup'];
 };
 
 /*
@@ -833,16 +848,20 @@ Example InputField:
   sortable
 />
 */
-export const InputField = <I = BaseItem, F = BaseFieldName>(props: InputFieldProps<I, F>) => {
+export const InputField = <
+  Item = BaseItem,
+  Field = BaseFieldName,
+  Nullable = false,
+>(props: InputFieldProps<Item, Field, Nullable>) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   return (
-    <Field<I, F, string>
+    <Field<Item, Field, Nullable extends true ? (string | null) : string>
       name={props.name}
       singularDisplayName={props.singularDisplayName}
       pluralDisplayName={props.pluralDisplayName}
       columnWidth={props.columnWidth}
       sortable={props.sortable}
-      getInitialStateFromItem={props.getInitialStateFromItem || ((item) => `${item[props.name as FixMe]}`)}
+      getInitialStateFromItem={props.getInitialStateFromItem || ((item) => `${(item as FixMe)[props.name as FixMe]}`)}
       getInitialStateWhenCreating={props.getInitialStateWhenCreating || (() => '')}
       serializeStateToItem={props.serializeStateToItem || ((initialItem, state) => ({ ...initialItem, [props.name as FixMe]: state }))}
       displayMarkup={state => state === null ? <em style={{color: 'silver'}}>null</em> : <span>{state}</span>}
@@ -1073,14 +1092,14 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
   if (!dataModelsContextData) {
     throw new Error('Error: <SingleForeignKeyField ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
-  const relatedDataModel = dataModelsContextData[0].get(props.relatedName);
+  const relatedDataModel = dataModelsContextData[0].get(props.relatedName) as DataModel<J, F> | undefined;
 
   const singularDisplayName = props.singularDisplayName || relatedDataModel?.singularDisplayName || '';
   const pluralDisplayName = props.pluralDisplayName || relatedDataModel?.pluralDisplayName || '';
   const getRelatedKey = props.getRelatedKey || relatedDataModel?.keyGenerator;
 
   const getInitialStateFromItem = useMemo(() => {
-    return props.getInitialStateFromItem || ((item: I) => item[props.name as FixMe])
+    return props.getInitialStateFromItem || ((item: I) => (item as FixMe)[props.name as FixMe] as J)
   }, [props.name]);
 
   const serializeStateToItem = useMemo(() => {
@@ -1154,7 +1173,7 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
     }
   }, [props]);
 
-  if (!relatedDataModel) {
+  if (!relatedDataModel || !getRelatedKey) {
     return (
       <span>Waiting for related data model with name {props.relatedName} to be added to DataModelsContext...</span>
     );
@@ -1214,6 +1233,10 @@ Example MultiForeignKeyField:
 />
 */
 export const MultiForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseItem>(props: MultiForeignKeyFieldProps<I, F, J>) => {
+  const getInitialStateFromItem = useMemo(() => {
+    return props.getInitialStateFromItem || ((item: I) => (item as FixMe)[props.name as FixMe] as Array<J>);
+  }, [props.name]);
+
   return (
     <Field<I, F, Array<J>>
       name={props.name}
@@ -1221,7 +1244,7 @@ export const MultiForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseIt
       pluralDisplayName={props.pluralDisplayName}
       columnWidth={props.columnWidth}
       sortable={props.sortable}
-      getInitialStateFromItem={props.getInitialStateFromItem || ((item) => item[props.name as FixMe])}
+      getInitialStateFromItem={getInitialStateFromItem}
       getInitialStateWhenCreating={props.getInitialStateWhenCreating}
       serializeStateToItem={props.serializeStateToItem || ((initialItem, state) => ({ ...initialItem, [props.name as FixMe]: state }))}
       displayMarkup={state => {
@@ -1327,7 +1350,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
   if (!dataModelsContextData) {
     throw new Error('Error: <ForeignKeyFieldModifyMarkup ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
-  const relatedDataModel = dataModelsContextData[0].get(props.foreignKeyFieldProps.relatedName);
+  const relatedDataModel = dataModelsContextData[0].get(props.foreignKeyFieldProps.relatedName) as DataModel<J, F> | undefined;
 
   // When the component unmounts, terminate all in flight requests
   const inFlightRequestAbortControllers = useRef<Array<AbortController>>([]);
@@ -1431,17 +1454,28 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
   }, [relatedData, setRelatedData, props.item, props.foreignKeyFieldProps.fetchPageOfRelatedData]);
 
 
-  const [relatedFields, setRelatedFields] = useState<Array<FieldMetadata<J, F>>>([]);
+  const [
+    [relatedFieldsSource, relatedFields],
+    setRelatedFields,
+  ] = useState<["idle" | "children" | "datamodel", Array<FieldMetadata<J, F>>]>(["idle", []]);
   useEffect(() => {
     if (!relatedDataModel) {
       return;
     }
+    if (relatedFieldsSource === "children") {
+      return;
+    }
 
-    setRelatedFields(relatedDataModel.fields);
+    setRelatedFields(["datamodel", relatedDataModel.fields]);
   }, [relatedDataModel]);
 
   const relatedFieldsContextData = useMemo(
-    () => [relatedFields, setRelatedFields] as [
+    () => [
+      (relatedFields as any) as Array<FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>>,
+      ((updateFn) => setRelatedFields(
+        (old) => ["children" as const, updateFn(old[1])] as ["children", Array<FieldMetadata<J, F>>]
+      ) as any) as (fields: (old: Array<FieldMetadata>) => Array<FieldMetadata>) => void,
+    ] as [
       Array<FieldMetadata>,
       (fields: (old: Array<FieldMetadata>) => Array<FieldMetadata>) => void,
     ],
@@ -1453,8 +1487,8 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
   const [relatedCreationFieldsOverride, setRelatedCreationFieldsOverride] = useState<Array<FieldMetadata<J, F>>>([]);
   const relatedCreationFieldsContextData = useMemo(
     () => [relatedCreationFieldsOverride, setRelatedCreationFieldsOverride] as [
-      Array<FieldMetadata>,
-      (fields: (old: Array<FieldMetadata>) => Array<FieldMetadata>) => void,
+      Array<FieldMetadata<J, F>>,
+      (fields: (old: Array<FieldMetadata<J, F>>) => Array<FieldMetadata<J, F>>) => void,
     ],
     [relatedCreationFieldsOverride, setRelatedCreationFieldsOverride]
   );
@@ -1542,7 +1576,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                 <thead>
                   <tr>
                     {/* Add a column for the checkboxes */}
-                    <th style={{width: props.checkboxesWidth}}>
+                    <th style={{width: props.checkboxesWidth === null ? undefined : props.checkboxesWidth}}>
                     </th>
                     {relatedFields.map(relatedFieldMetadata => (
                       <th

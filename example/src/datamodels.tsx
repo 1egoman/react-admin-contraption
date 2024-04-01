@@ -8,6 +8,7 @@ import {
   DataModels,
   DataModel,
   SingleForeignKeyField,
+  MultiForeignKeyField,
 } from '@/admin';
 
 export default function AllDataModels({ children }: { children: React.ReactNode}) {
@@ -195,14 +196,41 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
           getInitialStateWhenCreating={() => ''}
           serializeStateToItem={(initialItem, state) => ({ ...initialItem, madeInactiveReason: state })}
         />
-        <SingleForeignKeyField<BattleWithParticipants & { beat: BattleBeat | null }, 'beat', BattleBeat>
-          name="beat"
+        {/* <SingleForeignKeyField<BattleWithParticipants, 'beat', BattleBeat> */}
+        {/*   name="beat" */}
+        {/*   singularDisplayName="Beat" */}
+        {/*   pluralDisplayName="Beats" */}
+        {/*   columnWidth="165px" */}
+        {/*   nullable */}
+        {/*   getInitialStateFromItem={battle => ({ beatId: battle.beatId, beatKey: 'OLD', beatUrl: 'OLD' })} */}
+        {/*   serializeStateToItem={(initialItem, beat) => ({ ...initialItem, beatId: beat.id })} */}
+
+        {/*   getRelatedKey={beat => beat.id} */}
+        {/*   relatedName="battleBeat" */}
+
+        {/*   fetchPageOfRelatedData={(_page, _item) => { */}
+        {/*     return Promise.resolve({ */}
+        {/*       nextPageAvailable: false, */}
+        {/*       totalCount: 1, */}
+        {/*       data: new Array(5).fill(0).map((_, index) => ({ */}
+        {/*         id: `${index}`, */}
+        {/*         beatKey: `path/to/${index}`, */}
+        {/*         beatUrl: `https://example.com/path/to/${index}`, */}
+        {/*       })), */}
+        {/*     }); */}
+        {/*   }} */}
+        {/*   generateNewRelatedItem={() => ({ id: '', beatKey: 'NEW', beatUrl: 'NEW' })} */}
+        {/*   createRelatedItem={(_item, relatedItem) => Promise.resolve({id: 'aaa', ...relatedItem} as BattleBeat)} */}
+        {/*   updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as BattleBeat)} */}
+        {/* /> */}
+        <MultiForeignKeyField<BattleWithParticipants, 'beats', BattleBeat>
+          name="beats"
           singularDisplayName="Beat"
           pluralDisplayName="Beats"
           columnWidth="165px"
           nullable
-          getInitialStateFromItem={battle => ({ beatId: battle.beatId, beatKey: 'OLD', beatUrl: 'OLD' })}
-          serializeStateToItem={(initialItem, beat) => ({ ...initialItem, beatId: beat.id })}
+          getInitialStateFromItem={battle => [{ beatId: battle.beatId, beatKey: 'OLD', beatUrl: 'OLD' }]}
+          serializeStateToItem={(initialItem, beats) => ({ ...initialItem, beatIds: beats.map(beat => beat.id) })}
 
           getRelatedKey={beat => beat.id}
           relatedName="battleBeat"
