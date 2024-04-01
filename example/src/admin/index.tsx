@@ -1074,6 +1074,86 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
     throw new Error('Error: <SingleForeignKeyField ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
   const relatedDataModel = dataModelsContextData[0].get(props.relatedName);
+
+  const singularDisplayName = props.singularDisplayName || relatedDataModel?.singularDisplayName || '';
+  const pluralDisplayName = props.pluralDisplayName || relatedDataModel?.pluralDisplayName || '';
+  const getRelatedKey = props.getRelatedKey || relatedDataModel?.keyGenerator;
+
+  const getInitialStateFromItem = useMemo(() => {
+    return props.getInitialStateFromItem || ((item: I) => item[props.name as FixMe])
+  }, [props.name]);
+
+  const serializeStateToItem = useMemo(() => {
+    return props.serializeStateToItem || ((initialItem: Partial<I>, state: J) => ({
+      ...initialItem,
+      [props.name as FixMe]: state,
+    }));
+  }, [props.name]);
+
+  const displayMarkup = useCallback((state: J) => {
+    if (state === null) {
+      return <span>null</span>;
+    }
+
+    return (
+      <span>{getRelatedKey ? getRelatedKey(state) : (state as FixMe).id}</span>
+    );
+  }, [getRelatedKey]);
+
+  const modifyMarkup = useCallback((state: J, setState: (newState: J) => void, item: I) => {
+    const relatedFields = state !== null ? (
+      <ForeignKeyFieldModifyMarkup
+        mode="detail"
+        item={item}
+        relatedItem={state}
+        checkboxesWidth={null}
+        onChangeRelatedItem={setState}
+        foreignKeyFieldProps={props}
+        getRelatedKey={getRelatedKey}
+      >
+        {props.children}
+      </ForeignKeyFieldModifyMarkup>
+    ) : null;
+
+    if (props.nullable) {
+      return (
+        <div>
+          <div style={{display: 'inline-flex', gap: 8, alignItems: 'center'}}>
+            <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
+              <input
+                type="radio"
+                checked={state !== null}
+                id={`${props.name}-value`}
+                onChange={e => {
+                  if (e.currentTarget.checked) {
+                    setState(props.generateNewRelatedItem());
+                  }
+                }}
+              />
+              <label htmlFor={`${props.name}-value`}>Value</label>
+            </div>
+            <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
+              <input
+                type="radio"
+                checked={state === null}
+                id={`${props.name}-null`}
+                onChange={e => {
+                  if (e.currentTarget.checked) {
+                    setState(null);
+                  }
+                }}
+              />
+              <label htmlFor={`${props.name}-null`}>null</label>
+            </div>
+          </div>
+          {relatedFields}
+        </div>
+      );
+    } else {
+      return relatedFields;
+    }
+  }, [props]);
+
   if (!relatedDataModel) {
     return (
       <span>Waiting for related data model with name {props.relatedName} to be added to DataModelsContext...</span>
@@ -1083,76 +1163,17 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
   return (
     <Field<I, F, J>
       name={props.name}
-      singularDisplayName={props.singularDisplayName}
-      pluralDisplayName={props.pluralDisplayName}
+      singularDisplayName={singularDisplayName}
+      pluralDisplayName={pluralDisplayName}
       columnWidth={props.columnWidth}
       sortable={props.sortable}
-      getInitialStateFromItem={props.getInitialStateFromItem || ((item) => item[props.name as FixMe])}
+      getInitialStateFromItem={getInitialStateFromItem}
       getInitialStateWhenCreating={props.getInitialStateWhenCreating}
-      serializeStateToItem={props.serializeStateToItem || ((initialItem, state) => ({ ...initialItem, [props.name as FixMe]: state }))}
+      serializeStateToItem={serializeStateToItem}
       // createSideEffect={props.createRelatedItem}
       // updateSideEffect={props.updateRelatedItem}
-      displayMarkup={state => {
-        if (state === null) {
-          return <span>null</span>;
-        }
-
-        return (
-          <span>{props.getRelatedKey ? props.getRelatedKey(state) : (state as FixMe).id}</span>
-        );
-      }}
-      modifyMarkup={(state, setState, item, onBlur) => {
-        const relatedFields = state !== null ? (
-          <ForeignKeyFieldModifyMarkup
-            mode="detail"
-            item={item}
-            relatedItem={state}
-            checkboxesWidth={null}
-            onChangeRelatedItem={setState}
-            foreignKeyFieldProps={props}
-          >
-            {props.children}
-          </ForeignKeyFieldModifyMarkup>
-        ) : null;
-
-        if (props.nullable) {
-          return (
-            <div>
-              <div style={{display: 'inline-flex', gap: 8, alignItems: 'center'}}>
-                <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-                  <input
-                    type="radio"
-                    checked={state !== null}
-                    id={`${props.name}-value`}
-                    onChange={e => {
-                      if (e.currentTarget.checked) {
-                        setState(props.generateNewRelatedItem());
-                      }
-                    }}
-                  />
-                  <label htmlFor={`${props.name}-value`}>Value</label>
-                </div>
-                <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-                  <input
-                    type="radio"
-                    checked={state === null}
-                    id={`${props.name}-null`}
-                    onChange={e => {
-                      if (e.currentTarget.checked) {
-                        setState(null);
-                      }
-                    }}
-                  />
-                  <label htmlFor={`${props.name}-null`}>null</label>
-                </div>
-              </div>
-              {relatedFields}
-            </div>
-          );
-        } else {
-          return relatedFields;
-        }
-      }}
+      displayMarkup={displayMarkup}
+      modifyMarkup={modifyMarkup}
     />
   );
 };
@@ -1170,6 +1191,7 @@ type MultiForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> = 
   getInitialStateWhenCreating?: () => Array<J> | undefined;
   serializeStateToItem?: (initialItem: Partial<I>, state: Array<J>) => Partial<I>;
 
+  relatedName: string;
   getRelatedKey?: (relatedItem: J) => ItemKey;
 
   fetchPageOfRelatedData: (page: number, item: I, abort: AbortSignal) => Promise<Paginated<J>>;
@@ -1223,6 +1245,7 @@ export const MultiForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseIt
             checkboxesWidth={null}
             onChangeRelatedItems={setState}
             foreignKeyFieldProps={props}
+            getRelatedKey={props.getRelatedKey}
           >
             {props.children}
           </ForeignKeyFieldModifyMarkup>
@@ -1285,6 +1308,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     disabled?: boolean;
     checkboxesWidth: null | string | number;
     foreignKeyFieldProps: MultiForeignKeyFieldProps<I, F, J>,
+    getRelatedKey: (relatedItem: J) => ItemKey;
     children: React.ReactNode;
   }
   | {
@@ -1295,9 +1319,16 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     disabled?: boolean;
     checkboxesWidth: null | string | number;
     foreignKeyFieldProps: SingleForeignKeyFieldProps<I, F, J>,
+    getRelatedKey: (relatedItem: J) => ItemKey;
     children: React.ReactNode;
   }
 ) => {
+  const dataModelsContextData = useContext(DataModelsContext);
+  if (!dataModelsContextData) {
+    throw new Error('Error: <ForeignKeyFieldModifyMarkup ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
+  }
+  const relatedDataModel = dataModelsContextData[0].get(props.foreignKeyFieldProps.relatedName);
+
   // When the component unmounts, terminate all in flight requests
   const inFlightRequestAbortControllers = useRef<Array<AbortController>>([]);
   const addInFlightAbortController = useCallback((abort: AbortController) => {
@@ -1401,6 +1432,14 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
 
 
   const [relatedFields, setRelatedFields] = useState<Array<FieldMetadata<J, F>>>([]);
+  useEffect(() => {
+    if (!relatedDataModel) {
+      return;
+    }
+
+    setRelatedFields(relatedDataModel.fields);
+  }, [relatedDataModel]);
+
   const relatedFieldsContextData = useMemo(
     () => [relatedFields, setRelatedFields] as [
       Array<FieldMetadata>,
@@ -1456,16 +1495,16 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     case 'COMPLETE':
     case 'LOADING_NEXT_PAGE':
       let rows = props.mode === 'list' ? props.relatedItems : [props.relatedItem];
-      let rowKeys = rows.map(row => props.foreignKeyFieldProps.getRelatedKey(row));
+      let rowKeys = rows.map(row => props.getRelatedKey(row));
 
       // Add related items to list at the beginning
       // This makes it so that the items are immediately visible to anyone who looks at the list
       if (props.mode === 'list') {
         if (itemSelectionMode === 'select') {
           rows = relatedData.data;
-          rowKeys = rows.map(row => props.foreignKeyFieldProps.getRelatedKey(row));
+          rowKeys = rows.map(row => props.getRelatedKey(row));
           for (const relatedItem of props.relatedItems) {
-            const key = props.foreignKeyFieldProps.getRelatedKey(relatedItem);
+            const key = props.getRelatedKey(relatedItem);
             const index = rowKeys.indexOf(key);
             if (index >= 0) {
               rows.splice(index, 1);
@@ -1477,9 +1516,10 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
         }
       } else if (props.mode === 'detail') {
         if (itemSelectionMode === 'select') {
+          console.log('RELATED:', relatedData);
           rows = relatedData.data;
-          rowKeys = rows.map(row => props.foreignKeyFieldProps.getRelatedKey(row));
-          const key = props.foreignKeyFieldProps.getRelatedKey(props.relatedItem);
+          rowKeys = rows.map(row => props.getRelatedKey(row));
+          const key = props.getRelatedKey(props.relatedItem);
           const index = rowKeys.indexOf(key);
           if (index >= 0) {
             rows.splice(index, 1);
@@ -1491,7 +1531,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
       }
 
       return (
-        <div>
+        <div style={{ border: '1px solid silver', padding: 2 }}>
           {relatedFields.length === 0 ? (
             <em style={{color: gray.gray9}}>
               No {props.foreignKeyFieldProps.singularDisplayName.toLowerCase()} fields specified
@@ -1552,10 +1592,10 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                 </thead>
                 <tbody>
                   {rows.map(relatedItem => {
-                    const key = props.foreignKeyFieldProps.getRelatedKey(relatedItem);
+                    const key = props.getRelatedKey(relatedItem);
                     const checked = Boolean(props.mode === 'list' ? (
-                      props.relatedItems.find(i => props.foreignKeyFieldProps.getRelatedKey(i) === key)
-                    ) : props.foreignKeyFieldProps.getRelatedKey(props.relatedItem) === key);
+                      props.relatedItems.find(i => props.getRelatedKey(i) === key)
+                    ) : props.getRelatedKey(props.relatedItem) === key);
 
                     return (
                       <ListTableItem
@@ -1581,7 +1621,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                               props.onChangeRelatedItems([...props.relatedItems, relatedItem]);
                             } else {
                               props.onChangeRelatedItems(
-                                props.relatedItems.filter(i => props.foreignKeyFieldProps.getRelatedKey(i) !== key)
+                                props.relatedItems.filter(i => props.getRelatedKey(i) !== key)
                               );
                             }
                           }
@@ -3001,7 +3041,14 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
     };
   }, []);
 
-  const [fields, setFields] = useState<Array<FieldMetadata<I, F>>>(dataModel.fields);
+  const [fields, setFields] = useState<Array<FieldMetadata<I, F>>>([]);
+  useEffect(() => {
+    if (!dataModel) {
+      return;
+    }
+    setFields(dataModel.fields);
+  }, [dataModel.fields]);
+
   const fieldsContextData = useMemo(
     () => [fields, setFields] as [
       Array<FieldMetadata>,

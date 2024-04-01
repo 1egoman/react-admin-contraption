@@ -195,29 +195,33 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
           getInitialStateWhenCreating={() => ''}
           serializeStateToItem={(initialItem, state) => ({ ...initialItem, madeInactiveReason: state })}
         />
-        {/* <SingleForeignKeyField<BattleWithParticipants & { beat: BattleBeat | null }, 'beat', BattleBeat> */}
-        {/*   name="beat" */}
-        {/*   singularDisplayName="Beat" */}
-        {/*   pluralDisplayName="Beats" */}
-        {/*   columnWidth="165px" */}
-        {/*   nullable */}
-        {/*   getInitialStateFromItem={battle => battle.beat} */}
-        {/*   serializeStateToItem={(initialItem, beat) => ({ ...initialItem, beatId: beat.id })} */}
+        <SingleForeignKeyField<BattleWithParticipants & { beat: BattleBeat | null }, 'beat', BattleBeat>
+          name="beat"
+          singularDisplayName="Beat"
+          pluralDisplayName="Beats"
+          columnWidth="165px"
+          nullable
+          getInitialStateFromItem={battle => ({ beatId: battle.beatId, beatKey: 'OLD', beatUrl: 'OLD' })}
+          serializeStateToItem={(initialItem, beat) => ({ ...initialItem, beatId: beat.id })}
 
-        {/*   getRelatedKey={beat => beat.id} */}
-        {/*   relatedName="battleBeat" */}
+          getRelatedKey={beat => beat.id}
+          relatedName="battleBeat"
 
-        {/*   fetchPageOfRelatedData={(_page, item) => { */}
-        {/*     return Promise.resolve({ */}
-        {/*       nextPageAvailable: false, */}
-        {/*       totalCount: 1, */}
-        {/*       data: [item.beat], */}
-        {/*     }); */}
-        {/*   }} */}
-        {/*   generateNewRelatedItem={() => ({ id: '', beatKey: 'NEW', beatUrl: 'NEW' })} */}
-        {/*   createRelatedItem={(_item, relatedItem) => Promise.resolve({id: 'aaa', ...relatedItem} as BattleBeat)} */}
-        {/*   updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as BattleBeat)} */}
-        {/* /> */}
+          fetchPageOfRelatedData={(_page, _item) => {
+            return Promise.resolve({
+              nextPageAvailable: false,
+              totalCount: 1,
+              data: new Array(5).fill(0).map((_, index) => ({
+                id: `${index}`,
+                beatKey: `path/to/${index}`,
+                beatUrl: `https://example.com/path/to/${index}`,
+              })),
+            });
+          }}
+          generateNewRelatedItem={() => ({ id: '', beatKey: 'NEW', beatUrl: 'NEW' })}
+          createRelatedItem={(_item, relatedItem) => Promise.resolve({id: 'aaa', ...relatedItem} as BattleBeat)}
+          updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as BattleBeat)}
+        />
         <Field<BattleWithParticipants, 'participants', BattleWithParticipants['participants']>
           name="participants"
           singularDisplayName="Participants"
@@ -264,14 +268,14 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
           singularDisplayName="Id"
           pluralDisplayName="Ids"
           columnWidth="250px"
-          getInitialStateFromItem={battle => battle.id}
+          getInitialStateFromItem={beat => beat.id}
           serializeStateToItem={(item) => item}
           displayMarkup={state => <span>{state}</span>}
         />
         <InputField<BattleBeat, 'beatKey'>
           name="beatKey"
-          singularDisplayName="Started At"
-          pluralDisplayName="Started Ats"
+          singularDisplayName="Beat Key"
+          pluralDisplayName="Beat Keys"
           columnWidth="200px"
           sortable
           nullable
