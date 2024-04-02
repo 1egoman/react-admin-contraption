@@ -689,7 +689,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
 
   if (!dataContextData) {
     return (
-      <span>Waiting for data model to be added to DataModelsContext...</span>
+      <span>Waiting for data model {name} to be added to DataModelsContext...</span>
     );
   }
 
@@ -2963,7 +2963,7 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
 
   if (!dataContextData) {
     return (
-      <span>Waiting for data model to be added to DataModelsContext...</span>
+      <span>Waiting for data model {name} to be added to DataModelsContext...</span>
     );
   }
 
