@@ -2150,6 +2150,9 @@ export const ListFilterBar = <I = BaseItem>({
                   break;
                 }
               }
+              if (!metadata) {
+                return null;
+              }
 
               return (
                 <div key={filterIndex} style={{display: 'flex', gap: 4}}>
@@ -2175,17 +2178,18 @@ export const ListFilterBar = <I = BaseItem>({
                         if (!newFilterMetadata) {
                           return;
                         }
+                        const newFilterMetadataNonNull = newFilterMetadata;
 
                         // Update the given filter to now be of type `newFilterMetadata`
                         listDataContextData.onChangeFilters(
                           listDataContextData.filters.map((f, i) => {
                             if (i === filterIndex) {
-                              const initialState = newFilterMetadata.getInitialState();
-                              const isValid = newFilterMetadata.onIsValid(initialState);
+                              const initialState = newFilterMetadataNonNull.getInitialState();
+                              const isValid = newFilterMetadataNonNull.onIsValid(initialState);
                               return {
-                                name: newFilterMetadata.name,
+                                name: newFilterMetadataNonNull.name,
                                 isValid,
-                                isComplete: isValid && newFilterMetadata.onIsComplete(initialState),
+                                isComplete: isValid && newFilterMetadataNonNull.onIsComplete(initialState),
                                 workingState: initialState,
                                 state: initialState,
                               };
@@ -2306,6 +2310,9 @@ const ManuallyStickyTHead: React.FunctionComponent<{children: React.ReactNode}> 
 
     let handle: number | null = null;
     const frame = () => {
+      if (!tHeadRef.current) {
+        return;
+      }
       const position = tHeadRef.current.getBoundingClientRect();
       if (position.y !== previousY.current) {
         if (!locked.current && position.y < 0) {
@@ -2313,9 +2320,9 @@ const ManuallyStickyTHead: React.FunctionComponent<{children: React.ReactNode}> 
           locked.current = true;
           lastPositionY.current = -1 * position.y;
           tHeadRef.current.style.transform = `translateY(${lastPositionY.current}px)`;
-        } else if (locked.current) {
+        } else if (typeof lastPositionY.current === 'number' && locked.current) {
           lastPositionY.current -= position.y;
-          if (lastPositionY.current > 0) {
+          if (typeof lastPositionY.current === 'number' && lastPositionY.current > 0) {
             tHeadRef.current.style.transform = `translateY(${lastPositionY.current}px)`;
           } else {
             // Unlock header from top of screen
