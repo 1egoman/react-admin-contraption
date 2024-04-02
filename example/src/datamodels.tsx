@@ -150,10 +150,11 @@ export function BattleDataModel() {
         pluralDisplayName="Ids"
         columnWidth="250px"
         getInitialStateFromItem={battle => battle.id}
+        injectAsyncDataIntoInitialStateOnDetailPage={async state => state}
         serializeStateToItem={(item) => item}
         displayMarkup={state => <span>{state}</span>}
       />
-      <InputField<BattleWithParticipants, 'startedAt'>
+      <InputField<BattleWithParticipants, 'startedAt', true>
         name="startedAt"
         singularDisplayName="Started At"
         pluralDisplayName="Started Ats"
@@ -164,7 +165,7 @@ export function BattleDataModel() {
         getInitialStateWhenCreating={() => ''}
         serializeStateToItem={(initialItem, state) => ({ ...initialItem, startedAt: state })}
       />
-      <InputField<BattleWithParticipants, 'completedAt'>
+      <InputField<BattleWithParticipants, 'completedAt', true>
         name="completedAt"
         singularDisplayName="Completed At"
         pluralDisplayName="Completed Ats"
@@ -175,7 +176,7 @@ export function BattleDataModel() {
         getInitialStateWhenCreating={() => ''}
         serializeStateToItem={(initialItem, state) => ({ ...initialItem, completedAt: state })}
       />
-      <InputField<BattleWithParticipants, 'madeInactiveAt'>
+      <InputField<BattleWithParticipants, 'madeInactiveAt', true>
         name="madeInactiveAt"
         singularDisplayName="Made Inactive At"
         pluralDisplayName="Made Inactive Ats"
@@ -186,7 +187,7 @@ export function BattleDataModel() {
         getInitialStateWhenCreating={() => ''}
         serializeStateToItem={(initialItem, state) => ({ ...initialItem, madeInactiveAt: state })}
       />
-      <InputField<BattleWithParticipants, 'madeInactiveReason'>
+      <InputField<BattleWithParticipants, 'madeInactiveReason', true>
         name="madeInactiveReason"
         singularDisplayName="Made Inactive Reason"
         pluralDisplayName="Made Inactive Reasons"
@@ -229,8 +230,8 @@ export function BattleDataModel() {
         singularDisplayName="Beat"
         pluralDisplayName="Beats"
         columnWidth="165px"
-        nullable
-        getInitialStateFromItem={battle => [{ beatId: battle.beatId, beatKey: 'OLD', beatUrl: 'OLD' }]}
+        // nullable
+        getInitialStateFromItem={battle => battle.beatId ? [{ id: battle.beatId, beatKey: 'OLD', beatUrl: 'OLD' }] : []}
         serializeStateToItem={(initialItem, beats) => ({ ...initialItem, beatIds: beats.map(beat => beat.id) })}
 
         getRelatedKey={beat => beat.id}
@@ -247,7 +248,7 @@ export function BattleDataModel() {
             })),
           });
         }}
-        generateNewRelatedItem={() => ({ id: '', beatKey: 'NEW', beatUrl: 'NEW' })}
+        // generateNewRelatedItem={() => ({ id: '', beatKey: 'NEW', beatUrl: 'NEW' })}
         createRelatedItem={(_item, relatedItem) => Promise.resolve({id: 'aaa', ...relatedItem} as BattleBeat)}
         updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as BattleBeat)}
       />
@@ -257,6 +258,7 @@ export function BattleDataModel() {
         pluralDisplayName="Participants"
         columnWidth="165px"
         getInitialStateFromItem={battle => battle.participants}
+        injectAsyncDataIntoInitialStateOnDetailPage={async state => state}
         serializeStateToItem={(initialItem) => initialItem}
         displayMarkup={state => <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
           {state.map((participant) => (
@@ -374,6 +376,7 @@ export function BattleBeatDataModel() {
         pluralDisplayName="Ids"
         columnWidth="250px"
         getInitialStateFromItem={beat => beat.id}
+        injectAsyncDataIntoInitialStateOnDetailPage={async state => state}
         serializeStateToItem={(item) => item}
         displayMarkup={state => <span>{state}</span>}
       />
@@ -383,7 +386,6 @@ export function BattleBeatDataModel() {
         pluralDisplayName="Beat Keys"
         columnWidth="200px"
         sortable
-        nullable
         getInitialStateFromItem={beat => beat.beatKey}
         getInitialStateWhenCreating={() => ''}
         serializeStateToItem={(initialItem, state) => ({ ...initialItem, beatKey: state })}
@@ -503,6 +505,7 @@ export function PostDataModel() {
         pluralDisplayName="Ids"
         columnWidth={100}
         getInitialStateFromItem={post => post.id}
+        injectAsyncDataIntoInitialStateOnDetailPage={async state => state}
         serializeStateToItem={(item) => item}
         displayMarkup={state => <span>{state}</span>}
       />
@@ -520,18 +523,24 @@ export function PostDataModel() {
         name="userId"
         singularDisplayName="User"
         pluralDisplayName="Users"
-        // FIXME: this needs to be able to be async!!
         getInitialStateFromItem={post => ({ id: post.userId, name: 'OLD', username: 'OLD', email: 'OLD', phone: 'OLD', website: 'OLD' }) as User}
+        injectAsyncDataIntoInitialStateOnDetailPage={async (_state, item, signal) => {
+          const response = await fetch(`http://localhost:3003/users/${item.id}`, { signal });
+          if (!response.ok) {
+            throw new Error(`Error fetching user with id ${item.id}: received ${response.status} ${await response.text()}`);
+          }
+
+          return response.json();
+        }}
         serializeStateToItem={(initialItem, user) => ({ ...initialItem, userId: user.id })}
 
         relatedName="user"
 
-        // FIXME: add signal parameter!
-        fetchPageOfRelatedData={async (_page, post) => {
+        fetchPageOfRelatedData={async (_page, post, signal) => {
           const qs = new URLSearchParams();
           qs.set('postId', `${post.id}`);
 
-          const response = await fetch(`http://localhost:3003/users?${qs.toString()}`, { /* signal */ });
+          const response = await fetch(`http://localhost:3003/users?${qs.toString()}`, { signal });
           if (!response.ok) {
             throw new Error(`Error fetching users: received ${response.status} ${await response.text()}`)
           }
@@ -701,6 +710,7 @@ export function UserDataModel() {
         pluralDisplayName="Ids"
         columnWidth={100}
         getInitialStateFromItem={user => user.id}
+        injectAsyncDataIntoInitialStateOnDetailPage={async state => state}
         serializeStateToItem={(item) => item}
         displayMarkup={state => <span>{state}</span>}
       />

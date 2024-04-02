@@ -736,6 +736,7 @@ type FieldMetadata<I = BaseItem, F = BaseFieldName, S = BaseFieldState> = {
   // Serialize back and forth between the state (internal representation) and the item (external
   // representation)
   getInitialStateFromItem: (item: I) => S;
+  injectAsyncDataIntoInitialStateOnDetailPage: (oldState: S, item: I, signal: AbortSignal) => Promise<S>;
   getInitialStateWhenCreating?: () => S | undefined;
   serializeStateToItem: (initialItem: Partial<I>, state: S) => Partial<I>;
 
@@ -764,7 +765,7 @@ Example Field:
   pluralDisplayName="Started Ats"
   columnWidth="200px"
   sortable
-  getInitialStateFromItem={battle => battle.startedAt}
+  getInitialStateFromItem={battle => Promise.resolve(battle.startedAt)}
   getInitialStateWhenCreating={() => ''}
   serializeStateToItem={(initialItem, state) => ({ ...initialItem, startedAt: state })}
   displayMarkup={state => <small>{state}</small>}
@@ -781,10 +782,8 @@ export const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props
 
   useEffect(() => {
     const name = props.name as string;
-    console.log('SET NAME:', name);
     setFields(old => ({ ...old, names: [...old.names, name] }));
     return () => {
-      console.log('REMOVE NAME:', name);
       setFields(old => ({ ...old, names: old.names.filter(n => n !== name) }));
     };
   }, [props.name]);
@@ -795,6 +794,7 @@ export const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props
       pluralDisplayName: props.pluralDisplayName,
       singularDisplayName: props.singularDisplayName,
       getInitialStateFromItem: props.getInitialStateFromItem,
+      injectAsyncDataIntoInitialStateOnDetailPage: props.injectAsyncDataIntoInitialStateOnDetailPage,
       getInitialStateWhenCreating: props.getInitialStateWhenCreating,
       columnWidth: props.columnWidth,
       sortable: props.sortable,
@@ -819,6 +819,7 @@ export const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props
     props.columnWidth,
     props.sortable,
     props.getInitialStateFromItem,
+    props.injectAsyncDataIntoInitialStateOnDetailPage,
     props.getInitialStateWhenCreating,
     props.serializeStateToItem,
     props.displayMarkup,
@@ -867,6 +868,15 @@ export const InputField = <
   Nullable = false,
 >(props: InputFieldProps<Item, Field, Nullable>) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const getInitialStateFromItem = useMemo(() => {
+    return props.getInitialStateFromItem || ((item: Item) => `${(item as FixMe)[props.name as FixMe]}`);
+  }, [props.getInitialStateFromItem, props.name]);
+
+  const injectAsyncDataIntoInitialStateOnDetailPage = useMemo(() => {
+    return (state: Nullable extends true ? (string | null) : string) => Promise.resolve(state)
+  }, []);
+
   return (
     <Field<Item, Field, Nullable extends true ? (string | null) : string>
       name={props.name}
@@ -874,7 +884,8 @@ export const InputField = <
       pluralDisplayName={props.pluralDisplayName}
       columnWidth={props.columnWidth}
       sortable={props.sortable}
-      getInitialStateFromItem={props.getInitialStateFromItem || ((item) => `${(item as FixMe)[props.name as FixMe]}`)}
+      getInitialStateFromItem={getInitialStateFromItem}
+      injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
       getInitialStateWhenCreating={props.getInitialStateWhenCreating || (() => '')}
       serializeStateToItem={props.serializeStateToItem || ((initialItem, state) => ({ ...initialItem, [props.name as FixMe]: state }))}
       displayMarkup={state => state === null ? <em style={{color: 'silver'}}>null</em> : <span>{state}</span>}
@@ -979,6 +990,12 @@ Example ChoiceField:
 />
 */
 export const ChoiceField = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props: ChoiceFieldProps<I, F, S>) => {
+  const getInitialStateFromItem = useMemo(() => {
+    return props.getInitialStateFromItem || ((item: I) => `${(item as FixMe)[props.name as FixMe]}` as S);
+  }, [props.getInitialStateFromItem, props.name]);
+
+  const injectAsyncDataIntoInitialStateOnDetailPage = useCallback((state: S) => Promise.resolve(state), []);
+
   return (
     <Field<I, F, S>
       name={props.name}
@@ -986,7 +1003,8 @@ export const ChoiceField = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>
       pluralDisplayName={props.pluralDisplayName}
       columnWidth={props.columnWidth}
       sortable={props.sortable}
-      getInitialStateFromItem={props.getInitialStateFromItem || ((item) => `${item[props.name as FixMe]}` as S)}
+      getInitialStateFromItem={getInitialStateFromItem}
+      injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
       getInitialStateWhenCreating={props.getInitialStateWhenCreating}
       serializeStateToItem={props.serializeStateToItem || ((initialItem, state) => ({ ...initialItem, [props.name as FixMe]: state }))}
       displayMarkup={props.displayMarkup || (state => state === null ? <em style={{color: 'silver'}}>null</em> : <span>{`${state}`}</span>)}
@@ -1072,6 +1090,7 @@ type SingleForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> =
   | 'getInitialStateWhenCreating'
 > & {
   getInitialStateFromItem?: (item: I) => J;
+  injectAsyncDataIntoInitialStateOnDetailPage?: (oldState: J, item: I, signal: AbortSignal) => Promise<J>;
   getInitialStateWhenCreating?: () => J | undefined;
   serializeStateToItem?: (initialItem: Partial<I>, state: J) => Partial<I>;
 
@@ -1113,7 +1132,11 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
 
   const getInitialStateFromItem = useMemo(() => {
     return props.getInitialStateFromItem || ((item: I) => (item as FixMe)[props.name as FixMe] as J)
-  }, [props.name]);
+  }, [props.getInitialStateFromItem, props.name]);
+
+  const injectAsyncDataIntoInitialStateOnDetailPage = useMemo(() => {
+    return props.injectAsyncDataIntoInitialStateOnDetailPage || ((state: J) => Promise.resolve(state));
+  }, [props.injectAsyncDataIntoInitialStateOnDetailPage]);
 
   const serializeStateToItem = useMemo(() => {
     return props.serializeStateToItem || ((initialItem: Partial<I>, state: J) => ({
@@ -1194,6 +1217,7 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
       columnWidth={props.columnWidth}
       sortable={props.sortable}
       getInitialStateFromItem={getInitialStateFromItem}
+      injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
       getInitialStateWhenCreating={props.getInitialStateWhenCreating}
       serializeStateToItem={serializeStateToItem}
       // createSideEffect={props.createRelatedItem}
@@ -1214,6 +1238,7 @@ type MultiForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> = 
   | 'getInitialStateWhenCreating'
 > & {
   getInitialStateFromItem?: (item: I) => Array<J>;
+  injectAsyncDataIntoInitialStateOnDetailPage?: (oldState: Array<J>, item: I, signal: AbortSignal) => Promise<Array<J>>;
   getInitialStateWhenCreating?: () => Array<J> | undefined;
   serializeStateToItem?: (initialItem: Partial<I>, state: Array<J>) => Partial<I>;
 
@@ -1242,7 +1267,11 @@ Example MultiForeignKeyField:
 export const MultiForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseItem>(props: MultiForeignKeyFieldProps<I, F, J>) => {
   const getInitialStateFromItem = useMemo(() => {
     return props.getInitialStateFromItem || ((item: I) => (item as FixMe)[props.name as FixMe] as Array<J>);
-  }, [props.name]);
+  }, [props.getInitialStateFromItem, props.name]);
+
+  const injectAsyncDataIntoInitialStateOnDetailPage = useMemo(() => {
+    return props.injectAsyncDataIntoInitialStateOnDetailPage || ((state: Array<J>) => Promise.resolve(state));
+  }, [props.injectAsyncDataIntoInitialStateOnDetailPage, props.name]);
 
   return (
     <Field<I, F, Array<J>>
@@ -1252,6 +1281,7 @@ export const MultiForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseIt
       columnWidth={props.columnWidth}
       sortable={props.sortable}
       getInitialStateFromItem={getInitialStateFromItem}
+      injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
       getInitialStateWhenCreating={props.getInitialStateWhenCreating}
       serializeStateToItem={props.serializeStateToItem || ((initialItem, state) => ({ ...initialItem, [props.name as FixMe]: state }))}
       displayMarkup={state => {
@@ -1570,7 +1600,6 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
         }
       } else if (props.mode === 'detail') {
         if (itemSelectionMode === 'select') {
-          console.log('RELATED:', relatedData);
           rows = relatedData.data;
           rowKeys = rows.map(row => getRelatedKey(row));
           const key = getRelatedKey(props.relatedItem);
@@ -3162,21 +3191,57 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
   );
 
   // Store each state for each field centrally
-  const [fieldStates, setFieldStates] = useState<Map<F, BaseFieldState>>(new Map());
+  const [fieldStates, setFieldStates] = useState<
+    | { status: "IDLE" }
+    | { status: "LOADING" }
+    | { status: "COMPLETE", data: Map<F, BaseFieldState> }
+    | { status: "ERROR", error: any }
+  >({ status: "IDLE" });
   useEffect(() => {
-    const newFieldStates = new Map<F, BaseFieldState | undefined>();
-    for (const field of fields.metadata) {
-      if (detailDataContextData.isCreating) {
-        newFieldStates.set(field.name, field.getInitialStateWhenCreating ? field.getInitialStateWhenCreating() : undefined);
-      } else {
-        if (detailDataContextData.detailData.status !== 'COMPLETE') {
-          continue;
-        }
-        newFieldStates.set(field.name, field.getInitialStateFromItem(detailDataContextData.detailData.data));
-      }
+    if (detailDataContextData.detailData.status !== 'COMPLETE') {
+      return;
     }
+    const detailDataData = detailDataContextData.detailData.data;
 
-    setFieldStates(newFieldStates);
+    const abortController = new AbortController();
+    addInFlightAbortController(abortController);
+
+    setFieldStates({ status: "LOADING" });
+    Promise.all(fields.metadata.map(async field => {
+      if (detailDataContextData.isCreating) {
+        return [
+          field.name,
+          field.getInitialStateWhenCreating ? field.getInitialStateWhenCreating() : undefined,
+        ] as [F, BaseFieldState | undefined];
+      } else {
+        const initialState = field.getInitialStateFromItem(detailDataData);
+
+        // By calling `injectAsyncDataIntoInitialStateOnDetailPage`, the detail page can add more
+        // stuff to the state asyncronously so that it can show more rich information about the
+        // entity.
+        return field.injectAsyncDataIntoInitialStateOnDetailPage(
+          initialState,
+          detailDataData,
+          abortController.signal,
+        ).then(updatedState => {
+          return [field.name, updatedState] as [F, BaseFieldState | undefined];
+        });
+      }
+    })).then(fieldStatesPairs => {
+      removeInFlightAbortController(abortController);
+      setFieldStates({ status: "COMPLETE", data: new Map(fieldStatesPairs) });
+    }).catch(error => {
+      removeInFlightAbortController(abortController);
+      console.error('Error loading field state:', error);
+      setFieldStates({ status: "ERROR", error });
+    });
+
+    return () => {
+      setFieldStates({ status: 'IDLE' });
+
+      abortController.abort();
+      removeInFlightAbortController(abortController);
+    };
   }, [detailDataContextData.detailData, fields]);
 
   let detailFieldsChildren: React.ReactNode = null;
@@ -3240,26 +3305,38 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                 return null;
               }
 
-              const fieldState = fieldStates.get(field.name);
-              if (typeof fieldState === 'undefined') {
-                return null;
+              switch (fieldStates.status) {
+                case "IDLE":
+                case "LOADING":
+                  return (
+                    <div key={field.name as string}>Loading...</div>
+                  );
+                case "COMPLETE":
+                  const fieldState = fieldStates.data.get(field.name);
+                  if (typeof fieldState === 'undefined') {
+                    return null;
+                  }
+                  return (
+                    <div key={field.name as string}>
+                      {renderFieldItem({
+                        item,
+                        field,
+                        fieldState,
+                        onUpdateFieldState: (newFieldState) => {
+                          setFieldStates(old => {
+                            const newFieldStates = new Map(old);
+                            newFieldStates.set(field.name, newFieldState);
+                            return newFieldStates;
+                          });
+                        },
+                      })}
+                    </div>
+                  );
+                case "ERROR":
+                  return (
+                    <div key={field.name as string}>Error loading field state!</div>
+                  );
               }
-              return (
-                <div key={field.name as string}>
-                  {renderFieldItem({
-                    item,
-                    field,
-                    fieldState,
-                    onUpdateFieldState: (newFieldState) => {
-                      setFieldStates(old => {
-                        const newFieldStates = new Map(old);
-                        newFieldStates.set(field.name, newFieldState);
-                        return newFieldStates;
-                      });
-                    },
-                  })}
-                </div>
-              );
             })}
           </Fragment>
         );
