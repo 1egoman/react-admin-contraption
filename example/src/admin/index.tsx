@@ -2557,14 +2557,33 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
   if (!dataModelsContextData) {
     throw new Error('Error: <ListTable ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
-  const dataModel = dataModelsContextData[0].get(listDataContextData.name);
+  const dataModel = dataModelsContextData[0].get(listDataContextData.name) as DataModel<I, F> | undefined;
   if (!dataModel) {
     throw new Error(`Error: <ListTable ... /> cannot find data model with name ${listDataContextData.name}!`);
   }
 
-  const [fields, setFields] = useState<Array<FieldMetadata<I, F>>>(dataModel.fields);
+  const [
+    [fieldsSource, fields],
+    setFields,
+  ] = useState<["idle" | "children" | "datamodel", Array<FieldMetadata<I, F>>]>(["idle", []]);
+  useEffect(() => {
+    if (!dataModel) {
+      return;
+    }
+    if (fieldsSource === "children") {
+      return;
+    }
+
+    setFields(["datamodel", dataModel.fields]);
+  }, [dataModel]);
+
   const fieldsContextData = useMemo(
-    () => [fields, setFields] as [
+    () => [
+      (fields as any) as Array<FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>>,
+      ((updateFn) => setFields(
+        (old) => ["children" as const, updateFn(old[1])] as ["children", Array<FieldMetadata<I, F>>]
+      ) as any) as (fields: (old: Array<FieldMetadata>) => Array<FieldMetadata>) => void,
+    ] as [
       Array<FieldMetadata>,
       (fields: (old: Array<FieldMetadata>) => Array<FieldMetadata>) => void,
     ],
