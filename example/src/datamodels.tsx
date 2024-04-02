@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { BattleWithParticipants, BattleParticipant, BattleBeat } from '@/types';
 import {
@@ -9,6 +9,8 @@ import {
   DataModel,
   SingleForeignKeyField,
   MultiForeignKeyField,
+  AdminContextProvider,
+  StateCache,
 } from '@/admin';
 
 export function BattleDataModel() {
@@ -479,69 +481,108 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
     }
   }, []);
 
+  const stateCache: StateCache = useMemo(() => {
+    return {
+      store: async (filters, sort, searchText, _columnSet) => {
+        const url = new URL(window.location.href);
+
+        if (filters.length > 0) {
+          url.searchParams.set('filters', JSON.stringify(filters));
+        } else {
+          url.searchParams.delete('filters');
+        }
+
+        if (sort) {
+          url.searchParams.set('sort', JSON.stringify(sort));
+        } else {
+          url.searchParams.delete('sort');
+        }
+
+        if (searchText.length > 0) {
+          url.searchParams.set('searchtext', JSON.stringify(searchText));
+        } else {
+          url.searchParams.delete('searchtext');
+        }
+
+        window.history.pushState({}, "", url.toString());
+      },
+      read: async () => {
+        const url = new URL(window.location.href);
+        const filters = JSON.parse(url.searchParams.get('filters') || '[]');
+        const sort = JSON.parse(url.searchParams.get('sort') || 'null');
+        const searchText = url.searchParams.get('searchtext') || '';
+        const columnSet = 'all';
+
+        return [filters, sort, searchText, columnSet];
+      },
+    };
+  }, []);
+
   return (
-    <DataModels>
-      <BattleDataModel />
-      <BattleBeatDataModel />
+    <AdminContextProvider stateCache={stateCache}>
+      <DataModels>
+        <BattleDataModel />
+        <BattleBeatDataModel />
 
-      <DataModel<Post>
-        name="post"
-        singularDisplayName="post"
-        pluralDisplayName="posts"
+        <DataModel<Post>
+          name="post"
+          singularDisplayName="post"
+          pluralDisplayName="posts"
 
-        fetchPageOfData={fetchPageOfData}
-        fetchItem={fetchItem}
-        createItem={createItem}
-        updateItem={updateItem}
-        deleteItem={deleteItem}
+          fetchPageOfData={fetchPageOfData}
+          fetchItem={fetchItem}
+          createItem={createItem}
+          updateItem={updateItem}
+          deleteItem={deleteItem}
 
-        keyGenerator={post => `${post.id}`}
-        detailLinkGenerator={post => ({ type: 'href' as const, href: `/admin/posts/${post.id}` })}
-        listLink={{ type: 'href' as const, href: `/admin/posts` }}
-        createLink={{ type: 'href', href: `/admin/posts/new` }}
-      >
-        <Field<Post, 'id', number>
-          name="id"
-          singularDisplayName="Id"
-          pluralDisplayName="Ids"
-          columnWidth="250px"
-          getInitialStateFromItem={post => post.id}
-          serializeStateToItem={(item) => item}
-          displayMarkup={state => <span>{state}</span>}
-        />
-        <InputField<Post, 'userId'>
-          name="userId"
-          singularDisplayName="User ID"
-          pluralDisplayName="User IDs"
-          columnWidth="200px"
-          sortable
-          getInitialStateFromItem={post => `${post.userId}`}
-          getInitialStateWhenCreating={() => ''}
-          serializeStateToItem={(initialItem, state) => ({ ...initialItem, userId: parseInt(state) })}
-        />
-        <InputField<Post, 'title'>
-          name="title"
-          singularDisplayName="Title"
-          pluralDisplayName="Titles"
-          columnWidth="200px"
-          sortable
-          getInitialStateFromItem={post => post.title}
-          getInitialStateWhenCreating={() => ''}
-          serializeStateToItem={(initialItem, state) => ({ ...initialItem, title: state })}
-        />
-        <InputField<Post, 'body'>
-          name="body"
-          singularDisplayName="Body"
-          pluralDisplayName="Bodies"
-          columnWidth="200px"
-          sortable
-          getInitialStateFromItem={post => post.body}
-          getInitialStateWhenCreating={() => ''}
-          serializeStateToItem={(initialItem, state) => ({ ...initialItem, body: state })}
-        />
-      </DataModel>
+          keyGenerator={post => `${post.id}`}
+          detailLinkGenerator={post => ({ type: 'href' as const, href: `/admin/posts/${post.id}` })}
+          listLink={{ type: 'href' as const, href: `/admin/posts` }}
+          createLink={{ type: 'href', href: `/admin/posts/new` }}
+        >
+          <Field<Post, 'id', number>
+            name="id"
+            singularDisplayName="Id"
+            pluralDisplayName="Ids"
+            columnWidth="250px"
+            getInitialStateFromItem={post => post.id}
+            serializeStateToItem={(item) => item}
+            displayMarkup={state => <span>{state}</span>}
+          />
+          <InputField<Post, 'userId'>
+            name="userId"
+            singularDisplayName="User ID"
+            pluralDisplayName="User IDs"
+            columnWidth="200px"
+            sortable
+            getInitialStateFromItem={post => `${post.userId}`}
+            getInitialStateWhenCreating={() => ''}
+            serializeStateToItem={(initialItem, state) => ({ ...initialItem, userId: parseInt(state) })}
+          />
+          <InputField<Post, 'title'>
+            name="title"
+            singularDisplayName="Title"
+            pluralDisplayName="Titles"
+            columnWidth="200px"
+            sortable
+            getInitialStateFromItem={post => post.title}
+            getInitialStateWhenCreating={() => ''}
+            serializeStateToItem={(initialItem, state) => ({ ...initialItem, title: state })}
+          />
+          <InputField<Post, 'body'>
+            name="body"
+            singularDisplayName="Body"
+            pluralDisplayName="Bodies"
+            columnWidth="200px"
+            sortable
+            getInitialStateFromItem={post => post.body}
+            getInitialStateWhenCreating={() => ''}
+            serializeStateToItem={(initialItem, state) => ({ ...initialItem, body: state })}
+          />
+        </DataModel>
 
-      {children}
-    </DataModels>
+        {children}
+      </DataModels>
+    </AdminContextProvider>
   );
 }
