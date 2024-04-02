@@ -2853,7 +2853,7 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
   if (!dataModelsContextData) {
     throw new Error('Error: <Detail ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
-  const dataModel = dataModelsContextData[0].get(name);
+  const dataModel = dataModelsContextData[0].get(name) as DataModel<I, BaseFieldName> | undefined;
   const singularDisplayName = props.singularDisplayName || dataModel?.singularDisplayName || '';
   const pluralDisplayName = props.pluralDisplayName || dataModel?.pluralDisplayName || '';
   const fetchItem = props.fetchItem || dataModel?.fetchItem || null;
