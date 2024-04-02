@@ -399,7 +399,204 @@ export type Post = {
   body: string,
 };
 
-export default function AllDataModels({ children }: { children: React.ReactNode}) {
+export function PostDataModel() {
+  const fetchPageOfData = useCallback(async (
+    page: number,
+    filters: Array<[Array<string>, any]>,
+    sort: Sort | null,
+    searchText: string,
+    signal: AbortSignal
+  ) => {
+    const qs = new URLSearchParams();
+
+    if (filters || searchText.length > 0) {
+      for (const [[name, ..._rest], value] of filters) {
+        qs.set(name, value);
+      }
+    }
+    if (searchText.length > 0) {
+      qs.set('title', searchText);
+    }
+
+    const response = await fetch(`http://localhost:3003/posts?${qs.toString()}`, { signal });
+    if (!response.ok) {
+      throw new Error(`Error fetching posts: received ${response.status} ${await response.text()}`)
+    }
+
+    const body = await response.json();
+
+    return {
+      nextPageAvailable: false,
+      totalCount: body.length,
+      data: body,
+    };
+  }, []);
+
+  const fetchItem = useCallback(async (itemKey: string, signal: AbortSignal) => {
+    const response = await fetch(`http://localhost:3003/posts/${itemKey}`, { signal });
+    if (!response.ok) {
+      throw new Error(`Error fetching post with id ${itemKey}: received ${response.status} ${await response.text()}`)
+    }
+
+    return response.json();
+  }, []);
+
+  const createItem = useCallback(async (createData: Partial<Post>, signal: AbortSignal) => {
+    const response = await fetch(`http://localhost:3003/posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(createData),
+      signal,
+    });
+    if (!response.ok) {
+      throw new Error(`Error creating post: received ${response.status} ${await response.text()}`)
+    }
+
+    return response.json();
+  }, []);
+
+  const updateItem = useCallback(async (itemKey: string, updateData: Partial<Post>, signal: AbortSignal) => {
+    const response = await fetch(`http://localhost:3003/posts/${itemKey}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updateData),
+      signal,
+    });
+    if (!response.ok) {
+      throw new Error(`Error updating post ${itemKey}: received ${response.status} ${await response.text()}`)
+    }
+
+    return response.json();
+  }, []);
+
+  const deleteItem = useCallback(async (itemKey: string, signal: AbortSignal) => {
+    const response = await fetch(`http://localhost:3003/posts/${itemKey}`, { method: 'DELETE', signal });
+    if (!response.ok) {
+      throw new Error(`Error deleting post with id ${itemKey}: received ${response.status} ${await response.text()}`)
+    }
+  }, []);
+
+  return (
+    <DataModel<Post>
+      name="post"
+      singularDisplayName="post"
+      pluralDisplayName="posts"
+
+      fetchPageOfData={fetchPageOfData}
+      fetchItem={fetchItem}
+      createItem={createItem}
+      updateItem={updateItem}
+      deleteItem={deleteItem}
+
+      keyGenerator={post => `${post.id}`}
+      detailLinkGenerator={post => ({ type: 'href' as const, href: `/admin/posts/${post.id}` })}
+      listLink={{ type: 'href' as const, href: `/admin/posts` }}
+      createLink={{ type: 'href', href: `/admin/posts/new` }}
+    >
+      <Field<Post, 'id', number>
+        name="id"
+        singularDisplayName="Id"
+        pluralDisplayName="Ids"
+        columnWidth={100}
+        getInitialStateFromItem={post => post.id}
+        serializeStateToItem={(item) => item}
+        displayMarkup={state => <span>{state}</span>}
+      />
+      {/* <InputField<Post, 'userId'> */}
+      {/*   name="userId" */}
+      {/*   singularDisplayName="User ID" */}
+      {/*   pluralDisplayName="User IDs" */}
+      {/*   columnWidth={100} */}
+      {/*   sortable */}
+      {/*   getInitialStateFromItem={post => `${post.userId}`} */}
+      {/*   getInitialStateWhenCreating={() => ''} */}
+      {/*   serializeStateToItem={(initialItem, state) => ({ ...initialItem, userId: parseInt(state) })} */}
+      {/* /> */}
+      <SingleForeignKeyField<Post, 'userId', User>
+        name="userId"
+        singularDisplayName="User"
+        pluralDisplayName="Users"
+        // FIXME: this needs to be able to be async!!
+        getInitialStateFromItem={post => ({ id: post.userId, name: 'OLD', username: 'OLD', email: 'OLD', phone: 'OLD', website: 'OLD' }) as User}
+        serializeStateToItem={(initialItem, user) => ({ ...initialItem, userId: user.id })}
+
+        relatedName="user"
+
+        // FIXME: add signal parameter!
+        fetchPageOfRelatedData={async (_page, post) => {
+          const qs = new URLSearchParams();
+          qs.set('postId', `${post.id}`);
+
+          const response = await fetch(`http://localhost:3003/users?${qs.toString()}`, { /* signal */ });
+          if (!response.ok) {
+            throw new Error(`Error fetching users: received ${response.status} ${await response.text()}`)
+          }
+
+          const body = await response.json();
+
+          return {
+            nextPageAvailable: false,
+            totalCount: body.length,
+            data: body,
+          };
+        }}
+        generateNewRelatedItem={() => ({ id: 0, name: 'OLD', username: 'OLD', email: 'OLD', phone: 'OLD', website: 'OLD' }) as User}
+        createRelatedItem={(_item, relatedItem) => Promise.resolve({id: Math.random(), ...relatedItem} as User)}
+        updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as User)}
+      />
+      <InputField<Post, 'title'>
+        name="title"
+        singularDisplayName="Title"
+        pluralDisplayName="Titles"
+        columnWidth={100}
+        sortable
+        getInitialStateFromItem={post => post.title}
+        getInitialStateWhenCreating={() => ''}
+        serializeStateToItem={(initialItem, state) => ({ ...initialItem, title: state })}
+      />
+      <InputField<Post, 'body'>
+        name="body"
+        singularDisplayName="Body"
+        pluralDisplayName="Bodies"
+        columnWidth={200}
+        sortable
+        getInitialStateFromItem={post => post.body}
+        getInitialStateWhenCreating={() => ''}
+        serializeStateToItem={(initialItem, state) => ({ ...initialItem, body: state })}
+      />
+    </DataModel>
+  );
+}
+
+export type User = {
+  id: number,
+  name: string,
+  username: string,
+  email: string,
+  address: {
+    street: string,
+    suite: string,
+    city: string,
+    zipcode: string,
+    geo: {
+      lat: string,
+      lng: string,
+    },
+  },
+  phone: string,
+  website: string,
+  company: {
+    name: string,
+    catchPhrase: string,
+    bs: string,
+  },
+};
+
+export function UserDataModel() {
   const fetchPageOfData = useCallback(async (
     page: number,
     filters: Array<[Array<string>, any]>,
@@ -419,9 +616,9 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
       qs.set('title', searchText);
     }
 
-    const response = await fetch(`https://jsonplaceholder.typicode.com/posts?${qs.toString()}`, { signal });
+    const response = await fetch(`http://localhost:3003/users?${qs.toString()}`, { signal });
     if (!response.ok) {
-      throw new Error(`Error fetching posts: received ${response.status} ${await response.text()}`)
+      throw new Error(`Error fetching users: received ${response.status} ${await response.text()}`)
     }
 
     const body = await response.json();
@@ -434,16 +631,16 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
   }, []);
 
   const fetchItem = useCallback(async (itemKey: string, signal: AbortSignal) => {
-    const response = await fetch(`https://jsonplaceholder.typicode.com/posts/${itemKey}`, { signal });
+    const response = await fetch(`http://localhost:3003/users/${itemKey}`, { signal });
     if (!response.ok) {
-      throw new Error(`Error fetching post with id ${itemKey}: received ${response.status} ${await response.text()}`)
+      throw new Error(`Error fetching user with id ${itemKey}: received ${response.status} ${await response.text()}`)
     }
 
     return response.json();
   }, []);
 
-  const createItem = useCallback(async (createData: Partial<Post>, signal: AbortSignal) => {
-    const response = await fetch(`https://jsonplaceholder.typicode.com/posts`, {
+  const createItem = useCallback(async (createData: Partial<User>, signal: AbortSignal) => {
+    const response = await fetch(`http://localhost:3003/users`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -452,14 +649,14 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
       signal,
     });
     if (!response.ok) {
-      throw new Error(`Error creating post: received ${response.status} ${await response.text()}`)
+      throw new Error(`Error creating user: received ${response.status} ${await response.text()}`)
     }
 
     return response.json();
   }, []);
 
-  const updateItem = useCallback(async (itemKey: string, updateData: Partial<Post>, signal: AbortSignal) => {
-    const response = await fetch(`https://jsonplaceholder.typicode.com/posts/${itemKey}`, {
+  const updateItem = useCallback(async (itemKey: string, updateData: Partial<User>, signal: AbortSignal) => {
+    const response = await fetch(`http://localhost:3003/users/${itemKey}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -468,19 +665,95 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
       signal,
     });
     if (!response.ok) {
-      throw new Error(`Error updating post ${itemKey}: received ${response.status} ${await response.text()}`)
+      throw new Error(`Error updating user ${itemKey}: received ${response.status} ${await response.text()}`)
     }
 
     return response.json();
   }, []);
 
   const deleteItem = useCallback(async (itemKey: string, signal: AbortSignal) => {
-    const response = await fetch(`https://jsonplaceholder.typicode.com/posts/${itemKey}`, { method: 'DELETE', signal });
+    const response = await fetch(`http://localhost:3003/users/${itemKey}`, { method: 'DELETE', signal });
     if (!response.ok) {
-      throw new Error(`Error deleting post with id ${itemKey}: received ${response.status} ${await response.text()}`)
+      throw new Error(`Error deleting user with id ${itemKey}: received ${response.status} ${await response.text()}`)
     }
   }, []);
 
+  return (
+    <DataModel<User>
+      name="user"
+      singularDisplayName="user"
+      pluralDisplayName="users"
+
+      fetchPageOfData={fetchPageOfData}
+      fetchItem={fetchItem}
+      createItem={createItem}
+      updateItem={updateItem}
+      deleteItem={deleteItem}
+
+      keyGenerator={user => `${user.id}`}
+      detailLinkGenerator={user => ({ type: 'href' as const, href: `/admin/posts/${user.id}` })}
+      listLink={{ type: 'href' as const, href: `/admin/posts` }}
+      createLink={{ type: 'href', href: `/admin/posts/new` }}
+    >
+      <Field<User, 'id', number>
+        name="id"
+        singularDisplayName="Id"
+        pluralDisplayName="Ids"
+        columnWidth={100}
+        getInitialStateFromItem={user => user.id}
+        serializeStateToItem={(item) => item}
+        displayMarkup={state => <span>{state}</span>}
+      />
+      <InputField<User, 'name'>
+        name="name"
+        singularDisplayName="Name"
+        pluralDisplayName="Names"
+        sortable
+        getInitialStateFromItem={user => `${user.name}`}
+        getInitialStateWhenCreating={() => ''}
+        serializeStateToItem={(initialItem, state) => ({ ...initialItem, name: state })}
+      />
+      <InputField<User, 'username'>
+        name="username"
+        singularDisplayName="Username"
+        pluralDisplayName="Usernames"
+        sortable
+        getInitialStateFromItem={user => `${user.username}`}
+        getInitialStateWhenCreating={() => ''}
+        serializeStateToItem={(initialItem, state) => ({ ...initialItem, username: state })}
+      />
+      <InputField<User, 'email'>
+        name="email"
+        singularDisplayName="Email"
+        pluralDisplayName="Emails"
+        sortable
+        getInitialStateFromItem={user => `${user.email}`}
+        getInitialStateWhenCreating={() => ''}
+        serializeStateToItem={(initialItem, state) => ({ ...initialItem, email: state })}
+      />
+      <InputField<User, 'phone'>
+        name="phone"
+        singularDisplayName="Phone"
+        pluralDisplayName="Phones"
+        sortable
+        getInitialStateFromItem={user => `${user.phone}`}
+        getInitialStateWhenCreating={() => ''}
+        serializeStateToItem={(initialItem, state) => ({ ...initialItem, phone: state })}
+      />
+      <InputField<User, 'website'>
+        name="website"
+        singularDisplayName="Website"
+        pluralDisplayName="Websites"
+        sortable
+        getInitialStateFromItem={user => `${user.website}`}
+        getInitialStateWhenCreating={() => ''}
+        serializeStateToItem={(initialItem, state) => ({ ...initialItem, website: state })}
+      />
+    </DataModel>
+  );
+}
+
+export default function AllDataModels({ children }: { children: React.ReactNode}) {
   const stateCache: StateCache = useMemo(() => {
     return {
       store: async (filters, sort, searchText, _columnSet) => {
@@ -521,65 +794,11 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
   return (
     <AdminContextProvider stateCache={stateCache}>
       <DataModels>
-        <BattleDataModel />
-        <BattleBeatDataModel />
+        {/* <BattleDataModel /> */}
+        {/* <BattleBeatDataModel /> */}
 
-        <DataModel<Post>
-          name="post"
-          singularDisplayName="post"
-          pluralDisplayName="posts"
-
-          fetchPageOfData={fetchPageOfData}
-          fetchItem={fetchItem}
-          createItem={createItem}
-          updateItem={updateItem}
-          deleteItem={deleteItem}
-
-          keyGenerator={post => `${post.id}`}
-          detailLinkGenerator={post => ({ type: 'href' as const, href: `/admin/posts/${post.id}` })}
-          listLink={{ type: 'href' as const, href: `/admin/posts` }}
-          createLink={{ type: 'href', href: `/admin/posts/new` }}
-        >
-          <Field<Post, 'id', number>
-            name="id"
-            singularDisplayName="Id"
-            pluralDisplayName="Ids"
-            columnWidth="250px"
-            getInitialStateFromItem={post => post.id}
-            serializeStateToItem={(item) => item}
-            displayMarkup={state => <span>{state}</span>}
-          />
-          <InputField<Post, 'userId'>
-            name="userId"
-            singularDisplayName="User ID"
-            pluralDisplayName="User IDs"
-            columnWidth="200px"
-            sortable
-            getInitialStateFromItem={post => `${post.userId}`}
-            getInitialStateWhenCreating={() => ''}
-            serializeStateToItem={(initialItem, state) => ({ ...initialItem, userId: parseInt(state) })}
-          />
-          <InputField<Post, 'title'>
-            name="title"
-            singularDisplayName="Title"
-            pluralDisplayName="Titles"
-            columnWidth="200px"
-            sortable
-            getInitialStateFromItem={post => post.title}
-            getInitialStateWhenCreating={() => ''}
-            serializeStateToItem={(initialItem, state) => ({ ...initialItem, title: state })}
-          />
-          <InputField<Post, 'body'>
-            name="body"
-            singularDisplayName="Body"
-            pluralDisplayName="Bodies"
-            columnWidth="200px"
-            sortable
-            getInitialStateFromItem={post => post.body}
-            getInitialStateWhenCreating={() => ''}
-            serializeStateToItem={(initialItem, state) => ({ ...initialItem, body: state })}
-          />
-        </DataModel>
+        <PostDataModel />
+        <UserDataModel />
 
         {children}
       </DataModels>
