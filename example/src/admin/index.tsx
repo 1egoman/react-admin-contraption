@@ -67,7 +67,7 @@ type DataModel<I = BaseItem, F = BaseFieldName> = {
   detailLinkGenerator?: null | ((item: I) => Navigatable);
   createLink?: null | Navigatable;
 
-  fields: Array<FieldMetadata<I, F>>,
+  fields: FieldCollection<FieldMetadata<I, F>>,
 };
 
 const DataModelsContext = React.createContext<[
@@ -141,7 +141,7 @@ export const DataModel = <I = BaseItem, F = BaseFieldName>(props: DataModelProps
       if (old) {
         return { ...old, ...base };
       } else {
-        return { ...base, fields: [] };
+        return { ...base, fields: EMPTY_FIELD_COLLECTION };
       }
     });
   }, [
@@ -163,8 +163,8 @@ export const DataModel = <I = BaseItem, F = BaseFieldName>(props: DataModelProps
   // to make that work with a react context.
   const fieldsContextData = useMemo(
     () => ([
-      dataModel ? dataModel.fields : [],
-      (updateFn: (old: Array<FieldMetadata<I, F>>) => Array<FieldMetadata<I, F>>) => {
+      dataModel ? dataModel.fields : EMPTY_FIELD_COLLECTION,
+      (updateFn: (old: FieldsCollection<FieldMetadata<I, F>>) => FieldsCollection<FieldMetadata<I, F>>) => {
         setDataModel(old => {
           if (old) {
             return { ...old, fields: updateFn(old.fields) };
@@ -715,9 +715,15 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
 
 
 const FieldsContext = React.createContext<[
-  Array<FieldMetadata>,
-  (fields: (old: Array<FieldMetadata>) => Array<FieldMetadata>) => void,
+  FieldCollection,
+  (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
 ] | null>(null);
+
+type FieldCollection<M = FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>> = {
+  names: Array<FieldMetadata['name']>,
+  metadata: Array<M>,
+};
+const EMPTY_FIELD_COLLECTION: FieldCollection = { names: [], metadata: [] };
 
 type FieldMetadata<I = BaseItem, F = BaseFieldName, S = BaseFieldState> = {
   name: F;
@@ -774,6 +780,16 @@ export const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props
   const [_fields, setFields] = fieldsContextData;
 
   useEffect(() => {
+    const name = props.name as string;
+    console.log('SET NAME:', name);
+    setFields(old => ({ ...old, names: [...old.names, name] }));
+    return () => {
+      console.log('REMOVE NAME:', name);
+      setFields(old => ({ ...old, names: old.names.filter(n => n !== name) }));
+    };
+  }, [props.name]);
+
+  useEffect(() => {
     const fieldMetadata: FieldMetadata<I, F, S> = {
       name: props.name,
       pluralDisplayName: props.pluralDisplayName,
@@ -791,10 +807,10 @@ export const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props
     // can be put into the field state
     const castedFieldMetadata = (fieldMetadata as any) as FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>;
 
-    setFields(old => [ ...old, castedFieldMetadata ]);
+    setFields(old => ({...old, metadata: [ ...old.metadata, castedFieldMetadata ]}));
 
     return () => {
-      setFields(old => old.filter(f => f !== castedFieldMetadata));
+      setFields(old => ({ ...old, metadata: old.metadata.filter(f => f !== castedFieldMetadata) }));
     };
   }, [
     props.name,
@@ -1256,7 +1272,7 @@ export const MultiForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseIt
           <span>{keys.join(', ')}</span>
         );
       }}
-      modifyMarkup={(state, setState, item, onBlur) => {
+      modifyMarkup={(state, setState, item, _onBlur) => {
         const relatedFields = (
           <ForeignKeyFieldModifyMarkup<I, F, J>
             mode="list"
@@ -1456,7 +1472,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
   const [
     [relatedFieldsSource, relatedFields],
     setRelatedFields,
-  ] = useState<["idle" | "children" | "datamodel", Array<FieldMetadata<J, F>>]>(["idle", []]);
+  ] = useState<["idle" | "children" | "datamodel", FieldCollection<FieldMetadata<J, F>>]>(["idle", EMPTY_FIELD_COLLECTION]);
   useEffect(() => {
     if (!relatedDataModel) {
       return;
@@ -1470,28 +1486,34 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
 
   const relatedFieldsContextData = useMemo(
     () => [
-      (relatedFields as any) as Array<FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>>,
+      (relatedFields as any) as FieldCollection<FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>>,
       ((updateFn) => setRelatedFields(
-        (old) => ["children" as const, updateFn(old[1])] as ["children", Array<FieldMetadata<J, F>>]
-      ) as any) as (fields: (old: Array<FieldMetadata>) => Array<FieldMetadata>) => void,
+        (old) => ["children" as const, updateFn(old[1])] as ["children", FieldCollection<FieldMetadata<J, F>>]
+      ) as any) as (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
     ] as [
-      Array<FieldMetadata>,
-      (fields: (old: Array<FieldMetadata>) => Array<FieldMetadata>) => void,
+      FieldCollection<FieldMetadata>,
+      (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
     ],
     [relatedFields, setRelatedFields]
   );
 
   // Allow a custom set of fields to be defined in the creation form. If these fields aren't
   // defined, then use the fields defined for the table for the creation form.
-  const [relatedCreationFieldsOverride, setRelatedCreationFieldsOverride] = useState<Array<FieldMetadata<J, F>>>([]);
+  const [
+    relatedCreationFieldsOverride,
+    setRelatedCreationFieldsOverride
+  ] = useState<FieldCollection<FieldMetadata<J, F>>>(EMPTY_FIELD_COLLECTION);
   const relatedCreationFieldsContextData = useMemo(
-    () => [relatedCreationFieldsOverride, setRelatedCreationFieldsOverride] as [
-      Array<FieldMetadata<J, F>>,
-      (fields: (old: Array<FieldMetadata<J, F>>) => Array<FieldMetadata<J, F>>) => void,
+    () => [
+      (relatedCreationFieldsOverride as any) as FieldCollection<FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>>,
+      (setRelatedCreationFieldsOverride as any) as (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
+    ] as [
+      FieldCollection<FieldMetadata>,
+      (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
     ],
-    [relatedCreationFieldsOverride, setRelatedCreationFieldsOverride]
+    [relatedFields, setRelatedFields]
   );
-  const relatedCreationFields = relatedCreationFieldsOverride.length > 0 ? relatedCreationFieldsOverride : relatedFields;
+  const relatedCreationFields = relatedCreationFieldsOverride.names.length > 0 ? relatedCreationFieldsOverride : relatedFields;
 
   // When in creation mode, store each state for each field centrally
   const [relatedCreationFieldStates, setRelatedCreationFieldStates] = useState<Map<F, BaseFieldState>>(new Map());
@@ -1501,7 +1523,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     }
 
     const newRelatedCreationFieldStates = new Map<F, BaseFieldState | undefined>();
-    for (const relatedField of relatedCreationFields) {
+    for (const relatedField of relatedCreationFields.metadata) {
       newRelatedCreationFieldStates.set(
         relatedField.name,
         relatedField.getInitialStateWhenCreating ? relatedField.getInitialStateWhenCreating() : undefined,
@@ -1692,7 +1714,12 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
             <Fragment>
               <span>Create new {props.foreignKeyFieldProps.singularDisplayName}</span>
 
-              {relatedCreationFields.map(relatedField => {
+              {relatedCreationFields.names.map(relatedFieldName => {
+                const relatedField = relatedCreationFields.metadata.find(f => f.name === relatedFieldName);
+                if (!relatedField) {
+                  return null;
+                }
+
                 const relatedFieldState = relatedCreationFieldStates.get(relatedField.name);
                 if (typeof relatedFieldState === 'undefined') {
                   return null;
@@ -1720,7 +1747,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
               <button onClick={async () => {
                 // Aggregate all the state updates to form the update body
                 let relatedItem: Partial<J> = {};
-                for (const field of relatedCreationFields) {
+                for (const field of relatedCreationFields.metadata) {
                   let state = relatedCreationFieldStates.get(field.name);
                   if (typeof state === 'undefined') {
                     continue;
@@ -1818,7 +1845,7 @@ export const ListTableItem = <I = BaseItem, F = BaseFieldName>({
         </td>
       ) : null}
       {visibleFieldNames.map(name => {
-        const field = fields.find(f => f.name === name);
+        const field = fields.metadata.find(f => f.name === name);
         if (!field) {
           return null;
         }
@@ -2327,7 +2354,7 @@ type ListTableProps<I, F> = {
   checkboxesColumnWidth?: null | string | number;
   columnSets?: { [name: string]: Array<F> };
   renderColumnSetSelector?: (params: {
-    fields: Array<FieldMetadata<I, F>>;
+    fields: FieldCollection<FieldMetadata<I, F>>;
     columnSets: { [name: string]: Array<F> };
     columnSet: 'all' | string | Array<F>;
     onChangeColumnSet: (newColumnSet: 'all' | string | Array<F>) => void;
@@ -2340,14 +2367,14 @@ type ListTableProps<I, F> = {
   }) => React.ReactNode;
   renderTableWrapper?: (params: {
     listDataContextData: DataContextList<I, F>;
-    fields: Array<FieldMetadata<I, F>>;
+    fields: FieldCollection<FieldMetadata<I, F>>;
     detailLinkEnabled: boolean;
     detailLinkWidth: null | string | number;
     checkboxesWidth: null | string | number;
     visibleFieldNames: Array<F>;
     columnSets?: { [name: string]: Array<F> };
     renderColumnSetSelector?: (params: {
-      fields: Array<FieldMetadata<I, F>>;
+      fields: FieldCollection<FieldMetadata<I, F>>;
       columnSets: { [name: string]: Array<F> };
       columnSet: 'all' | string | Array<F>;
       onChangeColumnSet: (newColumnSet: 'all' | string | Array<F>) => void;
@@ -2358,7 +2385,7 @@ type ListTableProps<I, F> = {
   renderTableItem?: (params: {
     item: I,
     visibleFieldNames: Array<F>;
-    fields: Array<FieldMetadata<I, F>>,
+    fields: FieldCollection<FieldMetadata<I, F>>,
 
     detailLink?: Navigatable,
 
@@ -2466,7 +2493,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
                 </th>
               ) : null}
               {visibleFieldNames.map(name => {
-                const fieldMetadata = fields.find(f => f.name === name);
+                const fieldMetadata = fields.metadata.find(f => f.name === name);
                 if (!fieldMetadata) {
                   return null;
                 }
@@ -2516,7 +2543,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
               })}
               {/* Add a column for the detail link */}
               {detailLinkEnabled ? (
-                <th style={{minWidth: detailLinkWidth}}></th>
+                <th style={{ minWidth: detailLinkWidth || undefined }}></th>
               ) : null}
               {columnSets && renderColumnSetSelector ? (
                 <th className={styles.floatingColumnSetSelectorWrapper}>
@@ -2565,7 +2592,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
   const [
     [fieldsSource, fields],
     setFields,
-  ] = useState<["idle" | "children" | "datamodel", Array<FieldMetadata<I, F>>]>(["idle", []]);
+  ] = useState<["idle" | "children" | "datamodel", FieldCollection<FieldMetadata<I, F>>]>(["idle", EMPTY_FIELD_COLLECTION]);
   useEffect(() => {
     if (!dataModel) {
       return;
@@ -2579,13 +2606,13 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
 
   const fieldsContextData = useMemo(
     () => [
-      (fields as any) as Array<FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>>,
+      (fields as any) as FieldCollection<FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>>,
       ((updateFn) => setFields(
-        (old) => ["children" as const, updateFn(old[1])] as ["children", Array<FieldMetadata<I, F>>]
-      ) as any) as (fields: (old: Array<FieldMetadata>) => Array<FieldMetadata>) => void,
+        (old) => ["children" as const, updateFn(old[1])] as ["children", FieldCollection<FieldMetadata<I, F>>]
+      ) as any) as (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
     ] as [
-      Array<FieldMetadata>,
-      (fields: (old: Array<FieldMetadata>) => Array<FieldMetadata>) => void,
+      FieldCollection<FieldMetadata>,
+      (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
     ],
     [fields, setFields]
   );
@@ -2593,7 +2620,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
   // Convert the column set into the columns to render in the table
   let visibleFieldNames: Array<F> = [];
   if (listDataContextData.columnSet === 'all') {
-    visibleFieldNames = fields.map(f => f.name);
+    visibleFieldNames = fields.metadata.map(f => f.name);
   } else if (Array.isArray(listDataContextData.columnSet)) {
     // A manual list of fields
     visibleFieldNames = listDataContextData.columnSet as Array<F>;
@@ -2603,7 +2630,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
       visibleFieldNames = columns;
     } else {
       // Default to all columns if no columnset can be found
-      visibleFieldNames = fields.map(f => f.name);
+      visibleFieldNames = fields.metadata.map(f => f.name);
     }
   }
 
@@ -2747,7 +2774,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
 
 
 export const ListColumnSetSelector = <I = BaseItem, F = BaseFieldName>(props: {
-  fields: Array<FieldMetadata<I, F>>;
+  fields: FieldCollection<FieldMetadata<I, F>>;
   columnSets: { [name: string]: Array<F> }
   columnSet: 'all' | string | Array<F>;
   onChangeColumnSet: (newColumnSet: 'all' | string | Array<F>) => void;
@@ -2789,7 +2816,7 @@ export const ListColumnSetSelector = <I = BaseItem, F = BaseFieldName>(props: {
                       style={{cursor: 'pointer', backgroundColor: props.columnSet === name ? 'red' : 'transparent'}}
                     >
                       {name}<br/>
-                      <small>{columns.map(name => props.fields.find(f => f.name === name)?.singularDisplayName || name).join(', ')}</small>
+                      <small>{columns.map(name => props.fields.metadata.find(f => f.name === name)?.singularDisplayName || name).join(', ')}</small>
                     </li>
                   );
                 })}
@@ -3077,7 +3104,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
   if (!dataModelsContextData) {
     throw new Error('Error: <DetailFields ... /> was not rendered inside of a container component! Try rendering this inside of a <Detail> ... </Detail> component.');
   }
-  const dataModel = dataModelsContextData[0].get(detailDataContextData.name);
+  const dataModel = dataModelsContextData[0].get(detailDataContextData.name) as DataModel<I, BaseFieldName> | undefined;
   if (!dataModel) {
     throw new Error(`Error: <DetailFields ... /> cannot find data model with name ${detailDataContextData.name}!`);
   }
@@ -3098,18 +3125,30 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
     };
   }, []);
 
-  const [fields, setFields] = useState<Array<FieldMetadata<I, F>>>([]);
+  const [
+    [fieldsSource, fields],
+    setFields,
+] = useState<["idle" | "children" | "datamodel", FieldCollection<FieldMetadata<I, F>>]>(["idle", EMPTY_FIELD_COLLECTION]);
   useEffect(() => {
     if (!dataModel) {
       return;
     }
-    setFields(dataModel.fields);
-  }, [dataModel.fields]);
+    if (fieldsSource === "children") {
+      return;
+    }
+
+    setFields(["datamodel", dataModel.fields]);
+  }, [dataModel]);
 
   const fieldsContextData = useMemo(
-    () => [fields, setFields] as [
-      Array<FieldMetadata>,
-      (fields: (old: Array<FieldMetadata>) => Array<FieldMetadata>) => void,
+    () => [
+      (fields as any) as FieldCollection<FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>>,
+      ((updateFn) => setFields(
+        (old) => ["children" as const, updateFn(old[1])] as ["children", FieldCollection<FieldMetadata<I, F>>]
+      ) as any) as (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
+    ] as [
+      FieldCollection<FieldMetadata>,
+      (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
     ],
     [fields, setFields]
   );
@@ -3136,7 +3175,12 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
   if (detailDataContextData.isCreating) {
     detailFieldsChildren = (
       <Fragment>
-        {fields.map(field => {
+        {fields.names.map(fieldName => {
+          const field = fields.metadata.find(field => field.name === fieldName);
+          if (!field) {
+            return null;
+          }
+
           const fieldState = fieldStates.get(field.name);
           if (typeof fieldState === 'undefined') {
             return null;
@@ -3182,7 +3226,12 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
         const item = detailDataContextData.detailData.data;
         detailFieldsChildren = (
           <Fragment>
-            {fields.map(field => {
+            {fields.names.map(fieldName => {
+              const field = fields.metadata.find(field => field.name === fieldName);
+              if (!field) {
+                return null;
+              }
+
               const fieldState = fieldStates.get(field.name);
               if (typeof fieldState === 'undefined') {
                 return null;
@@ -3248,7 +3297,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
 
               // Aggregate all the state updates to form the update body
               let item: Partial<I> = {};
-              for (const field of fields) {
+              for (const field of fields.metadata) {
                 let state = fieldStates.get(field.name);
                 if (typeof state === 'undefined') {
                   continue;
@@ -3308,7 +3357,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
 
               // Aggregate all the state updates to form the update body
               let item: Partial<I> = detailDataContextData.detailData.data;
-              for (const field of fields) {
+              for (const field of fields.metadata) {
                 let state = fieldStates.get(field.name);
                 if (typeof state === 'undefined') {
                   continue;
