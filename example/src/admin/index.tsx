@@ -1328,7 +1328,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     disabled?: boolean;
     checkboxesWidth: null | string | number;
     foreignKeyFieldProps: MultiForeignKeyFieldProps<I, F, J>,
-    getRelatedKey: (relatedItem: J) => ItemKey;
+    getRelatedKey?: (relatedItem: J) => ItemKey;
     children: React.ReactNode;
   }
   | {
@@ -1339,7 +1339,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     disabled?: boolean;
     checkboxesWidth: null | string | number;
     foreignKeyFieldProps: SingleForeignKeyFieldProps<I, F, J>,
-    getRelatedKey: (relatedItem: J) => ItemKey;
+    getRelatedKey?: (relatedItem: J) => ItemKey;
     children: React.ReactNode;
   }
 ) => {
@@ -1348,6 +1348,8 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     throw new Error('Error: <ForeignKeyFieldModifyMarkup ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
   const relatedDataModel = dataModelsContextData[0].get(props.foreignKeyFieldProps.relatedName) as DataModel<J, F> | undefined;
+
+  const getRelatedKey = props.getRelatedKey || relatedDataModel?.keyGenerator || null;
 
   // When the component unmounts, terminate all in flight requests
   const inFlightRequestAbortControllers = useRef<Array<AbortController>>([]);
@@ -1509,6 +1511,11 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     setRelatedCreationFieldStates(newRelatedCreationFieldStates);
   }, [itemSelectionMode, relatedCreationFields]);
 
+  if (!relatedDataModel || !getRelatedKey) {
+    return (
+      <span>Waiting for related data model {props.foreignKeyFieldProps.relatedName} to be added to DataModelsContext...</span>
+    );
+  }
 
   const loadingNextPage = relatedData.status === 'LOADING_NEXT_PAGE';
   const nextPageAvailable = relatedData.status === 'COMPLETE' ? relatedData.nextPageAvailable : false;
@@ -1526,16 +1533,16 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     case 'COMPLETE':
     case 'LOADING_NEXT_PAGE':
       let rows = props.mode === 'list' ? props.relatedItems : [props.relatedItem];
-      let rowKeys = rows.map(row => props.getRelatedKey(row));
+      let rowKeys = rows.map(row => getRelatedKey(row));
 
       // Add related items to list at the beginning
       // This makes it so that the items are immediately visible to anyone who looks at the list
       if (props.mode === 'list') {
         if (itemSelectionMode === 'select') {
           rows = relatedData.data;
-          rowKeys = rows.map(row => props.getRelatedKey(row));
+          rowKeys = rows.map(row => getRelatedKey(row));
           for (const relatedItem of props.relatedItems) {
-            const key = props.getRelatedKey(relatedItem);
+            const key = getRelatedKey(relatedItem);
             const index = rowKeys.indexOf(key);
             if (index >= 0) {
               rows.splice(index, 1);
@@ -1549,8 +1556,8 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
         if (itemSelectionMode === 'select') {
           console.log('RELATED:', relatedData);
           rows = relatedData.data;
-          rowKeys = rows.map(row => props.getRelatedKey(row));
-          const key = props.getRelatedKey(props.relatedItem);
+          rowKeys = rows.map(row => getRelatedKey(row));
+          const key = getRelatedKey(props.relatedItem);
           const index = rowKeys.indexOf(key);
           if (index >= 0) {
             rows.splice(index, 1);
@@ -1623,10 +1630,10 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                 </thead>
                 <tbody>
                   {rows.map(relatedItem => {
-                    const key = props.getRelatedKey(relatedItem);
+                    const key = getRelatedKey(relatedItem);
                     const checked = Boolean(props.mode === 'list' ? (
-                      props.relatedItems.find(i => props.getRelatedKey(i) === key)
-                    ) : props.getRelatedKey(props.relatedItem) === key);
+                      props.relatedItems.find(i => getRelatedKey(i) === key)
+                    ) : getRelatedKey(props.relatedItem) === key);
 
                     return (
                       <ListTableItem
@@ -1652,7 +1659,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                               props.onChangeRelatedItems([...props.relatedItems, relatedItem]);
                             } else {
                               props.onChangeRelatedItems(
-                                props.relatedItems.filter(i => props.getRelatedKey(i) !== key)
+                                props.relatedItems.filter(i => getRelatedKey(i) !== key)
                               );
                             }
                           }
