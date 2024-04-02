@@ -320,7 +320,7 @@ type DataContextList<I = BaseItem, F = BaseFieldName> = {
   filters: Array<Filter>;
   onChangeFilters: (newFilters: Array<Filter>) => void;
 
-  sort: Sort;
+  sort: Sort | null;
   onChangeSort: (newSort: Sort) => void;
 
   searchText: string;
@@ -633,9 +633,6 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
   );
 
   const dataContextData: DataContextList<I, BaseFieldName> | null = useMemo(() => {
-    if (!sort) {
-      return null;
-    }
     if (!keyGenerator) {
       return null;
     }
