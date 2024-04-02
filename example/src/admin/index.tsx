@@ -725,7 +725,7 @@ type FieldMetadata<I = BaseItem, F = BaseFieldName, S = BaseFieldState> = {
   pluralDisplayName: string;
 
   sortable?: boolean;
-  columnWidth?: string;
+  columnWidth?: string | number;
 
   // Serialize back and forth between the state (internal representation) and the item (external
   // representation)
