@@ -1186,12 +1186,6 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
     }
   }, [props]);
 
-  if (!relatedDataModel || !getRelatedKey) {
-    return (
-      <span>Waiting for related data model with name {props.relatedName} to be added to DataModelsContext...</span>
-    );
-  }
-
   return (
     <Field<I, F, J>
       name={props.name}
@@ -1592,7 +1586,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
 
       return (
         <div style={{ border: '1px solid silver', padding: 2 }}>
-          {relatedFields.length === 0 ? (
+          {relatedFields.names.length === 0 ? (
             <em style={{color: gray.gray9}}>
               No {props.foreignKeyFieldProps.singularDisplayName.toLowerCase()} fields specified
             </em>
@@ -1604,50 +1598,57 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                     {/* Add a column for the checkboxes */}
                     <th style={{width: props.checkboxesWidth === null ? undefined : props.checkboxesWidth}}>
                     </th>
-                    {relatedFields.map(relatedFieldMetadata => (
-                      <th
-                        key={relatedFieldMetadata.name as string}
-                        className={relatedFieldMetadata.sortable ? styles.sortable : undefined}
-                        style={{width: relatedFieldMetadata.columnWidth}}
-                        // onClick={relatedFieldMetadata.sortable ? () => {
-                        //   if (!listDataContextData.sort) {
-                        //     // Initially set the sort
-                        //     listDataContextData.onChangeSort({
-                        //       fieldName: relatedFieldMetadata.name,
-                        //       direction: 'desc'
-                        //     } as Sort);
-                        //   } else if (listDataContextData.sort.fieldName !== relatedFieldMetadata.name) {
-                        //     // A different column was selected, so initially set the sort for this new column
-                        //     listDataContextData.onChangeSort({
-                        //       fieldName: relatedFieldMetadata.name,
-                        //       direction: 'desc'
-                        //     } as Sort);
-                        //   } else {
-                        //     // Cycle the sort to the next value
-                        //     switch (listDataContextData.sort.direction) {
-                        //       case 'desc':
-                        //         listDataContextData.onChangeSort({
-                        //           fieldName: relatedFieldMetadata.name,
-                        //           direction: 'asc',
-                        //         } as Sort);
-                        //         return;
-                        //       case 'asc':
-                        //         listDataContextData.onChangeSort(null);
-                        //         return;
-                        //     }
-                        //   }
-                        // } : undefined}
-                      >
-                        {relatedFieldMetadata.singularDisplayName}
-                        {/*
-                        {listDataContextData.sort && listDataContextData.sort.fieldName === relatedFieldMetadata.name ? (
-                          <span className={styles.tableWrapperSortIndicator}>
-                            {listDataContextData.sort.direction === 'desc' ? <Fragment>&darr;</Fragment> : <Fragment>&uarr;</Fragment>}
-                          </span>
-                        ) : null}
-                        */}
-                      </th>
-                    ))}
+                    {relatedFields.names.map(relatedFieldMetadataName => {
+                      const relatedFieldMetadata = relatedFields.metadata.find(f => f.name === relatedFieldMetadataName);
+                      if (!relatedFieldMetadata) {
+                        return null;
+                      }
+
+                      return (
+                        <th
+                          key={relatedFieldMetadata.name as string}
+                          className={relatedFieldMetadata.sortable ? styles.sortable : undefined}
+                          style={{width: relatedFieldMetadata.columnWidth}}
+                          // onClick={relatedFieldMetadata.sortable ? () => {
+                          //   if (!listDataContextData.sort) {
+                          //     // Initially set the sort
+                          //     listDataContextData.onChangeSort({
+                          //       fieldName: relatedFieldMetadata.name,
+                          //       direction: 'desc'
+                          //     } as Sort);
+                          //   } else if (listDataContextData.sort.fieldName !== relatedFieldMetadata.name) {
+                          //     // A different column was selected, so initially set the sort for this new column
+                          //     listDataContextData.onChangeSort({
+                          //       fieldName: relatedFieldMetadata.name,
+                          //       direction: 'desc'
+                          //     } as Sort);
+                          //   } else {
+                          //     // Cycle the sort to the next value
+                          //     switch (listDataContextData.sort.direction) {
+                          //       case 'desc':
+                          //         listDataContextData.onChangeSort({
+                          //           fieldName: relatedFieldMetadata.name,
+                          //           direction: 'asc',
+                          //         } as Sort);
+                          //         return;
+                          //       case 'asc':
+                          //         listDataContextData.onChangeSort(null);
+                          //         return;
+                          //     }
+                          //   }
+                          // } : undefined}
+                        >
+                          {relatedFieldMetadata.singularDisplayName}
+                          {/*
+                          {listDataContextData.sort && listDataContextData.sort.fieldName === relatedFieldMetadata.name ? (
+                            <span className={styles.tableWrapperSortIndicator}>
+                              {listDataContextData.sort.direction === 'desc' ? <Fragment>&darr;</Fragment> : <Fragment>&uarr;</Fragment>}
+                            </span>
+                          ) : null}
+                          */}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -1661,7 +1662,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                       <ListTableItem
                         key={key as string}
                         item={relatedItem}
-                        visibleFieldNames={relatedFields.map(field => field.name)}
+                        visibleFieldNames={relatedFields.names as Array<F>}
                         fields={relatedFields}
                         checkable={true}
                         checkType={props.mode === 'list' ? 'checkbox' : 'radio'}
@@ -2620,7 +2621,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
   // Convert the column set into the columns to render in the table
   let visibleFieldNames: Array<F> = [];
   if (listDataContextData.columnSet === 'all') {
-    visibleFieldNames = fields.metadata.map(f => f.name);
+    visibleFieldNames = fields.names as Array<F>;
   } else if (Array.isArray(listDataContextData.columnSet)) {
     // A manual list of fields
     visibleFieldNames = listDataContextData.columnSet as Array<F>;
@@ -3157,7 +3158,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
   const [fieldStates, setFieldStates] = useState<Map<F, BaseFieldState>>(new Map());
   useEffect(() => {
     const newFieldStates = new Map<F, BaseFieldState | undefined>();
-    for (const field of fields) {
+    for (const field of fields.metadata) {
       if (detailDataContextData.isCreating) {
         newFieldStates.set(field.name, field.getInitialStateWhenCreating ? field.getInitialStateWhenCreating() : undefined);
       } else {
