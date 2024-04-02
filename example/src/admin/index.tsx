@@ -2429,7 +2429,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
               {/* Add a column for the checkboxes */}
               {listDataContextData.checkable ? (
                 <th
-                  style={{minWidth: checkboxesWidth}}
+                  style={{ minWidth: checkboxesWidth || undefined }}
                   className={styles.floatingCheckbox}
                   onClick={() => {
                     if (listDataContextData.listData.status !== 'COMPLETE') {
@@ -2475,7 +2475,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
                   <th
                     key={fieldMetadata.name as string}
                     className={fieldMetadata.sortable ? styles.sortable : undefined}
-                    style={{width: fieldMetadata.columnWidth}}
+                    style={{minWidth: fieldMetadata.columnWidth, maxWidth: fieldMetadata.columnWidth}}
                     onClick={fieldMetadata.sortable ? () => {
                       if (!listDataContextData.sort) {
                         // Initially set the sort
