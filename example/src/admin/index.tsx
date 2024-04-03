@@ -3198,11 +3198,6 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
     | { status: "ERROR", error: any }
   >({ status: "IDLE" });
   useEffect(() => {
-    if (detailDataContextData.detailData.status !== 'COMPLETE') {
-      return;
-    }
-    const detailDataData = detailDataContextData.detailData.data;
-
     const abortController = new AbortController();
     addInFlightAbortController(abortController);
 
@@ -3214,14 +3209,17 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
           field.getInitialStateWhenCreating ? field.getInitialStateWhenCreating() : undefined,
         ] as [F, BaseFieldState | undefined];
       } else {
-        const initialState = field.getInitialStateFromItem(detailDataData);
+        if (detailDataContextData.detailData.status !== 'COMPLETE') {
+          return null;
+        }
+        const initialState = field.getInitialStateFromItem(detailDataContextData.detailData.data);
 
         // By calling `injectAsyncDataIntoInitialStateOnDetailPage`, the detail page can add more
         // stuff to the state asyncronously so that it can show more rich information about the
         // entity.
         return field.injectAsyncDataIntoInitialStateOnDetailPage(
           initialState,
-          detailDataData,
+          detailDataContextData.detailData.data,
           abortController.signal,
         ).then(updatedState => {
           return [field.name, updatedState] as [F, BaseFieldState | undefined];
@@ -3229,7 +3227,8 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
       }
     })).then(fieldStatesPairs => {
       removeInFlightAbortController(abortController);
-      setFieldStates({ status: "COMPLETE", data: new Map(fieldStatesPairs) });
+      const filteredFieldStatesPairs = fieldStatesPairs.filter((n): n is [F, BaseFieldState | undefined] => n !== null);
+      setFieldStates({ status: "COMPLETE", data: new Map(filteredFieldStatesPairs) });
     }).catch(error => {
       removeInFlightAbortController(abortController);
       console.error('Error loading field state:', error);
@@ -3249,12 +3248,16 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
     detailFieldsChildren = (
       <Fragment>
         {fields.names.map(fieldName => {
+          if (fieldStates.status !== 'COMPLETE') {
+            return null;
+          }
+
           const field = fields.metadata.find(field => field.name === fieldName);
           if (!field) {
             return null;
           }
 
-          const fieldState = fieldStates.get(field.name);
+          const fieldState = fieldStates.data.get(field.name);
           if (typeof fieldState === 'undefined') {
             return null;
           }
@@ -3267,9 +3270,12 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                 fieldState,
                 onUpdateFieldState: (newFieldState) => {
                   setFieldStates(old => {
-                    const newFieldStates = new Map(old);
+                    if (old.status !== 'COMPLETE') {
+                      return old;
+                    }
+                    const newFieldStates = new Map(old.data);
                     newFieldStates.set(field.name, newFieldState);
-                    return newFieldStates;
+                    return { status: 'COMPLETE', data: newFieldStates };
                   });
                 },
               })}
@@ -3324,9 +3330,12 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                         fieldState,
                         onUpdateFieldState: (newFieldState) => {
                           setFieldStates(old => {
-                            const newFieldStates = new Map(old);
+                            if (old.status !== 'COMPLETE') {
+                              return old;
+                            }
+                            const newFieldStates = new Map(old.data);
                             newFieldStates.set(field.name, newFieldState);
-                            return newFieldStates;
+                            return { status: 'COMPLETE', data: newFieldStates };
                           });
                         },
                       })}
