@@ -3410,6 +3410,9 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
               if (!detailDataContextData.createItem) {
                 return;
               }
+              if (fieldStates.status !== 'COMPLETE') {
+                return;
+              }
 
               const abortController = new AbortController();
               addInFlightAbortController(abortController);
@@ -3417,15 +3420,15 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
               // Aggregate all the state updates to form the update body
               let item: Partial<I> = {};
               for (const field of fields.metadata) {
-                let state = fieldStates.get(field.name);
+                let state = fieldStates.data.get(field.name);
                 if (typeof state === 'undefined') {
                   continue;
                 }
 
                 if (field.createSideEffect) {
                   try {
-                    state = await field.updateSideEffect(item, state, abortController.signal);
-                  } catch (error) {
+                    state = await field.createSideEffect(item, state, abortController.signal);
+                  } catch (error: FixMe) {
                     if (error.name === 'AbortError') {
                       // The component unmounted, and the request was terminated
                       return;
@@ -3468,6 +3471,9 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
               if (!detailDataContextData.updateItem) {
                 return;
               }
+              if (fieldStates.status !== 'COMPLETE') {
+                return;
+              }
               if (detailDataContextData.detailData.status !== 'COMPLETE') {
                 return;
               }
@@ -3477,7 +3483,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
               // Aggregate all the state updates to form the update body
               let item: Partial<I> = detailDataContextData.detailData.data;
               for (const field of fields.metadata) {
-                let state = fieldStates.get(field.name);
+                let state = fieldStates.data.get(field.name);
                 if (typeof state === 'undefined') {
                   continue;
                 }
@@ -3485,7 +3491,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                 if (field.updateSideEffect) {
                   try {
                     state = await field.updateSideEffect(item, state, abortController.signal);
-                  } catch (error) {
+                  } catch (error: FixMe) {
                     if (error.name === 'AbortError') {
                       // The component unmounted, and the request was terminated
                       return;
