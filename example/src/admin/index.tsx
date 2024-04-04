@@ -1421,6 +1421,9 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     };
   }, []);
 
+  const [initialRelatedItem] = useState(props.mode === "detail" ? props.relatedItem : null);
+  const [initialRelatedItems] = useState(props.mode === "list" ? props.relatedItems : null);
+
 
   const [itemSelectionMode, setItemSelectionMode] = useState<'none' | 'select' | 'create'>('none');
 
@@ -1601,13 +1604,15 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
       let rows = props.mode === 'list' ? props.relatedItems : [props.relatedItem];
       let rowKeys = rows.map(row => getRelatedKey(row));
 
-      // Add related items to list at the beginning
-      // This makes it so that the items are immediately visible to anyone who looks at the list
-      if (props.mode === 'list') {
+      // Pin the initial related item to the top of the list
+      //
+      // This doesn't just pin the currently related item, it pins the initial,
+      // because the initial won't change.
+      if (props.mode === 'list' && initialRelatedItems) {
         if (itemSelectionMode === 'select') {
           rows = relatedData.data;
           rowKeys = rows.map(row => getRelatedKey(row));
-          for (const relatedItem of props.relatedItems) {
+          for (const relatedItem of initialRelatedItems) {
             const key = getRelatedKey(relatedItem);
             const index = rowKeys.indexOf(key);
             if (index >= 0) {
@@ -1618,17 +1623,17 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
             rowKeys.unshift(key);
           }
         }
-      } else if (props.mode === 'detail') {
+      } else if (props.mode === 'detail' && initialRelatedItem) {
         if (itemSelectionMode === 'select') {
           rows = relatedData.data;
           rowKeys = rows.map(row => getRelatedKey(row));
-          const key = getRelatedKey(props.relatedItem);
+          const key = getRelatedKey(initialRelatedItem);
           const index = rowKeys.indexOf(key);
           if (index >= 0) {
             rows.splice(index, 1);
             rowKeys.splice(index, 1);
           }
-          rows.unshift(props.relatedItem);
+          rows.unshift(initialRelatedItem);
           rowKeys.unshift(key);
         }
       }
