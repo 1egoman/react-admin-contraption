@@ -210,17 +210,6 @@ export function BattleDataModel() {
       {/*   getRelatedKey={beat => beat.id} */}
       {/*   relatedName="battleBeat" */}
 
-      {/*   fetchPageOfRelatedData={(_page, _item) => { */}
-      {/*     return Promise.resolve({ */}
-      {/*       nextPageAvailable: false, */}
-      {/*       totalCount: 1, */}
-      {/*       data: new Array(5).fill(0).map((_, index) => ({ */}
-      {/*         id: `${index}`, */}
-      {/*         beatKey: `path/to/${index}`, */}
-      {/*         beatUrl: `https://example.com/path/to/${index}`, */}
-      {/*       })), */}
-      {/*     }); */}
-      {/*   }} */}
       {/*   generateNewRelatedItem={() => ({ id: '', beatKey: 'NEW', beatUrl: 'NEW' })} */}
       {/*   createRelatedItem={(_item, relatedItem) => Promise.resolve({id: 'aaa', ...relatedItem} as BattleBeat)} */}
       {/*   updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as BattleBeat)} */}
@@ -237,17 +226,6 @@ export function BattleDataModel() {
         getRelatedKey={beat => beat.id}
         relatedName="battleBeat"
 
-        fetchPageOfRelatedData={(_page, _item) => {
-          return Promise.resolve({
-            nextPageAvailable: false,
-            totalCount: 1,
-            data: new Array(5).fill(0).map((_, index) => ({
-              id: `${index}`,
-              beatKey: `path/to/${index}`,
-              beatUrl: `https://example.com/path/to/${index}`,
-            })),
-          });
-        }}
         // generateNewRelatedItem={() => ({ id: '', beatKey: 'NEW', beatUrl: 'NEW' })}
         createRelatedItem={(_item, relatedItem) => Promise.resolve({id: 'aaa', ...relatedItem} as BattleBeat)}
         updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as BattleBeat)}

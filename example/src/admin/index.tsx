@@ -1098,7 +1098,7 @@ type SingleForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> =
   relatedName: string;
   getRelatedKey?: (relatedItem: J) => ItemKey;
 
-  fetchPageOfRelatedData: (page: number, item: I, abort: AbortSignal) => Promise<Paginated<J>>;
+  fetchPageOfRelatedData?: (page: number, item: I, abort: AbortSignal) => Promise<Paginated<J>>;
   generateNewRelatedItem: () => J;
   createRelatedItem: (item: Partial<I>, relatedItem: Partial<J>) => Promise<J>;
   updateRelatedItem: (item: Partial<I>, relatedItem: Partial<J>) => Promise<J>;
@@ -1245,13 +1245,13 @@ type MultiForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> = 
   relatedName: string;
   getRelatedKey?: (relatedItem: J) => ItemKey;
 
-  fetchPageOfRelatedData: (page: number, item: I, abort: AbortSignal) => Promise<Paginated<J>>;
+  fetchPageOfRelatedData?: (page: number, item: I, abort: AbortSignal) => Promise<Paginated<J>>;
   createRelatedItem: (item: I, relatedItem: Partial<J>) => Promise<J>;
   updateRelatedItem: (item: I, relatedItem: Partial<J>) => Promise<J>;
 
   creationFields?: React.ReactNode;
 
-  children: React.ReactNode;
+  children?: React.ReactNode;
 };
 
 /*
@@ -1390,6 +1390,19 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
   const relatedDataModel = dataModelsContextData[0].get(props.foreignKeyFieldProps.relatedName) as DataModel<J, F> | undefined;
 
   const getRelatedKey = props.getRelatedKey || relatedDataModel?.keyGenerator || null;
+  const fetchPageOfRelatedData = useMemo(() => {
+    if (props.foreignKeyFieldProps.fetchPageOfRelatedData) {
+      return props.foreignKeyFieldProps.fetchPageOfRelatedData;
+    }
+
+    if (relatedDataModel) {
+      return (page: number, _item: I, signal: AbortSignal) => {
+        return relatedDataModel.fetchPageOfData(page, [], null, '', signal);
+      };
+    }
+
+    return null;
+  }, [props.foreignKeyFieldProps.fetchPageOfRelatedData, relatedDataModel]);
 
   // When the component unmounts, terminate all in flight requests
   const inFlightRequestAbortControllers = useRef<Array<AbortController>>([]);
@@ -1415,6 +1428,10 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
 
   // When the component initially loads, fetch the first page of data
   useEffect(() => {
+    if (!fetchPageOfRelatedData) {
+      return;
+    }
+
     const abortController = new AbortController();
 
     const fetchFirstPageOfData = async () => {
@@ -1423,7 +1440,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
       addInFlightAbortController(abortController);
       let result: Paginated<J>;
       try {
-        result = await props.foreignKeyFieldProps.fetchPageOfRelatedData(1, props.item, abortController.signal);
+        result = await fetchPageOfRelatedData(1, props.item, abortController.signal);
       } catch (error: FixMe) {
         if (error.name === 'AbortError') {
           // The effect unmounted, and the request was terminated
@@ -1454,9 +1471,13 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
       abortController.abort();
       removeInFlightAbortController(abortController);
     };
-  }, [setRelatedData, props.item, props.foreignKeyFieldProps.fetchPageOfRelatedData]);
+  }, [setRelatedData, props.item, fetchPageOfRelatedData]);
 
   const onLoadNextPage = useCallback(async () => {
+    if (!fetchPageOfRelatedData) {
+      return;
+    }
+
     if (relatedData.status !== 'COMPLETE') {
       return;
     }
@@ -1471,7 +1492,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
 
     let result: Paginated<J>;
     try {
-      result = await props.foreignKeyFieldProps.fetchPageOfRelatedData(page, props.item, abort.signal);
+      result = await fetchPageOfRelatedData(page, props.item, abort.signal);
     } catch (error: FixMe) {
       if (error.name === 'AbortError') {
         // NOTE: right now this shouldn't ever happen, but potentially this could be handled in the
@@ -1490,8 +1511,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
       totalCount: result.totalCount,
       data: [...relatedData.data, ...result.data],
     });
-  }, [relatedData, setRelatedData, props.item, props.foreignKeyFieldProps.fetchPageOfRelatedData]);
-
+  }, [relatedData, setRelatedData, props.item, fetchPageOfRelatedData]);
 
   const [
     [relatedFieldsSource, relatedFields],
@@ -1557,7 +1577,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     setRelatedCreationFieldStates(newRelatedCreationFieldStates);
   }, [itemSelectionMode, relatedCreationFields]);
 
-  if (!relatedDataModel || !getRelatedKey) {
+  if (!relatedDataModel || !getRelatedKey || !fetchPageOfRelatedData) {
     return (
       <span>Waiting for related data model {props.foreignKeyFieldProps.relatedName} to be added to DataModelsContext...</span>
     );
