@@ -503,7 +503,7 @@ export function PostDataModel() {
         pluralDisplayName="Users"
         getInitialStateFromItem={post => ({ id: post.userId, name: 'OLD', username: 'OLD', email: 'OLD', phone: 'OLD', website: 'OLD' }) as User}
         injectAsyncDataIntoInitialStateOnDetailPage={async (_state, item, signal) => {
-          const response = await fetch(`http://localhost:3003/users/${item.id}`, { signal });
+          const response = await fetch(`http://localhost:3003/users/${item.userId}`, { signal });
           if (!response.ok) {
             throw new Error(`Error fetching user with id ${item.id}: received ${response.status} ${await response.text()}`);
           }
@@ -591,7 +591,7 @@ export function UserDataModel() {
     searchText: string,
     signal: AbortSignal
   ) => {
-    console.log('REQUEST:', page, filters, sort, searchText);
+    // console.log('REQUEST:', page, filters, sort, searchText);
     const qs = new URLSearchParams();
 
     if (filters || searchText.length > 0) {

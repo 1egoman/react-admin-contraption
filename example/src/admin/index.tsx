@@ -751,7 +751,7 @@ type FieldMetadata<I = BaseItem, F = BaseFieldName, S = BaseFieldState> = {
   // The presentation of the component in a read-write context
   modifyMarkup?: (
     state: S,
-    setState: (newState: S) => void,
+    setState: (newState: S, blurAfterStateSet?: boolean) => void,
     item: I,
     onBlur: () => void, // Call onBlur once the user has completed editing the state
   ) => React.ReactNode;
@@ -1155,14 +1155,19 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
     );
   }, [getRelatedKey]);
 
-  const modifyMarkup = useCallback((state: J, setState: (newState: J) => void, item: I) => {
+  const modifyMarkup = useCallback((
+    state: J,
+    setState: (newState: J, blurAfterStateSet?: boolean) => void,
+    item: I,
+    onBlur: () => void,
+  ) => {
     const relatedFields = state !== null ? (
       <ForeignKeyFieldModifyMarkup
         mode="detail"
         item={item}
         relatedItem={state}
         checkboxesWidth={null}
-        onChangeRelatedItem={setState}
+        onChangeRelatedItem={newRelatedItems => setState(newRelatedItems, true)}
         foreignKeyFieldProps={props}
         getRelatedKey={getRelatedKey}
       >
@@ -3112,7 +3117,17 @@ export const DetailFieldItem = <I = BaseItem, F = BaseFieldName, S = BaseFieldSt
   if (field.modifyMarkup) {
     return (
       <div>
-        <strong>{field.singularDisplayName}</strong>: {field.modifyMarkup(state, setState, item, () => onUpdateFieldState(state))}
+        <strong>{field.singularDisplayName}</strong>: {field.modifyMarkup(
+          state,
+          (s: S, blurAfterStateSet?: boolean) => {
+            setState(s);
+            if (blurAfterStateSet) {
+              onUpdateFieldState(s);
+            }
+          },
+          item,
+          () => onUpdateFieldState(state)
+        )}
       </div>
     );
   } else {
@@ -3477,6 +3492,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
               if (detailDataContextData.detailData.status !== 'COMPLETE') {
                 return;
               }
+
               const abortController = new AbortController();
               addInFlightAbortController(abortController);
 
