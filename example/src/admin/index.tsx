@@ -1679,6 +1679,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                         fields={relatedFields}
                         checkable={true}
                         checkType={props.mode === 'list' ? 'checkbox' : 'radio'}
+                        detailLink={relatedDataModel?.detailLinkGenerator ? relatedDataModel.detailLinkGenerator(relatedItem) : undefined}
                         checked={checked}
                         checkboxDisabled={false}
                         onChangeChecked={(checked) => {
