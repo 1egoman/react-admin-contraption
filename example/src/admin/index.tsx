@@ -13,33 +13,19 @@ import { gray } from '@radix-ui/colors';
 
 import styles from './styles.module.css';
 
-type FixMe = any;
+import {
+  FixMe,
+  JSONValue,
+  BaseItem,
+  BaseFieldName,
+  BaseFieldState, 
+  ItemKey,
+  ALL_ITEMS,
+  CheckedItemKeys,
+  Paginated,
+} from './types';
 
-type JSONValue = 
- | string
- | number
- | boolean
- | null
- | Array<JSONValue>
- | {[key: string]: JSONValue}
-
-
-
-
-type BaseItem = object;
-type BaseFieldName = string;
-type BaseFieldState = any;
-
-type ItemKey = string;
-const ALL_ITEMS = 'all';
-
-type CheckedItemKeys = Array<ItemKey> | typeof ALL_ITEMS;
-
-export type Paginated<T> = {
-  totalCount: number;
-  nextPageAvailable: boolean;
-  data: Array<T>;
-};
+import Navigatable, { NavigationButton, imperativelyNavigateToNavigatable } from "./navigatable";
 
 type DataModel<I = BaseItem, F = BaseFieldName> = {
   singularDisplayName: string;
@@ -185,45 +171,6 @@ export const DataModel = <I = BaseItem, F = BaseFieldName>(props: DataModelProps
       {props.children}
     </FieldsContext.Provider>
   );
-};
-
-export type Navigatable =
-  | { type: 'href', href: string, target?: '_blank' }
-  | { type: 'function', onClick: () => void };
-
-const NavigationButton: React.FunctionComponent<{
-  navigatable: Navigatable | null,
-  children: React.ReactNode,
-}> = ({ navigatable, children }) => {
-  switch (navigatable?.type) {
-    case 'href':
-      return (
-        <a href={navigatable.href} target={navigatable.target}>{children}</a>
-      );
-    case 'function':
-      return (
-        <button onClick={navigatable.onClick}>{children}</button>
-      );
-    default:
-      return null;
-  }
-};
-
-const imperativelyNavigateToNavigatable = (navigatable: Navigatable | null) => {
-  switch (navigatable?.type) {
-    case 'href':
-      if (navigatable.target === '_blank') {
-        window.open(navigatable.href, '_blank');
-      } else {
-        window.location.href = navigatable.href;
-      }
-      return;
-    case 'function':
-      navigatable.onClick();
-      return;
-    default:
-      return;
-  }
 };
 
 const SearchInput: React.FunctionComponent<{
