@@ -1167,7 +1167,7 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
         item={item}
         relatedItem={state}
         checkboxesWidth={null}
-        onChangeRelatedItem={newRelatedItems => setState(newRelatedItems, true)}
+        onChangeRelatedItem={newRelatedItem => setState(newRelatedItem, true)}
         foreignKeyFieldProps={props}
         getRelatedKey={getRelatedKey}
       >
@@ -1301,65 +1301,19 @@ export const MultiForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseIt
           <span>{keys.join(', ')}</span>
         );
       }}
-      modifyMarkup={(state, setState, item, _onBlur) => {
-        const relatedFields = (
-          <ForeignKeyFieldModifyMarkup<I, F, J>
-            mode="list"
-            item={item}
-            relatedItems={state}
-            checkboxesWidth={null}
-            onChangeRelatedItems={setState}
-            foreignKeyFieldProps={props}
-            getRelatedKey={props.getRelatedKey}
-          >
-            {props.children}
-          </ForeignKeyFieldModifyMarkup>
-        );
-
-        // if (props.nullable) {
-        //   return (
-        //     <div style={{display: 'inline-flex', gap: 8, alignItems: 'center'}}>
-        //       <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-        //         <input
-        //           type="radio"
-        //           checked={state !== null}
-        //           onChange={e => {
-        //             if (e.currentTarget.checked) {
-        //               setState('');
-        //               setTimeout(() => {
-        //                 if (inputRef.current) {
-        //                   inputRef.current.focus();
-        //                 }
-        //               }, 0);
-        //             }
-        //           }}
-        //         />
-        //         <div onClick={() => {
-        //           if (state === null) {
-        //             setState('');
-        //           }
-        //         }}>{relatedFields}</div>
-        //       </div>
-        //       <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-        //         <input
-        //           type="radio"
-        //           checked={state === null}
-        //           id={`${props.name}-null`}
-        //           onChange={e => {
-        //             if (e.currentTarget.checked) {
-        //               setState(null);
-        //             }
-        //           }}
-        //         />
-        //         <label htmlFor={`${props.name}-null`}>null</label>
-        //       </div>
-        //     </div>
-        //   );
-        // } else {
-        //   return relatedFields;
-        // }
-        return relatedFields;
-      }}
+      modifyMarkup={(state, setState, item, _onBlur) => (
+        <ForeignKeyFieldModifyMarkup<I, F, J>
+          mode="list"
+          item={item}
+          relatedItems={state}
+          checkboxesWidth={null}
+          onChangeRelatedItems={newRelatedItems => setState(newRelatedItems, true)}
+          foreignKeyFieldProps={props}
+          getRelatedKey={props.getRelatedKey}
+        >
+          {props.children}
+        </ForeignKeyFieldModifyMarkup>
+      )}
     />
   );
 };
@@ -1380,7 +1334,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     mode: 'detail',
     item: I,
     relatedItem: J,
-    onChangeRelatedItem: (newRelatedItems: J) => void,
+    onChangeRelatedItem: (newRelatedItem: J) => void,
     disabled?: boolean;
     checkboxesWidth: null | string | number;
     foreignKeyFieldProps: SingleForeignKeyFieldProps<I, F, J>,
@@ -3484,6 +3438,9 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
             disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.updateItem}
             onClick={async () => {
               if (!detailDataContextData.updateItem) {
+                return;
+              }
+              if (!detailDataContextData.itemKey) {
                 return;
               }
               if (fieldStates.status !== 'COMPLETE') {

@@ -377,6 +377,7 @@ export type Post = {
   userId: number,
   title: string,
   body: string,
+  commentIds: Array<Comment['id']>,
 };
 
 export function PostDataModel() {
@@ -514,26 +515,68 @@ export function PostDataModel() {
 
         relatedName="user"
 
-        fetchPageOfRelatedData={async (_page, post, signal) => {
-          const qs = new URLSearchParams();
-          qs.set('postId', `${post.id}`);
-
-          const response = await fetch(`http://localhost:3003/users?${qs.toString()}`, { signal });
+        generateNewRelatedItem={() => ({ id: 0, name: 'OLD', username: 'OLD', email: 'OLD', phone: 'OLD', website: 'OLD' }) as User}
+        createRelatedItem={async (post, relatedUser) => {
+          const user = { ...relatedUser, postId: post.id };
+          const response = await fetch(`http://localhost:3003/users`, {
+            /* signal, */
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(user),
+          });
           if (!response.ok) {
-            throw new Error(`Error fetching users: received ${response.status} ${await response.text()}`)
+            throw new Error(`Error creating user with data ${JSON.stringify(user)}: received ${response.status} ${await response.text()}`);
           }
 
-          const body = await response.json();
-
-          return {
-            nextPageAvailable: false,
-            totalCount: body.length,
-            data: body,
-          };
+          return response.json();
         }}
-        generateNewRelatedItem={() => ({ id: 0, name: 'OLD', username: 'OLD', email: 'OLD', phone: 'OLD', website: 'OLD' }) as User}
-        createRelatedItem={(_item, relatedItem) => Promise.resolve({id: Math.random(), ...relatedItem} as User)}
         updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as User)}
+      />
+      <MultiForeignKeyField<Post, 'commentIds', Comment>
+        name="commentIds"
+        singularDisplayName="Comments"
+        pluralDisplayName="Comments"
+        getInitialStateFromItem={post => post.commentIds.map(cid => ({ id: cid, body: "OLD" }))}
+        injectAsyncDataIntoInitialStateOnDetailPage={async (_state, item, signal) => {
+          const response = await fetch(`http://localhost:3003/comments`, { signal });
+          if (!response.ok) {
+            throw new Error(`Error fetching user with id ${item.id}: received ${response.status} ${await response.text()}`);
+          }
+
+          return response.json().then((comments: Array<Comment>) => {
+            return item.commentIds.map(cid => comments.find(c => c.id === cid)!);
+          });
+        }}
+        serializeStateToItem={(initialItem, comments) => ({ ...initialItem, commentIds: comments.map(c => c.id) })}
+
+        relatedName="comment"
+
+        createRelatedItem={async (post, relatedComment) => {
+          const response = await fetch(`http://localhost:3003/comments`, {
+            /* signal, */
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(relatedComment),
+          });
+          if (!response.ok) {
+            throw new Error(`Error creating comment with data ${JSON.stringify(relatedComment)}: received ${response.status} ${await response.text()}`);
+          }
+
+          const comment = await response.json();
+
+          const postResponse = await fetch(`http://localhost:3003/posts/${post.id}`, {
+            /* signal, */
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...post, commentIds: [...post.commentIds, comment.id]}),
+          });
+          if (!postResponse.ok) {
+            throw new Error(`Error updating post to add comment ${relatedComment.id}: received ${postResponse.status} ${await postResponse.text()}`);
+          }
+
+          return comment;
+        }}
+        updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as Comment)}
       />
       <InputField<Post, 'title'>
         name="title"
@@ -741,6 +784,133 @@ export function UserDataModel() {
   );
 }
 
+export type Comment = {
+  id: string,
+  body: string,
+};
+
+export function CommentDataModel() {
+  const fetchPageOfData = useCallback(async (
+    page: number,
+    filters: Array<[Array<string>, any]>,
+    sort: Sort | null,
+    searchText: string,
+    signal: AbortSignal
+  ) => {
+    // console.log('REQUEST:', page, filters, sort, searchText);
+    const qs = new URLSearchParams();
+
+    if (filters || searchText.length > 0) {
+      for (const [[name, ..._rest], value] of filters) {
+        qs.set(name, value);
+      }
+    }
+    if (searchText.length > 0) {
+      qs.set('title', searchText);
+    }
+
+    const response = await fetch(`http://localhost:3003/comments?${qs.toString()}`, { signal });
+    if (!response.ok) {
+      throw new Error(`Error fetching comments: received ${response.status} ${await response.text()}`)
+    }
+
+    const body = await response.json();
+
+    return {
+      nextPageAvailable: false,
+      totalCount: body.length,
+      data: body,
+    };
+  }, []);
+
+  const fetchItem = useCallback(async (itemKey: string, signal: AbortSignal) => {
+    const response = await fetch(`http://localhost:3003/comments/${itemKey}`, { signal });
+    if (!response.ok) {
+      throw new Error(`Error fetching comment with id ${itemKey}: received ${response.status} ${await response.text()}`)
+    }
+
+    return response.json();
+  }, []);
+
+  const createItem = useCallback(async (createData: Partial<Comment>, signal: AbortSignal) => {
+    const response = await fetch(`http://localhost:3003/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(createData),
+      signal,
+    });
+    if (!response.ok) {
+      throw new Error(`Error creating comment: received ${response.status} ${await response.text()}`)
+    }
+
+    return response.json();
+  }, []);
+
+  const updateItem = useCallback(async (itemKey: string, updateData: Partial<Comment>, signal: AbortSignal) => {
+    const response = await fetch(`http://localhost:3003/comments/${itemKey}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updateData),
+      signal,
+    });
+    if (!response.ok) {
+      throw new Error(`Error updating comment ${itemKey}: received ${response.status} ${await response.text()}`)
+    }
+
+    return response.json();
+  }, []);
+
+  const deleteItem = useCallback(async (itemKey: string, signal: AbortSignal) => {
+    const response = await fetch(`http://localhost:3003/comments/${itemKey}`, { method: 'DELETE', signal });
+    if (!response.ok) {
+      throw new Error(`Error deleting comment with id ${itemKey}: received ${response.status} ${await response.text()}`)
+    }
+  }, []);
+
+  return (
+    <DataModel<Comment>
+      name="comment"
+      singularDisplayName="Comment"
+      pluralDisplayName="Comments"
+
+      fetchPageOfData={fetchPageOfData}
+      fetchItem={fetchItem}
+      createItem={createItem}
+      updateItem={updateItem}
+      deleteItem={deleteItem}
+
+      keyGenerator={user => `${user.id}`}
+      detailLinkGenerator={user => ({ type: 'href' as const, href: `/admin/comments/${user.id}` })}
+      listLink={{ type: 'href' as const, href: `/admin/comments` }}
+      createLink={{ type: 'href', href: `/admin/comments/new` }}
+    >
+      <Field<Comment, 'id', Comment['id']>
+        name="id"
+        singularDisplayName="Id"
+        pluralDisplayName="Ids"
+        columnWidth={100}
+        getInitialStateFromItem={comment => comment.id}
+        injectAsyncDataIntoInitialStateOnDetailPage={async state => state}
+        serializeStateToItem={(item) => item}
+        displayMarkup={state => <span>{state}</span>}
+      />
+      <InputField<Comment, 'body'>
+        name="body"
+        singularDisplayName="Body"
+        pluralDisplayName="Bodies"
+        sortable
+        getInitialStateFromItem={comment => comment.body}
+        getInitialStateWhenCreating={() => ''}
+        serializeStateToItem={(initialItem, state) => ({ ...initialItem, body: state })}
+      />
+    </DataModel>
+  );
+}
+
 export default function AllDataModels({ children }: { children: React.ReactNode}) {
   const stateCache: StateCache = useMemo(() => {
     return {
@@ -787,6 +957,7 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
 
         <PostDataModel />
         <UserDataModel />
+        <CommentDataModel />
 
         {children}
       </DataModels>
