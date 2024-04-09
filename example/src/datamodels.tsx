@@ -721,9 +721,9 @@ export function UserDataModel() {
       deleteItem={deleteItem}
 
       keyGenerator={user => `${user.id}`}
-      detailLinkGenerator={user => ({ type: 'href' as const, href: `/admin/posts/${user.id}` })}
-      listLink={{ type: 'href' as const, href: `/admin/posts` }}
-      createLink={{ type: 'href', href: `/admin/posts/new` }}
+      detailLinkGenerator={user => ({ type: 'href' as const, href: `/admin/users/${user.id}` })}
+      listLink={{ type: 'href' as const, href: `/admin/users` }}
+      createLink={{ type: 'href', href: `/admin/users/new` }}
     >
       <Field<User, 'id', number>
         name="id"
