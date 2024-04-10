@@ -29,7 +29,7 @@ import {
 
 import Navigatable, { NavigationButton, imperativelyNavigateToNavigatable } from "./navigatable";
 
-type DataModel<Item = BaseItem, FieldName = BaseFieldName> = {
+type DataModel<Item = BaseItem> = {
   singularDisplayName: string;
   pluralDisplayName: string;
 
@@ -49,13 +49,13 @@ type DataModel<Item = BaseItem, FieldName = BaseFieldName> = {
   updateItem: ((itemKey: ItemKey, updateData: Item, abort: AbortSignal) => Promise<void>) | null;
   deleteItem: ((itemKey: ItemKey, abort: AbortSignal) => Promise<void>) | null;
 
-  listLink?: null | Navigatable;
+  listLink: Navigatable | null;
 
   keyGenerator: (item: Item) => ItemKey;
-  detailLinkGenerator?: null | ((item: Item) => Navigatable);
-  createLink?: null | Navigatable;
+  detailLinkGenerator: ((item: Item) => Navigatable) | null;
+  createLink: Navigatable | null;
 
-  fields: FieldCollection<FieldMetadata<Item, FieldName>>,
+  fields: FieldCollection<FieldMetadata<Item>>,
 };
 
 const DataModelsContext = React.createContext<[
@@ -79,9 +79,21 @@ export const DataModels: React.FunctionComponent<{ children: React.ReactNode }> 
   );
 };
 
-type DataModelProps<I = BaseItem> = Omit<DataModel<I>, "fields"> & { name: string, children: React.ReactNode };
+type DataModelProps<Item = BaseItem> = Omit<
+  DataModel<Item>,
+  "fields" | "createItem" | "updateItem" | "deleteItem"
+> & {
+  name: string,
+  createItem?: NonNullable<DataModel<Item>['createItem']>,
+  updateItem?: NonNullable<DataModel<Item>['updateItem']>,
+  deleteItem?: NonNullable<DataModel<Item>['deleteItem']>,
+  listLink?: NonNullable<DataModel<Item>['listLink']>,
+  detailLinkGenerator?: NonNullable<DataModel<Item>['detailLinkGenerator']>,
+  createLink?: NonNullable<DataModel<Item>['createLink']>,
+  children: React.ReactNode, // fields
+};
 
-export const DataModel = <I = BaseItem, F = BaseFieldName>(props: DataModelProps<I>) => {
+export const DataModel = <Item = BaseItem>(props: DataModelProps<Item>) => {
   const dataModelsContextData = useContext(DataModelsContext);
   if (!dataModelsContextData) {
     throw new Error('Error: <DataModel ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
@@ -93,11 +105,11 @@ export const DataModel = <I = BaseItem, F = BaseFieldName>(props: DataModelProps
     const [dataModels, setDataModels] = dataModelsContextData;
 
     return [
-      (dataModels.get(props.name) as any) as DataModel<I, F>,
-      (updateFn: (old: DataModel<I, F> | null) => DataModel<I, F> | null) => {
+      (dataModels.get(props.name) as any) as DataModel<Item>,
+      (updateFn: (old: DataModel<Item> | null) => DataModel<Item> | null) => {
         setDataModels(old => {
           const copy = new Map(old);
-          const dataModel = ((copy.get(props.name) as any) as DataModel<I, F> | undefined)
+          const dataModel = ((copy.get(props.name) as any) as DataModel<Item> | undefined)
           const result = (updateFn(dataModel || null) as any) as DataModel;
           if (result) {
             copy.set(props.name, result);
@@ -112,18 +124,18 @@ export const DataModel = <I = BaseItem, F = BaseFieldName>(props: DataModelProps
 
   useEffect(() => {
     setDataModel((old) => {
-      const base = {
+      const base: Omit<DataModel<Item>, "fields"> = {
         singularDisplayName: props.singularDisplayName,
         pluralDisplayName: props.pluralDisplayName,
         fetchPageOfData: props.fetchPageOfData,
         fetchItem: props.fetchItem,
-        createItem: props.createItem,
-        updateItem: props.updateItem,
-        deleteItem: props.deleteItem,
-        listLink: props.listLink,
+        createItem: props.createItem || null,
+        updateItem: props.updateItem || null,
+        deleteItem: props.deleteItem || null,
+        listLink: props.listLink || null,
         keyGenerator: props.keyGenerator,
-        detailLinkGenerator: props.detailLinkGenerator,
-        createLink: props.createLink,
+        detailLinkGenerator: props.detailLinkGenerator || null,
+        createLink: props.createLink || null,
       };
 
       if (old) {
@@ -152,7 +164,7 @@ export const DataModel = <I = BaseItem, F = BaseFieldName>(props: DataModelProps
   const fieldsContextData = useMemo(
     () => ([
       dataModel ? dataModel.fields : EMPTY_FIELD_COLLECTION,
-      (updateFn: (old: FieldsCollection<FieldMetadata<I, F>>) => FieldsCollection<FieldMetadata<I, F>>) => {
+      (updateFn: (old: FieldCollection<FieldMetadata<Item>>) => FieldCollection<FieldMetadata<Item>>) => {
         setDataModel(old => {
           if (old) {
             return { ...old, fields: updateFn(old.fields) };
