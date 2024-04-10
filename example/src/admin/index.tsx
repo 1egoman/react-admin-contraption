@@ -23,11 +23,13 @@ import {
   ALL_ITEMS,
   CheckedItemKeys,
   Paginated,
+  Filter,
+  Sort,
 } from './types';
 
 import Navigatable, { NavigationButton, imperativelyNavigateToNavigatable } from "./navigatable";
 
-type DataModel<I = BaseItem, F = BaseFieldName> = {
+type DataModel<Item = BaseItem, FieldName = BaseFieldName> = {
   singularDisplayName: string;
   pluralDisplayName: string;
 
@@ -37,23 +39,23 @@ type DataModel<I = BaseItem, F = BaseFieldName> = {
     sort: Sort | null,
     searchText: string,
     abort: AbortSignal,
-  ) => Promise<Paginated<I>>;
+  ) => Promise<Paginated<Item>>;
   fetchItem: (
     itemKey: ItemKey,
     abort: AbortSignal,
-  ) => Promise<I>;
+  ) => Promise<Item>;
 
-  createItem: ((createData: Partial<I>, abort: AbortSignal) => Promise<I>) | null;
-  updateItem: ((itemKey: ItemKey, updateData: I, abort: AbortSignal) => Promise<void>) | null;
+  createItem: ((createData: Partial<Item>, abort: AbortSignal) => Promise<Item>) | null;
+  updateItem: ((itemKey: ItemKey, updateData: Item, abort: AbortSignal) => Promise<void>) | null;
   deleteItem: ((itemKey: ItemKey, abort: AbortSignal) => Promise<void>) | null;
 
   listLink?: null | Navigatable;
 
-  keyGenerator: (item: I) => ItemKey;
-  detailLinkGenerator?: null | ((item: I) => Navigatable);
+  keyGenerator: (item: Item) => ItemKey;
+  detailLinkGenerator?: null | ((item: Item) => Navigatable);
   createLink?: null | Navigatable;
 
-  fields: FieldCollection<FieldMetadata<I, F>>,
+  fields: FieldCollection<FieldMetadata<Item, FieldName>>,
 };
 
 const DataModelsContext = React.createContext<[
@@ -195,22 +197,20 @@ const SearchInput: React.FunctionComponent<{
   );
 }
 
-
-const FILTER_NOT_SET_YET = 'NOT SET YET';
-
-export type Filter<S extends JSONValue = JSONValue> = {
-  name: Array<string | 'NOT SET YET'>;
-  isComplete: boolean;
-  isValid: boolean;
-  workingState: S | 'NOT SET YET';
-  state: S | 'NOT SET YET';
+export type StateCache = {
+  store: (
+    filters: Array<[Filter['name'], string]>,
+    sort: Sort | null,
+    searchText: string,
+    columnSet: 'all' | string | Array<string>,
+  ) => Promise<void>;
+  read: () => Promise<[
+    Array<[Filter['name'], string]>,
+    Sort | null,
+    string,
+    'all' | string | Array<string>,
+  ]>;
 };
-
-export type Sort<F = BaseFieldName> = {
-  fieldName: F;
-  direction: 'asc' | 'desc';
-};
-
 
 type AdminContextData = {
   stateCache?: StateCache;
@@ -235,21 +235,6 @@ const DataContext = React.createContext<
 
 
 
-
-export type StateCache = {
-  store: (
-    filters: Array<[Filter['name'], string]>,
-    sort: Sort | null,
-    searchText: string,
-    columnSet: 'all' | string | Array<string>,
-  ) => Promise<void>;
-  read: () => Promise<[
-    Array<[Filter['name'], string]>,
-    Sort | null,
-    string,
-    'all' | string | Array<string>,
-  ]>;
-};
 
 type DataContextList<I = BaseItem, F = BaseFieldName> = {
   type: 'list';
