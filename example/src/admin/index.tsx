@@ -25,6 +25,7 @@ import {
   Paginated,
   Filter,
   Sort,
+  FILTER_NOT_SET_YET,
 } from './types';
 
 import Navigatable, { NavigationButton, imperativelyNavigateToNavigatable } from "./navigatable";
@@ -2107,9 +2108,6 @@ export const ListFilterBar = <I = BaseItem>({
                   metadata = item;
                   break;
                 }
-              }
-              if (!metadata) {
-                return null;
               }
 
               return (
