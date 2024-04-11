@@ -901,6 +901,129 @@ export const InputField = <
   );
 };
 
+type MultiLineInputFieldProps<
+  Item = BaseItem,
+  Field = BaseFieldName,
+  Nullable = false,
+  State = Nullable extends true ? (string | null) : string,
+> = Omit<InputFieldProps<Item, Field, Nullable, State>, 'type'>;
+
+/*
+Example MultiLineInputField:
+<MultiLineInputField<BattleWithParticipants, 'startedAt'>
+  name="startedAt"
+  singularDisplayName="Started At"
+  pluralDisplayName="Started Ats"
+  columnWidth="200px"
+  sortable
+/>
+*/
+export const MultiLineInputField = <
+  Item = BaseItem,
+  Field = BaseFieldName,
+  Nullable = false,
+>(props: MultiLineInputFieldProps<Item, Field, Nullable>) => {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const getInitialStateFromItem = useMemo(() => {
+    return props.getInitialStateFromItem || ((item: Item) => `${(item as FixMe)[props.name as FixMe]}`);
+  }, [props.getInitialStateFromItem, props.name]);
+
+  const injectAsyncDataIntoInitialStateOnDetailPage = useMemo(() => {
+    return (state: Nullable extends true ? (string | null) : string) => Promise.resolve(state)
+  }, []);
+
+  return (
+    <Field<Item, Field, Nullable extends true ? (string | null) : string>
+      name={props.name}
+      singularDisplayName={props.singularDisplayName}
+      pluralDisplayName={props.pluralDisplayName}
+      columnWidth={props.columnWidth}
+      sortable={props.sortable}
+      getInitialStateFromItem={getInitialStateFromItem}
+      injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
+      getInitialStateWhenCreating={props.getInitialStateWhenCreating || (() => '')}
+      serializeStateToItem={props.serializeStateToItem || ((initialItem, state) => ({ ...initialItem, [props.name as FixMe]: state }))}
+      displayMarkup={state => {
+        if (state === null) {
+          return (
+            <em style={{color: 'silver'}}>null</em>
+          );
+        } else if (state.length > 30) {
+          return (
+            <span>{state.slice(0, 30)}...</span>
+          );
+        } else {
+          return (
+            <span>{state}</span>
+          );
+        }
+      }}
+      modifyMarkup={(state, setState, item, onBlur) => {
+        const input = props.inputMarkup ? props.inputMarkup(state, setState, item, onBlur) : (
+          <textarea
+            value={state === null ? '' : `${state}`}
+            disabled={state === null}
+            onChange={e => setState(e.currentTarget.value)}
+            onBlur={() => onBlur()}
+          />
+        );
+
+        if (props.nullable) {
+          return (
+            <div style={{display: 'inline-flex', gap: 8, alignItems: 'center'}}>
+              <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
+                <input
+                  type="radio"
+                  checked={state !== null}
+                  onChange={e => {
+                    if (e.currentTarget.checked) {
+                      setState('');
+                      onBlur();
+                      setTimeout(() => {
+                        if (inputRef.current) {
+                          inputRef.current.focus();
+                        }
+                      }, 0);
+                    }
+                  }}
+                />
+                <div onClick={() => {
+                  if (state === null) {
+                    setState('');
+                    onBlur();
+                    setTimeout(() => {
+                      if (inputRef.current) {
+                        inputRef.current.focus();
+                      }
+                    }, 0);
+                  }
+                }}>{input}</div>
+              </div>
+              <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
+                <input
+                  type="radio"
+                  checked={state === null}
+                  id={`${props.name}-null`}
+                  onChange={e => {
+                    if (e.currentTarget.checked) {
+                      setState(null);
+                      onBlur();
+                    }
+                  }}
+                />
+                <label htmlFor={`${props.name}-null`}>null</label>
+              </div>
+            </div>
+          );
+        } else {
+          return input;
+        }
+      }}
+    />
+  );
+};
+
 
 type ChoiceFieldProps<I = BaseItem, F = BaseFieldName, S = BaseFieldState> = Pick<
   FieldMetadata<I, F, S>,

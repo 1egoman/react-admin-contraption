@@ -11,6 +11,7 @@ import {
   MultiForeignKeyField,
   AdminContextProvider,
   StateCache,
+  MultiLineInputField,
 } from '@/admin';
 
 export function BattleDataModel() {
@@ -582,18 +583,16 @@ export function PostDataModel() {
         name="title"
         singularDisplayName="Title"
         pluralDisplayName="Titles"
-        columnWidth={100}
-        sortable
-        getInitialStateFromItem={post => post.title}
-        getInitialStateWhenCreating={() => ''}
-        serializeStateToItem={(initialItem, state) => ({ ...initialItem, title: state })}
+        // sortable
+        // getInitialStateFromItem={post => post.title}
+        // getInitialStateWhenCreating={() => ''}
+        // serializeStateToItem={(initialItem, state) => ({ ...initialItem, title: state })}
       />
-      <InputField<Post, 'body'>
+      <MultiLineInputField<Post, 'body'>
         name="body"
         singularDisplayName="Body"
         pluralDisplayName="Bodies"
-        columnWidth={200}
-        sortable
+        // sortable
         getInitialStateFromItem={post => post.body}
         getInitialStateWhenCreating={() => ''}
         serializeStateToItem={(initialItem, state) => ({ ...initialItem, body: state })}
