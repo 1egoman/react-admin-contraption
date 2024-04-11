@@ -3560,6 +3560,9 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
 
               removeInFlightAbortController(abortController);
               alert('Update successful!');
+
+              // After updating, go back to the list page
+              imperativelyNavigateToNavigatable(detailDataContextData.listLink);
             }}
           >Update</button>
           <button
