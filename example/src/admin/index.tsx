@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { gray } from '@radix-ui/colors';
+import debounce from "lodash.debounce";
 
 import styles from './styles.module.css';
 
@@ -101,12 +102,12 @@ export const DataModel = <Item = BaseItem>(props: DataModelProps<Item>) => {
   }
 
   // NOTE: the DataModelsContext stores a heterogeneous of `DataModel<..., ...>` entries in an array
-  // However, downstream stuff expects a `DataModel<I, F>` - so cast it explicitly below
-  const [dataModel, setDataModel] = useMemo(() => {
+  // However, downstream stuff expects a `DataModel<Item>` - so cast it explicitly below
+  const [setDataModel] = useMemo(() => {
     const [dataModels, setDataModels] = dataModelsContextData;
 
     return [
-      (dataModels.get(props.name) as any) as DataModel<Item>,
+      // (dataModels.get(props.name) as any) as DataModel<Item>,
       (updateFn: (old: DataModel<Item> | null) => DataModel<Item> | null) => {
         setDataModels(old => {
           const copy = new Map(old);
@@ -159,32 +160,20 @@ export const DataModel = <Item = BaseItem>(props: DataModelProps<Item>) => {
     props.createLink,
   ]);
 
-  // NOTE: similarly to the above, `dataModel.fields` is Array<FieldMetadata<I, F>> but the data
-  // that needs to be explosed down below doesn't have the generics because I can't figure out how
-  // to make that work with a react context.
-  const fieldsContextData = useMemo(
-    () => ([
-      dataModel ? dataModel.fields : EMPTY_FIELD_COLLECTION,
-      (updateFn: (old: FieldCollection<FieldMetadata<Item>>) => FieldCollection<FieldMetadata<Item>>) => {
-        setDataModel(old => {
-          if (old) {
-            return { ...old, fields: updateFn(old.fields) };
-          } else {
-            return null;
-          }
-        });
-      },
-    ] as any) as [
-      Array<FieldMetadata>,
-      (fields: (old: Array<FieldMetadata>) => Array<FieldMetadata>) => void,
-    ],
-    [dataModel, setDataModel]
-  );
+  const onChangeFields = useCallback((newFields: FieldCollection<FieldMetadata<Item>>) => {
+    setDataModel(old => {
+      if (old) {
+        return { ...old, fields: newFields };
+      } else {
+        return null;
+      }
+    });
+  }, []);
 
   return (
-    <FieldsContext.Provider value={fieldsContextData}>
+    <FieldsProvider onChangeFields={onChangeFields}>
       {props.children}
-    </FieldsContext.Provider>
+    </FieldsProvider>
   );
 };
 
@@ -663,6 +652,49 @@ const FieldsContext = React.createContext<[
   FieldCollection,
   (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
 ] | null>(null);
+
+export const FieldsProvider = <Item = BaseItem>(props: {
+  dataModel?: DataModel<Item>,
+  onChangeFields: (newFields: FieldCollection<FieldMetadata<Item>>) => void,
+  children: React.ReactNode,
+}) => {
+  const [customFields, setCustomFields] = useState<FieldCollection<FieldMetadata<Item>>>(
+    EMPTY_FIELD_COLLECTION as FieldCollection<FieldMetadata<Item>>
+  );
+
+  // Debouncing `onChangeFields` like this means that all field changes within the same tick are all
+  // grouped together and onlt the most recent one is actually sent upwards. This avoids a ton of
+  // extra rerenders.
+  const debouncedOnChangeFields = useMemo(
+    () => debounce(props.onChangeFields, 0),
+    [props.onChangeFields]
+  );
+
+  useEffect(() => {
+    if (customFields.metadata.length === 0 && props.dataModel) {
+      debouncedOnChangeFields(props.dataModel.fields);
+    } else {
+      debouncedOnChangeFields(customFields);
+    }
+  }, [props.dataModel, customFields, debouncedOnChangeFields]);
+
+  const fieldsContextData = useMemo(
+    () => [
+      (customFields as any) as FieldCollection<FieldMetadata>,
+      (setCustomFields as any) as (updateFn: (oldFields: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
+    ] as [
+      FieldCollection<FieldMetadata>,
+      (updateFn: (oldFields: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
+    ],
+    [customFields, setCustomFields]
+  );
+
+  return (
+    <FieldsContext.Provider value={fieldsContextData}>
+      {props.children}
+    </FieldsContext.Provider>
+  );
+};
 
 type FieldCollection<M = FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>> = {
   names: Array<FieldMetadata['name']>,
@@ -1414,7 +1446,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
   if (!dataModelsContextData) {
     throw new Error('Error: <ForeignKeyFieldModifyMarkup ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
-  const relatedDataModel = dataModelsContextData[0].get(props.foreignKeyFieldProps.relatedName) as DataModel<J, F> | undefined;
+  const relatedDataModel = dataModelsContextData[0].get(props.foreignKeyFieldProps.relatedName) as DataModel<J> | undefined;
 
   const getRelatedKey = props.getRelatedKey || relatedDataModel?.keyGenerator || null;
   const fetchPageOfRelatedData = useMemo(() => {
@@ -1543,51 +1575,15 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     });
   }, [relatedData, setRelatedData, props.item, fetchPageOfRelatedData]);
 
-  const [
-    [relatedFieldsSource, relatedFields],
-    setRelatedFields,
-  ] = useState<["idle" | "children" | "datamodel", FieldCollection<FieldMetadata<J, F>>]>(["idle", EMPTY_FIELD_COLLECTION]);
-  useEffect(() => {
-    if (!relatedDataModel) {
-      return;
-    }
-    if (relatedFieldsSource === "children") {
-      return;
-    }
-
-    setRelatedFields(["datamodel", relatedDataModel.fields]);
-  }, [relatedDataModel]);
-
-  const relatedFieldsContextData = useMemo(
-    () => [
-      (relatedFields as any) as FieldCollection<FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>>,
-      ((updateFn) => setRelatedFields(
-        (old) => ["children" as const, updateFn(old[1])] as ["children", FieldCollection<FieldMetadata<J, F>>]
-      ) as any) as (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
-    ] as [
-      FieldCollection<FieldMetadata>,
-      (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
-    ],
-    [relatedFields, setRelatedFields]
+  const [relatedFields, setRelatedFields] = useState<FieldCollection<FieldMetadata<J, F>>>(
+    (EMPTY_FIELD_COLLECTION as any) as FieldCollection<FieldMetadata<J, F>>
   );
 
   // Allow a custom set of fields to be defined in the creation form. If these fields aren't
   // defined, then use the fields defined for the table for the creation form.
-  const [
-    relatedCreationFieldsOverride,
-    setRelatedCreationFieldsOverride
-  ] = useState<FieldCollection<FieldMetadata<J, F>>>(EMPTY_FIELD_COLLECTION);
-  const relatedCreationFieldsContextData = useMemo(
-    () => [
-      (relatedCreationFieldsOverride as any) as FieldCollection<FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>>,
-      (setRelatedCreationFieldsOverride as any) as (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
-    ] as [
-      FieldCollection<FieldMetadata>,
-      (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
-    ],
-    [relatedFields, setRelatedFields]
+  const [relatedCreationFields, setRelatedCreationFields] = useState<FieldCollection<FieldMetadata<J, F>>>(
+    (EMPTY_FIELD_COLLECTION as any) as FieldCollection<FieldMetadata<J, F>>
   );
-  const relatedCreationFields = relatedCreationFieldsOverride.names.length > 0 ? relatedCreationFieldsOverride : relatedFields;
 
   // When in creation mode, store each state for each field centrally
   const [relatedCreationFieldStates, setRelatedCreationFieldStates] = useState<Map<F, BaseFieldState>>(new Map());
@@ -1875,14 +1871,14 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
           ) : null}
 
           {/* The children should not render anything, this should purely be Fields for the related items */}
-          <FieldsContext.Provider value={relatedFieldsContextData}>
+          <FieldsProvider dataModel={relatedDataModel} onChangeFields={setRelatedFields}>
             {props.children}
-          </FieldsContext.Provider>
+          </FieldsProvider>
 
           {/* The creationFields should not render anything, this should purely be Fields for creating the related item */}
-          <FieldsContext.Provider value={relatedCreationFieldsContextData}>
+          <FieldsProvider dataModel={relatedDataModel} onChangeFields={setRelatedCreationFields}>
             {props.foreignKeyFieldProps.creationFields}
-          </FieldsContext.Provider>
+          </FieldsProvider>
         </div>
       );
   }
@@ -2198,6 +2194,7 @@ export const ListFilterBar = <I = BaseItem>({
       >{name}</button>
     );
   });
+
 
   return (
     <div className={styles.listFilterBar}>
@@ -2664,44 +2661,20 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
   if (!dataContext || dataContext.type !== 'list') {
     throw new Error('Error: <ListTable ... /> was not rendered inside of a <List> ... </List> component!');
   }
-  const listDataContextData = dataContext as DataContextList<I, F>;
+  const listDataContextData = (dataContext as any) as DataContextList<I, F>;
 
   // Then get the data model context data
   const dataModelsContextData = useContext(DataModelsContext);
   if (!dataModelsContextData) {
     throw new Error('Error: <ListTable ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
-  const dataModel = dataModelsContextData[0].get(listDataContextData.name) as DataModel<I, F> | undefined;
+  const dataModel = dataModelsContextData[0].get(listDataContextData.name) as DataModel<I> | undefined;
   if (!dataModel) {
     throw new Error(`Error: <ListTable ... /> cannot find data model with name ${listDataContextData.name}!`);
   }
 
-  const [
-    [fieldsSource, fields],
-    setFields,
-  ] = useState<["idle" | "children" | "datamodel", FieldCollection<FieldMetadata<I, F>>]>(["idle", EMPTY_FIELD_COLLECTION]);
-  useEffect(() => {
-    if (!dataModel) {
-      return;
-    }
-    if (fieldsSource === "children") {
-      return;
-    }
-
-    setFields(["datamodel", dataModel.fields]);
-  }, [dataModel]);
-
-  const fieldsContextData = useMemo(
-    () => [
-      (fields as any) as FieldCollection<FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>>,
-      ((updateFn) => setFields(
-        (old) => ["children" as const, updateFn(old[1])] as ["children", FieldCollection<FieldMetadata<I, F>>]
-      ) as any) as (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
-    ] as [
-      FieldCollection<FieldMetadata>,
-      (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
-    ],
-    [fields, setFields]
+  const [fields, setFields] = useState<FieldCollection<FieldMetadata<I, F>>>(
+    (EMPTY_FIELD_COLLECTION as any) as FieldCollection<FieldMetadata<I, F>>
   );
 
   // Convert the column set into the columns to render in the table
@@ -2712,7 +2685,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
     // A manual list of fields
     visibleFieldNames = listDataContextData.columnSet as Array<F>;
   } else {
-    const columns = columnSets[listDataContextData.columnSet];
+    const columns = columnSets ? columnSets[listDataContextData.columnSet] : null;
     if (columns) {
       visibleFieldNames = columns;
     } else {
@@ -2824,7 +2797,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
   }
 
   return (
-    <FieldsContext.Provider value={fieldsContextData}>
+    <FieldsProvider dataModel={dataModel} onChangeFields={setFields}>
       <div className={styles.listTable}>
         {renderTableWrapper({
           listDataContextData,
@@ -2851,7 +2824,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
         {/* The children should not render anything, this should purely be Fields */}
         {children}
       </div>
-    </FieldsContext.Provider>
+    </FieldsProvider>
   );
 };
 
@@ -3222,33 +3195,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
     };
   }, []);
 
-  const [
-    [fieldsSource, fields],
-    setFields,
-] = useState<["idle" | "children" | "datamodel", FieldCollection<FieldMetadata<I, F>>]>(["idle", EMPTY_FIELD_COLLECTION]);
-  useEffect(() => {
-    if (!dataModel) {
-      return;
-    }
-    if (fieldsSource === "children") {
-      return;
-    }
-
-    setFields(["datamodel", dataModel.fields]);
-  }, [dataModel]);
-
-  const fieldsContextData = useMemo(
-    () => [
-      (fields as any) as FieldCollection<FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>>,
-      ((updateFn) => setFields(
-        (old) => ["children" as const, updateFn(old[1])] as ["children", FieldCollection<FieldMetadata<I, F>>]
-      ) as any) as (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
-    ] as [
-      FieldCollection<FieldMetadata>,
-      (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
-    ],
-    [fields, setFields]
-  );
+  const [fields, setFields] = useState<FieldCollection<FieldMetadata<I, F>>>(EMPTY_FIELD_COLLECTION);
 
   // Store each state for each field centrally
   const [fieldStates, setFieldStates] = useState<
@@ -3414,7 +3361,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
   }
 
   return (
-    <FieldsContext.Provider value={fieldsContextData}>
+    <FieldsProvider dataModel={dataModel} onChangeFields={setFields}>
       <div className={styles.detailHeader}>
         <NavigationButton navigatable={detailDataContextData.listLink}>&larr; Back</NavigationButton>
         {detailDataContextData.isCreating ? (
@@ -3598,6 +3545,6 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
           >Delete</button>
         </div>
       )}
-    </FieldsContext.Provider>
+    </FieldsProvider>
   );
 };
