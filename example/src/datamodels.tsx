@@ -593,7 +593,9 @@ export function PostDataModel() {
         name="title"
         singularDisplayName="Title"
         pluralDisplayName="Titles"
+        getInitialStateWhenCreating={() => 'unset'}
         choices={[
+          {id: 'unset', disabled: true, label: 'unset'},
           {id: 'foo', label: 'foo'},
           {id: 'bar', label: 'bar'},
         ]}

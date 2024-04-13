@@ -1066,9 +1066,9 @@ type ChoiceFieldProps<I = BaseItem, F = BaseFieldName, S = BaseFieldState> = Pic
   | 'pluralDisplayName'
   | 'columnWidth'
   | 'sortable'
-  | 'getInitialStateWhenCreating'
 > & {
   getInitialStateFromItem?: (item: I) => S;
+  getInitialStateWhenCreating: () => S | undefined;
   serializeStateToItem?: (initialItem: Partial<I>, state: S) => Partial<I>;
   choices: Array<{id: S; disabled?: boolean; label: React.ReactNode }>;
 
@@ -1195,7 +1195,7 @@ export const BooleanField = <I = BaseItem, F = BaseFieldName>(props: BooleanFiel
 
 
 type SingleForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> = Pick<
-  FieldMetadata<I, F, J>,
+  FieldMetadata<I, F, J | null>,
   | 'name'
   | 'singularDisplayName'
   | 'pluralDisplayName'
@@ -1205,7 +1205,7 @@ type SingleForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> =
 > & {
   getInitialStateFromItem?: (item: I) => J;
   injectAsyncDataIntoInitialStateOnDetailPage?: (oldState: J, item: I, signal: AbortSignal) => Promise<J>;
-  getInitialStateWhenCreating?: () => J | undefined;
+  getInitialStateWhenCreating?: () => J | null;
   serializeStateToItem?: (initialItem: Partial<I>, state: J) => Partial<I>;
 
   nullable?: boolean;
@@ -1248,6 +1248,10 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
     return props.getInitialStateFromItem || ((item: I) => (item as FixMe)[props.name as FixMe] as J)
   }, [props.getInitialStateFromItem, props.name]);
 
+  const getInitialStateWhenCreating = useMemo(() => {
+    return props.getInitialStateWhenCreating || (() => null);
+  }, [props.getInitialStateWhenCreating]);
+
   const injectAsyncDataIntoInitialStateOnDetailPage = useMemo(() => {
     return props.injectAsyncDataIntoInitialStateOnDetailPage || ((state: J) => Promise.resolve(state));
   }, [props.injectAsyncDataIntoInitialStateOnDetailPage]);
@@ -1270,11 +1274,11 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
   }, [getRelatedKey]);
 
   const modifyMarkup = useCallback((
-    state: J,
+    state: J | null,
     setState: (newState: J, blurAfterStateSet?: boolean) => void,
     item: I,
   ) => {
-    const relatedFields = state !== null ? (
+    const relatedFields = (
       <ForeignKeyFieldModifyMarkup
         mode="detail"
         item={item}
@@ -1286,7 +1290,7 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
       >
         {props.children}
       </ForeignKeyFieldModifyMarkup>
-    ) : null;
+    );
 
     if (props.nullable) {
       return (
@@ -1317,7 +1321,7 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
               <label htmlFor={`${props.name}-null`}>null</label>
             </div>
           </div>
-          {relatedFields}
+          {state !== null ? relatedFields : null}
         </div>
       );
     } else {
@@ -1326,7 +1330,7 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
   }, [props]);
 
   return (
-    <Field<I, F, J>
+    <Field<I, F, J | null>
       name={props.name}
       singularDisplayName={singularDisplayName}
       pluralDisplayName={pluralDisplayName}
@@ -1334,7 +1338,7 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
       sortable={props.sortable}
       getInitialStateFromItem={getInitialStateFromItem}
       injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
-      getInitialStateWhenCreating={props.getInitialStateWhenCreating}
+      getInitialStateWhenCreating={getInitialStateWhenCreating}
       serializeStateToItem={serializeStateToItem}
       // createSideEffect={props.createRelatedItem}
       // updateSideEffect={props.updateRelatedItem}
@@ -1385,6 +1389,10 @@ export const MultiForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseIt
     return props.getInitialStateFromItem || ((item: I) => (item as FixMe)[props.name as FixMe] as Array<J>);
   }, [props.getInitialStateFromItem, props.name]);
 
+  const getInitialStateWhenCreating = useMemo(() => {
+    return props.getInitialStateWhenCreating || (() => []);
+  }, [props.getInitialStateWhenCreating]);
+
   const injectAsyncDataIntoInitialStateOnDetailPage = useMemo(() => {
     return props.injectAsyncDataIntoInitialStateOnDetailPage || ((state: Array<J>) => Promise.resolve(state));
   }, [props.injectAsyncDataIntoInitialStateOnDetailPage, props.name]);
@@ -1398,7 +1406,7 @@ export const MultiForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseIt
       sortable={props.sortable}
       getInitialStateFromItem={getInitialStateFromItem}
       injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
-      getInitialStateWhenCreating={props.getInitialStateWhenCreating}
+      getInitialStateWhenCreating={getInitialStateWhenCreating}
       serializeStateToItem={props.serializeStateToItem || ((initialItem, state) => ({ ...initialItem, [props.name as FixMe]: state }))}
       displayMarkup={state => {
         const keys = state.map(i => {
@@ -1444,7 +1452,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
   | {
     mode: 'detail',
     item: I,
-    relatedItem: J,
+    relatedItem: J | null,
     onChangeRelatedItem: (newRelatedItem: J) => void,
     disabled?: boolean;
     checkboxesWidth: null | string | number;
@@ -1635,40 +1643,46 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
       );
     case 'COMPLETE':
     case 'LOADING_NEXT_PAGE':
-      let rows = props.mode === 'list' ? props.relatedItems : [props.relatedItem];
+      let rows = props.mode === 'list' ? (
+        props.relatedItems
+      ) : (props.relatedItem ? [props.relatedItem] : []);
       let rowKeys = rows.map(row => getRelatedKey(row));
 
       // Pin the initial related item to the top of the list
       //
       // This doesn't just pin the currently related item, it pins the initial,
       // because the initial won't change.
-      if (props.mode === 'list' && initialRelatedItems) {
+      if (props.mode === 'list') {
         if (itemSelectionMode === 'select') {
           rows = relatedData.data;
           rowKeys = rows.map(row => getRelatedKey(row));
-          for (const relatedItem of initialRelatedItems) {
-            const key = getRelatedKey(relatedItem);
+          if (initialRelatedItems) {
+            for (const relatedItem of initialRelatedItems) {
+              const key = getRelatedKey(relatedItem);
+              const index = rowKeys.indexOf(key);
+              if (index >= 0) {
+                rows.splice(index, 1);
+                rowKeys.splice(index, 1);
+              }
+              rows.unshift(relatedItem);
+              rowKeys.unshift(key);
+            }
+          }
+        }
+      } else if (props.mode === 'detail') {
+        if (itemSelectionMode === 'select') {
+          rows = relatedData.data;
+          rowKeys = rows.map(row => getRelatedKey(row));
+          if (initialRelatedItem) {
+            const key = getRelatedKey(initialRelatedItem);
             const index = rowKeys.indexOf(key);
             if (index >= 0) {
               rows.splice(index, 1);
               rowKeys.splice(index, 1);
             }
-            rows.unshift(relatedItem);
+            rows.unshift(initialRelatedItem);
             rowKeys.unshift(key);
           }
-        }
-      } else if (props.mode === 'detail' && initialRelatedItem) {
-        if (itemSelectionMode === 'select') {
-          rows = relatedData.data;
-          rowKeys = rows.map(row => getRelatedKey(row));
-          const key = getRelatedKey(initialRelatedItem);
-          const index = rowKeys.indexOf(key);
-          if (index >= 0) {
-            rows.splice(index, 1);
-            rowKeys.splice(index, 1);
-          }
-          rows.unshift(initialRelatedItem);
-          rowKeys.unshift(key);
         }
       }
 
@@ -1743,8 +1757,8 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                   {rows.map(relatedItem => {
                     const key = getRelatedKey(relatedItem);
                     const checked = Boolean(props.mode === 'list' ? (
-                      props.relatedItems.find(i => getRelatedKey(i) === key)
-                    ) : getRelatedKey(props.relatedItem) === key);
+                      props.relatedItems && props.relatedItems.find(i => getRelatedKey(i) === key)
+                    ) : props.relatedItem && getRelatedKey(props.relatedItem) === key);
 
                     return (
                       <ListTableItem
@@ -1804,7 +1818,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
           ) : null}
           {itemSelectionMode === 'create' ? (
             <Fragment>
-              <span>Create new {props.foreignKeyFieldProps.singularDisplayName}</span>
+              <span>Create new {relatedDataModel.singularDisplayName}</span>
 
               {relatedCreationFields.names.map(relatedFieldName => {
                 const relatedField = relatedCreationFields.metadata.find(f => f.name === relatedFieldName);
@@ -3050,7 +3064,7 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
   if (!dataModelsContextData) {
     throw new Error('Error: <Detail ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
-  const dataModel = dataModelsContextData[0].get(name) as DataModel<I, BaseFieldName> | undefined;
+  const dataModel = dataModelsContextData[0].get(name) as DataModel<I> | undefined;
   const singularDisplayName = props.singularDisplayName || dataModel?.singularDisplayName || '';
   const pluralDisplayName = props.pluralDisplayName || dataModel?.pluralDisplayName || '';
   const fetchItem = props.fetchItem || dataModel?.fetchItem || null;
@@ -3296,10 +3310,14 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
     setFieldStates({ status: "LOADING" });
     Promise.all(fields.metadata.map(async field => {
       if (detailDataContextData.isCreating) {
-        return [
-          field.name,
-          field.getInitialStateWhenCreating ? field.getInitialStateWhenCreating() : undefined,
-        ] as [F, BaseFieldState | undefined];
+        if (field.getInitialStateWhenCreating) {
+          return [
+            field.name,
+            field.getInitialStateWhenCreating(),
+          ] as [F, BaseFieldState | undefined];
+        } else {
+          return [field.name, undefined] as [F, BaseFieldState | undefined];
+        }
       } else {
         if (detailDataContextData.detailData.status !== 'COMPLETE') {
           return null;
@@ -3510,8 +3528,9 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                 item = field.serializeStateToItem(item, state);
               }
 
+              let createResult: I;
               try {
-                await detailDataContextData.createItem(item, abortController.signal);
+                createResult = await detailDataContextData.createItem(item, abortController.signal);
               } catch (error: FixMe) {
                 if (error.name === 'AbortError') {
                   // The component unmounted, and the request was terminated
@@ -3526,7 +3545,9 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
               removeInFlightAbortController(abortController);
 
               // After creating, navigate to the newly created item's detail page
-              imperativelyNavigateToNavigatable(detailDataContextData.detailLinkGenerator(item as I));
+              if (detailDataContextData.detailLinkGenerator) {
+                imperativelyNavigateToNavigatable(detailDataContextData.detailLinkGenerator(createResult));
+              }
             }}
           >Create</Button>
         </div>
