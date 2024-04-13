@@ -503,6 +503,7 @@ export function PostDataModel() {
       <SingleForeignKeyField<Post, 'userId', User>
         name="userId"
         singularDisplayName="User"
+        // nullable
         pluralDisplayName="Users"
         getInitialStateFromItem={post => ({ id: post.userId, name: 'OLD', username: 'OLD', email: 'OLD', phone: 'OLD', website: 'OLD' }) as User}
         injectAsyncDataIntoInitialStateOnDetailPage={async (_state, item, signal) => {

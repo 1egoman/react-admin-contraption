@@ -856,8 +856,9 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
 
   const modifyMarkup = useCallback((
     state: J | null,
-    setState: (newState: J, blurAfterStateSet?: boolean) => void,
+    setState: (newState: J | null, blurAfterStateSet?: boolean) => void,
     item: I,
+    onBlur: () => void,
   ) => {
     const relatedFields = (
       <ForeignKeyFieldModifyMarkup
@@ -876,32 +877,21 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
     if (props.nullable) {
       return (
         <div>
-          <div style={{display: 'inline-flex', gap: 8, alignItems: 'center'}}>
-            <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-              <Radiobutton
-                checked={state !== null}
-                id={`${props.name}-value`}
-                onChange={checked => {
-                  if (checked) {
-                    setState(props.generateNewRelatedItem());
-                  }
-                }}
-              />
-              <label htmlFor={`${props.name}-value`}>Value</label>
-            </div>
-            <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-              <Radiobutton
-                checked={state === null}
-                id={`${props.name}-null`}
-                onChange={checked => {
-                  if (checked) {
-                    setState(null);
-                  }
-                }}
-              />
-              <label htmlFor={`${props.name}-null`}>null</label>
-            </div>
-          </div>
+          <NullableWrapper<J, F>
+            nullable={props.nullable as boolean}
+            name={props.name}
+            state={state}
+            setState={setState}
+            // FIXME: the below getInitialStateWhenCreating can return null (and that is its default
+            // value). The better way to do this probably is to make the
+            // `ForeignKeyFieldModifyMarkup` component aware of `nullable` when in
+            // SingleForeignKeyField mode and get rid of the `NullableWrapper` stuff in here.
+            getInitialStateWhenCreating={getInitialStateWhenCreating}
+            onBlur={onBlur}
+          >
+            Value
+          </NullableWrapper>
+
           {state !== null ? relatedFields : null}
         </div>
       );
@@ -1083,8 +1073,12 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
   const [initialRelatedItem] = useState(props.mode === "detail" ? props.relatedItem : null);
   const [initialRelatedItems] = useState(props.mode === "list" ? props.relatedItems : null);
 
-
-  const [itemSelectionMode, setItemSelectionMode] = useState<'none' | 'select' | 'create'>('none');
+  const isInitiallyEmpty = useMemo(() => props.mode === 'detail' ? props.relatedItem === null : props.relatedItems.length === 0, []);
+  const [itemSelectionMode, setItemSelectionMode] = useState<'none' | 'select' | 'create'>(
+    // If there isn't anything selected when the component loads, start on the "select" view so the
+    // user doesn't immediatley see an empty state.
+    isInitiallyEmpty ? 'select' : 'none'
+  );
 
   const [relatedData, setRelatedData] = useState<ListData<J>>({ status: 'IDLE' });
 
@@ -1275,107 +1269,115 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
             </em>
           ) : (
             <div style={{overflowY: 'auto'}}>
-              <table>
-                <thead>
-                  <tr>
-                    {/* Add a column for the checkboxes */}
-                    <th style={{width: props.checkboxesWidth === null ? undefined : props.checkboxesWidth}}>
-                    </th>
-                    {relatedFields.names.map(relatedFieldMetadataName => {
-                      const relatedFieldMetadata = relatedFields.metadata.find(f => f.name === relatedFieldMetadataName);
-                      if (!relatedFieldMetadata) {
-                        return null;
-                      }
+              {rows.length > 0 ? (
+                <table>
+                  <thead>
+                    <tr>
+                      {/* Add a column for the checkboxes */}
+                      <th style={{width: props.checkboxesWidth === null ? undefined : props.checkboxesWidth}}>
+                      </th>
+                      {relatedFields.names.map(relatedFieldMetadataName => {
+                        const relatedFieldMetadata = relatedFields.metadata.find(f => f.name === relatedFieldMetadataName);
+                        if (!relatedFieldMetadata) {
+                          return null;
+                        }
+
+                        return (
+                          <th
+                            key={relatedFieldMetadata.name as string}
+                            className={relatedFieldMetadata.sortable ? styles.sortable : undefined}
+                            style={{width: relatedFieldMetadata.columnWidth}}
+                            // onClick={relatedFieldMetadata.sortable ? () => {
+                            //   if (!listDataContextData.sort) {
+                            //     // Initially set the sort
+                            //     listDataContextData.onChangeSort({
+                            //       fieldName: relatedFieldMetadata.name,
+                            //       direction: 'desc'
+                            //     } as Sort);
+                            //   } else if (listDataContextData.sort.fieldName !== relatedFieldMetadata.name) {
+                            //     // A different column was selected, so initially set the sort for this new column
+                            //     listDataContextData.onChangeSort({
+                            //       fieldName: relatedFieldMetadata.name,
+                            //       direction: 'desc'
+                            //     } as Sort);
+                            //   } else {
+                            //     // Cycle the sort to the next value
+                            //     switch (listDataContextData.sort.direction) {
+                            //       case 'desc':
+                            //         listDataContextData.onChangeSort({
+                            //           fieldName: relatedFieldMetadata.name,
+                            //           direction: 'asc',
+                            //         } as Sort);
+                            //         return;
+                            //       case 'asc':
+                            //         listDataContextData.onChangeSort(null);
+                            //         return;
+                            //     }
+                            //   }
+                            // } : undefined}
+                          >
+                            {relatedFieldMetadata.singularDisplayName}
+                            {/*
+                            {listDataContextData.sort && listDataContextData.sort.fieldName === relatedFieldMetadata.name ? (
+                              <span className={styles.tableWrapperSortIndicator}>
+                                {listDataContextData.sort.direction === 'desc' ? <Fragment>&darr;</Fragment> : <Fragment>&uarr;</Fragment>}
+                              </span>
+                            ) : null}
+                            */}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(relatedItem => {
+                      const key = getRelatedKey(relatedItem);
+                      const checked = Boolean(props.mode === 'list' ? (
+                        props.relatedItems && props.relatedItems.find(i => getRelatedKey(i) === key)
+                      ) : props.relatedItem && getRelatedKey(props.relatedItem) === key);
 
                       return (
-                        <th
-                          key={relatedFieldMetadata.name as string}
-                          className={relatedFieldMetadata.sortable ? styles.sortable : undefined}
-                          style={{width: relatedFieldMetadata.columnWidth}}
-                          // onClick={relatedFieldMetadata.sortable ? () => {
-                          //   if (!listDataContextData.sort) {
-                          //     // Initially set the sort
-                          //     listDataContextData.onChangeSort({
-                          //       fieldName: relatedFieldMetadata.name,
-                          //       direction: 'desc'
-                          //     } as Sort);
-                          //   } else if (listDataContextData.sort.fieldName !== relatedFieldMetadata.name) {
-                          //     // A different column was selected, so initially set the sort for this new column
-                          //     listDataContextData.onChangeSort({
-                          //       fieldName: relatedFieldMetadata.name,
-                          //       direction: 'desc'
-                          //     } as Sort);
-                          //   } else {
-                          //     // Cycle the sort to the next value
-                          //     switch (listDataContextData.sort.direction) {
-                          //       case 'desc':
-                          //         listDataContextData.onChangeSort({
-                          //           fieldName: relatedFieldMetadata.name,
-                          //           direction: 'asc',
-                          //         } as Sort);
-                          //         return;
-                          //       case 'asc':
-                          //         listDataContextData.onChangeSort(null);
-                          //         return;
-                          //     }
-                          //   }
-                          // } : undefined}
-                        >
-                          {relatedFieldMetadata.singularDisplayName}
-                          {/*
-                          {listDataContextData.sort && listDataContextData.sort.fieldName === relatedFieldMetadata.name ? (
-                            <span className={styles.tableWrapperSortIndicator}>
-                              {listDataContextData.sort.direction === 'desc' ? <Fragment>&darr;</Fragment> : <Fragment>&uarr;</Fragment>}
-                            </span>
-                          ) : null}
-                          */}
-                        </th>
+                        <ListTableItem
+                          key={key as string}
+                          item={relatedItem}
+                          visibleFieldNames={relatedFields.names as Array<F>}
+                          fields={relatedFields}
+                          checkable={true}
+                          checkType={props.mode === 'list' ? 'checkbox' : 'radio'}
+                          detailLink={relatedDataModel?.detailLinkGenerator ? relatedDataModel.detailLinkGenerator(relatedItem) : undefined}
+                          checked={checked}
+                          checkboxDisabled={false}
+                          onChangeChecked={(checked) => {
+                            if (relatedData.status !== 'COMPLETE') {
+                              return;
+                            }
+
+                            if (props.mode === 'detail') {
+                              props.onChangeRelatedItem(relatedItem);
+                              return;
+                            } else {
+                              // Shift was not held, so a single item is being checked or unchecked
+                              if (checked) {
+                                props.onChangeRelatedItems([...props.relatedItems, relatedItem]);
+                              } else {
+                                props.onChangeRelatedItems(
+                                  props.relatedItems.filter(i => getRelatedKey(i) !== key)
+                                );
+                              }
+                            }
+                          }}
+                        />
                       );
                     })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map(relatedItem => {
-                    const key = getRelatedKey(relatedItem);
-                    const checked = Boolean(props.mode === 'list' ? (
-                      props.relatedItems && props.relatedItems.find(i => getRelatedKey(i) === key)
-                    ) : props.relatedItem && getRelatedKey(props.relatedItem) === key);
-
-                    return (
-                      <ListTableItem
-                        key={key as string}
-                        item={relatedItem}
-                        visibleFieldNames={relatedFields.names as Array<F>}
-                        fields={relatedFields}
-                        checkable={true}
-                        checkType={props.mode === 'list' ? 'checkbox' : 'radio'}
-                        detailLink={relatedDataModel?.detailLinkGenerator ? relatedDataModel.detailLinkGenerator(relatedItem) : undefined}
-                        checked={checked}
-                        checkboxDisabled={false}
-                        onChangeChecked={(checked) => {
-                          if (relatedData.status !== 'COMPLETE') {
-                            return;
-                          }
-
-                          if (props.mode === 'detail') {
-                            props.onChangeRelatedItem(relatedItem);
-                            return;
-                          } else {
-                            // Shift was not held, so a single item is being checked or unchecked
-                            if (checked) {
-                              props.onChangeRelatedItems([...props.relatedItems, relatedItem]);
-                            } else {
-                              props.onChangeRelatedItems(
-                                props.relatedItems.filter(i => getRelatedKey(i) !== key)
-                              );
-                            }
-                          }
-                        }}
-                      />
-                    );
-                  })}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 64 }}>
+                  <em style={{color: gray.gray9}}>
+                    No {props.mode === 'detail' ? props.foreignKeyFieldProps.singularDisplayName.toLowerCase() : props.foreignKeyFieldProps.pluralDisplayName.toLowerCase()} selected
+                  </em>
+                </div>
+              )}
             </div>
           )}
           {itemSelectionMode === 'select' ? (
