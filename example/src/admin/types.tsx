@@ -36,17 +36,29 @@ export type Paginated<T> = {
 };
 
 
+// This value is kinda weird, maybe it should be a Symbol or something like that
+//
+// Given it is possible for the state of a filter to be set to `null` (ie, the way the filter works,
+// this may be a valid value for state) there needs to be another token value that can be used to
+// indicate that a filter has not been defined yet.
 export const FILTER_NOT_SET_YET = 'NOT SET YET' as const;
 
-export type Filter<S extends JSONValue = JSONValue> = {
+// A Filter defines an instance of a `FilterMetadata` that is applied to a given list of items. When
+// making a request to the server to get a list of items, an array of these are included which
+// should be applied to the query to get the list of items.
+//
+// A Filter's interface inputs change the `workingState` value, and once the input is blured, that
+// `workingState` is copied to `state` and the data is refetched.
+export type Filter<FilterState extends JSONValue = JSONValue> = {
   name: Array<string | typeof FILTER_NOT_SET_YET>;
   isComplete: boolean;
   isValid: boolean;
-  workingState: S | typeof FILTER_NOT_SET_YET;
-  state: S | typeof FILTER_NOT_SET_YET;
+  workingState: FilterState | typeof FILTER_NOT_SET_YET;
+  state: FilterState | typeof FILTER_NOT_SET_YET;
 };
 
-export type Sort<F = BaseFieldName> = {
-  fieldName: F;
+// A Sort defines a sort order that should be applied to a given list of items.
+export type Sort<FieldName = BaseFieldName> = {
+  fieldName: FieldName;
   direction: 'asc' | 'desc';
 };

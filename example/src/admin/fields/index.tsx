@@ -1,0 +1,255 @@
+import * as React from 'react';
+import {
+  useMemo,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from 'react';
+import debounce from "lodash.debounce";
+
+import {
+  BaseItem,
+  BaseFieldName,
+  BaseFieldState, 
+} from './types';
+import Radiobutton from '../controls/Radiobutton';
+
+export const FieldsContext = React.createContext<[
+  FieldCollection,
+  (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
+] | null>(null);
+
+export const FieldsProvider = <Item = BaseItem>(props: {
+  dataModel?: DataModel<Item>,
+  onChangeFields: (newFields: FieldCollection<FieldMetadata<Item>>) => void,
+  children: React.ReactNode,
+}) => {
+  const [customFields, setCustomFields] = useState<FieldCollection<FieldMetadata<Item>>>(
+    EMPTY_FIELD_COLLECTION as FieldCollection<FieldMetadata<Item>>
+  );
+
+  // Debouncing `onChangeFields` like this means that all field changes within the same tick are all
+  // grouped together and onlt the most recent one is actually sent upwards. This avoids a ton of
+  // extra rerenders.
+  const debouncedOnChangeFields = useMemo(
+    () => debounce(props.onChangeFields, 0),
+    [props.onChangeFields]
+  );
+
+  useEffect(() => {
+    if (customFields.metadata.length === 0 && props.dataModel) {
+      debouncedOnChangeFields(props.dataModel.fields);
+    } else {
+      debouncedOnChangeFields(customFields);
+    }
+  }, [props.dataModel, customFields, debouncedOnChangeFields]);
+
+  const fieldsContextData = useMemo(
+    () => [
+      (customFields as any) as FieldCollection<FieldMetadata>,
+      (setCustomFields as any) as (updateFn: (oldFields: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
+    ] as [
+      FieldCollection<FieldMetadata>,
+      (updateFn: (oldFields: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
+    ],
+    [customFields, setCustomFields]
+  );
+
+  return (
+    <FieldsContext.Provider value={fieldsContextData}>
+      {props.children}
+    </FieldsContext.Provider>
+  );
+};
+
+export type FieldCollection<M = FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>> = {
+  names: Array<FieldMetadata['name']>,
+  metadata: Array<M>,
+};
+export const EMPTY_FIELD_COLLECTION: FieldCollection = { names: [], metadata: [] };
+
+export type FieldMetadata<Item = BaseItem, FieldName = BaseFieldName, State = BaseFieldState> = {
+  name: FieldName;
+  singularDisplayName: string;
+  pluralDisplayName: string;
+
+  sortable?: boolean;
+  columnWidth?: string | number;
+
+  // Serialize back and forth between the state (internal representation) and the item (external
+  // representation)
+  getInitialStateFromItem: (item: Item) => State;
+  injectAsyncDataIntoInitialStateOnDetailPage: (oldState: State, item: Item, signal: AbortSignal) => Promise<State>;
+  getInitialStateWhenCreating?: () => State | undefined;
+  serializeStateToItem: (initialItem: Partial<Item>, state: State) => Partial<Item>;
+
+  // When specified, these functions are called prior to `serializeStateToItem` and allows related
+  // models to be saved to the database
+  createSideEffect?: (item: Partial<Item>, state: State, signal: AbortSignal) => Promise<State>;
+  updateSideEffect?: (item: Partial<Item>, state: State, signal: AbortSignal) => Promise<State>;
+
+  // The presentation of the field when in a read only context
+  displayMarkup: (state: State, item: Item) => React.ReactNode;
+
+  // The presentation of the component in a read-write context
+  modifyMarkup?: (
+    state: State,
+    setState: (newState: State, blurAfterStateSet?: boolean) => void,
+    item: Item,
+    onBlur: () => void, // Call onBlur once the user has completed editing the state
+  ) => React.ReactNode;
+};
+
+/*
+Example Field:
+<Field<BattleWithParticipants, 'startedAt', string>
+  name="startedAt"
+  singularDisplayName="Started At"
+  pluralDisplayName="Started Ats"
+  columnWidth="200px"
+  sortable
+  getInitialStateFromItem={battle => Promise.resolve(battle.startedAt)}
+  getInitialStateWhenCreating={() => ''}
+  serializeStateToItem={(initialItem, state) => ({ ...initialItem, startedAt: state })}
+  displayMarkup={state => <small>{state}</small>}
+  modifyMarkup={(state, setState, item, onBlur) => <input type="text" value={state} onChange={e => setState(e.currentTarget.value)} onBlur={() => onBlur()} />}
+/>
+*/
+const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props: FieldMetadata<I, F, S>) => {
+  const fieldsContextData = useContext(FieldsContext);
+  if (!fieldsContextData) {
+    throw new Error('Error: <Field ... /> was not rendered inside of a container component! Try rendering this inside of a <ListTable> ... </ListTable>.');
+  }
+
+  const [_fields, setFields] = fieldsContextData;
+
+  useEffect(() => {
+    const name = props.name as string;
+    setFields(old => ({ ...old, names: [...old.names, name] }));
+    return () => {
+      setFields(old => ({ ...old, names: old.names.filter(n => n !== name) }));
+    };
+  }, [props.name]);
+
+  useEffect(() => {
+    const fieldMetadata: FieldMetadata<I, F, S> = {
+      name: props.name,
+      pluralDisplayName: props.pluralDisplayName,
+      singularDisplayName: props.singularDisplayName,
+      getInitialStateFromItem: props.getInitialStateFromItem,
+      injectAsyncDataIntoInitialStateOnDetailPage: props.injectAsyncDataIntoInitialStateOnDetailPage,
+      getInitialStateWhenCreating: props.getInitialStateWhenCreating,
+      columnWidth: props.columnWidth,
+      sortable: props.sortable,
+      serializeStateToItem: props.serializeStateToItem,
+      displayMarkup: props.displayMarkup,
+      modifyMarkup: props.modifyMarkup,
+    };
+
+    // NOTE: convert FieldMetadata<I, F, S> into a generic `FieldMetadata` with base values so it
+    // can be put into the field state
+    const castedFieldMetadata = (fieldMetadata as any) as FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>;
+
+    setFields(old => ({...old, metadata: [ ...old.metadata, castedFieldMetadata ]}));
+
+    return () => {
+      setFields(old => ({ ...old, metadata: old.metadata.filter(f => f !== castedFieldMetadata) }));
+    };
+  }, [
+    props.name,
+    props.pluralDisplayName,
+    props.singularDisplayName,
+    props.columnWidth,
+    props.sortable,
+    props.getInitialStateFromItem,
+    props.injectAsyncDataIntoInitialStateOnDetailPage,
+    props.getInitialStateWhenCreating,
+    props.serializeStateToItem,
+    props.displayMarkup,
+    props.modifyMarkup,
+  ]);
+
+  return null;
+};
+
+export default Field;
+
+
+type NullableWrapperProps<State = BaseFieldState, FieldName = BaseFieldName> = {
+  nullable?: boolean;
+  name: FieldName;
+  state: State | null;
+  setState: (newState: State | null) => void;
+  getInitialStateWhenCreating: () => State;
+  onBlur: () => void;
+  inputRef?: React.MutableRefObject<{ focus: () => void } | null>;
+  children: React.ReactNode;
+};
+
+export const NullableWrapper = <
+  State = BaseFieldState,
+  FieldName = BaseFieldName
+>(props: NullableWrapperProps<State, FieldName>) => {
+  // FIXME: there's something not working right here with switching back and forth where the non
+  // null radio button needs to be clicked twice for it to be set
+
+  const onMakeNotNull = useCallback(() => {
+    props.setState(props.getInitialStateWhenCreating());
+    props.onBlur();
+
+    // Focus the control now that it is the active one
+    // if (props.inputRef?.current) {
+    //   setTimeout(() => {
+    //     if (!props.inputRef?.current) {
+    //       return;
+    //     }
+
+    //     if (props.inputRef.current) {
+    //       props.inputRef.current.focus();
+    //     }
+    //   }, 0);
+    // }
+  }, [props.setState, props.onBlur, props.inputRef]);
+
+  const onMakeNull = useCallback(() => {
+    props.setState(null);
+    props.onBlur();
+  }, [props.setState, props.onBlur]);
+
+  if (!props.nullable) {
+    return props.children;
+  }
+
+  return (
+    <div style={{display: 'inline-flex', gap: 8, alignItems: 'center'}}>
+      <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
+        <Radiobutton
+          checked={props.state !== null}
+          onChange={(checked) => {
+            if (checked) {
+              onMakeNotNull();
+            }
+          }}
+        />
+        <div onClick={() => {
+          if (props.state === null) {
+            onMakeNotNull();
+          }
+        }}>{props.children}</div>
+      </div>
+      <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
+        <Radiobutton
+          checked={props.state === null}
+          id={`${props.name}-null`}
+          onChange={checked => {
+            if (checked) {
+              onMakeNull();
+            }
+          }}
+        />
+        <label htmlFor={`${props.name}-null`}>null</label>
+      </div>
+    </div>
+  );
+};
