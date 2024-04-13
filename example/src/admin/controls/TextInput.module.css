@@ -1,0 +1,15 @@
+.inputSmall {
+  font-family: 'Roboto Mono', 'menlo', 'monospace';
+  font-size: 14px;
+  height: 24px;
+  padding-left: 4px;
+  padding-right: 5px;
+}
+
+.inputRegular {
+  font-family: 'Roboto Mono', 'menlo', 'monospace';
+  font-size: 16px;
+  height: 32px;
+  padding-left: 8px;
+  padding-right: 8px;
+}

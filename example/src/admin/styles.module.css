@@ -171,39 +171,29 @@
   background-color: rgba(255,255,255,0.9);
   padding-left: 16px;
 }
-
-.listColumnSetModalBackdrop {
-  position: fixed;
-  top: 0px;
-  left: 0px;
-  bottom: 0px;
-  right: 0px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 9999;
+.tableWrapper .floatingColumnSetSelectorWrapper:last-child {
+  overflow: visible;
 }
-.listColumnSetModal {
+
+.listColumnSetPopup {
   font-family: 'Roboto Mono', 'menlo', 'monospace';
   font-size: 16px;
 
-  width: 500px;
-  min-height: 500px;
-  background-color: white;
-  border: 1px solid #ccc;
-  padding: 16px;
-  padding-top: 0px;
+  width: 320px;
 }
-.listColumnSetModalHeader {
+.listColumnSetPopupHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 48px;
+  height: 40px;
   border-bottom: 1px solid #ccc;
   font-weight: bold;
   user-select: none;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.listColumnSetBody {
+  padding: 8px;
 }
 
 
@@ -244,20 +234,34 @@
   padding-right: 16px;
   border-bottom: 1px solid #ccc;
 }
-.listFilterBarFilters {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-top: 8px;
-  padding-bottom: 8px;
+.listFilterBarTitle {
+  font-family: 'Roboto Mono', 'menlo', 'monospace';
+  font-size: 18px;
+  font-weight: bold;
 }
 
-.searchInput {
+.filterPopup {
   font-family: 'Roboto Mono', 'menlo', 'monospace';
   font-size: 16px;
-  height: 32px;
+
+  min-width: 320px;
+}
+.filterPopupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  border-bottom: 1px solid #ccc;
+  font-weight: bold;
+  user-select: none;
   padding-left: 8px;
   padding-right: 8px;
+}
+.filterPopupBody {
+  display: flex;
+  flex-direction: column;
+  min-width: 320ps;
+  padding: 8px;
 }
 
 /* ------------------
@@ -299,4 +303,23 @@
   padding-left: 16px;
   padding-right: 16px;
   border-bottom: 1px solid #ccc;
+}
+
+/* ------------------
+// Foreign key fields
+// ------------------ */
+.foreignKeyFieldModifyMarkupWrapper {
+  width: 100%;
+  border: 1px solid var(--gray-10);
+}
+
+.foreignKeyFieldModifyMarkupActionBar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--gray-4);
+  height: 40px;
+  padding-left: 8px;
+  padding-right: 8px;
 }

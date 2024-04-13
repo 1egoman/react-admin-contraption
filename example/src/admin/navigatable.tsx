@@ -1,24 +1,9 @@
+import { LinkProps } from "next/link";
+
 type Navigatable =
   | { type: 'href', href: string, target?: '_blank' }
+  | ({ type: 'next-link' } & LinkProps)
   | { type: 'function', onClick: () => void };
-
-export const NavigationButton: React.FunctionComponent<{
-  navigatable: Navigatable | null,
-  children: React.ReactNode,
-}> = ({ navigatable, children }) => {
-  switch (navigatable?.type) {
-    case 'href':
-      return (
-        <a href={navigatable.href} target={navigatable.target}>{children}</a>
-      );
-    case 'function':
-      return (
-        <button onClick={navigatable.onClick}>{children}</button>
-      );
-    default:
-      return null;
-  }
-};
 
 export const imperativelyNavigateToNavigatable = (navigatable: Navigatable | null) => {
   switch (navigatable?.type) {
@@ -28,6 +13,11 @@ export const imperativelyNavigateToNavigatable = (navigatable: Navigatable | nul
       } else {
         window.location.href = navigatable.href;
       }
+      return;
+    case 'next-link':
+      // TODO: how does one imperatively navigate to a next route without having access to
+      // `useRouter()`?
+      alert('Not yet implemented.');
       return;
     case 'function':
       navigatable.onClick();

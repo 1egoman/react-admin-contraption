@@ -8,11 +8,11 @@ import {
   useRef,
   useCallback,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { gray } from '@radix-ui/colors';
 import debounce from "lodash.debounce";
 
 import styles from './styles.module.css';
+// import "./global.css";
 
 import {
   FixMe,
@@ -29,7 +29,15 @@ import {
   FILTER_NOT_SET_YET,
 } from './types';
 
-import Navigatable, { NavigationButton, imperativelyNavigateToNavigatable } from "./navigatable";
+import Navigatable, { imperativelyNavigateToNavigatable } from "./navigatable";
+
+import Button, { IconButton, NavigationButton } from './controls/Button';
+import TextInput from './controls/TextInput';
+import Checkbox from './controls/Checkbox';
+import Radiobutton from './controls/Radiobutton';
+import Select, { SelectOption } from './controls/Select';
+import Popover from './controls/Popover';
+import TextArea from './controls/TextArea';
 
 type DataModel<Item = BaseItem> = {
   singularDisplayName: string;
@@ -188,12 +196,10 @@ const SearchInput: React.FunctionComponent<{
   }, [value]);
 
   return (
-    <input
-      className={styles.searchInput}
-      type="text"
+    <TextInput
       placeholder={`Search ${pluralDisplayName}...`}
       value={text}
-      onChange={e => setText(e.currentTarget.value)}
+      onChange={setText}
       onBlur={() => onChange(text)}
     />
   );
@@ -868,13 +874,13 @@ export const InputField = <
       displayMarkup={state => state === null ? <em style={{color: 'silver'}}>null</em> : <span>{state}</span>}
       modifyMarkup={(state, setState, item, onBlur) => {
         const input = props.inputMarkup ? props.inputMarkup(state, setState, item, onBlur) : (
-          <input
+          <TextInput
             ref={inputRef}
             type={props.type || "text"}
             value={state === null ? '' : `${state}`}
             disabled={state === null}
-            onChange={e => setState(e.currentTarget.value)}
-            onBlur={() => onBlur()}
+            onChange={setState}
+            onBlur={onBlur}
           />
         );
 
@@ -882,11 +888,10 @@ export const InputField = <
           return (
             <div style={{display: 'inline-flex', gap: 8, alignItems: 'center'}}>
               <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-                <input
-                  type="radio"
+                <Radiobutton
                   checked={state !== null}
-                  onChange={e => {
-                    if (e.currentTarget.checked) {
+                  onChange={(checked) => {
+                    if (checked) {
                       setState('');
                       onBlur();
                       setTimeout(() => {
@@ -910,12 +915,11 @@ export const InputField = <
                 }}>{input}</div>
               </div>
               <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-                <input
-                  type="radio"
+                <Radiobutton
                   checked={state === null}
                   id={`${props.name}-null`}
-                  onChange={e => {
-                    if (e.currentTarget.checked) {
+                  onChange={checked => {
+                    if (checked) {
                       setState(null);
                       onBlur();
                     }
@@ -993,11 +997,11 @@ export const MultiLineInputField = <
       }}
       modifyMarkup={(state, setState, item, onBlur) => {
         const input = props.inputMarkup ? props.inputMarkup(state, setState, item, onBlur) : (
-          <textarea
+          <TextArea
             value={state === null ? '' : `${state}`}
             disabled={state === null}
-            onChange={e => setState(e.currentTarget.value)}
-            onBlur={() => onBlur()}
+            onChange={setState}
+            onBlur={onBlur}
           />
         );
 
@@ -1005,11 +1009,10 @@ export const MultiLineInputField = <
           return (
             <div style={{display: 'inline-flex', gap: 8, alignItems: 'center'}}>
               <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-                <input
-                  type="radio"
+                <Radiobutton
                   checked={state !== null}
-                  onChange={e => {
-                    if (e.currentTarget.checked) {
+                  onChange={checked => {
+                    if (checked) {
                       setState('');
                       onBlur();
                       setTimeout(() => {
@@ -1033,12 +1036,11 @@ export const MultiLineInputField = <
                 }}>{input}</div>
               </div>
               <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-                <input
-                  type="radio"
+                <Radiobutton
                   checked={state === null}
                   id={`${props.name}-null`}
-                  onChange={e => {
-                    if (e.currentTarget.checked) {
+                  onChange={checked => {
+                    if (checked) {
                       setState(null);
                       onBlur();
                     }
@@ -1113,29 +1115,41 @@ export const ChoiceField = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>
           return props.inputMarkup(state, setState, item, onBlur);
         }
 
+        const stateAsString = `${state}`;
+
+        const options: Array<SelectOption> = [];
+
+        if (props.nullable) {
+          options.push({ value: 'NULL', label: 'null' });
+        }
+
+        let stateRepresentedByValue = false;
+        for (const { id, disabled, label } of props.choices) {
+          if (id === stateAsString) {
+            stateRepresentedByValue = true;
+          }
+          options.push({
+            value: id as string,
+            disabled,
+            label,
+          });
+        }
+
+        // If there isn't a value for the given state, add a disabled placeholder item
+        if (!stateRepresentedByValue) {
+          options.push({ disabled: true, value: stateAsString, label: stateAsString });
+        }
+
         return (
-          <select
-            style={{minWidth: 100}}
-            value={`${state}`}
-            onChange={e => {
-              const value = e.currentTarget.value as S;
-              setState(value === 'NULL' ? null : value);
+          <Select
+            value={stateAsString}
+            onChange={newValue => {
+              const castedNewValue = newValue as S;
+              setState(castedNewValue === 'NULL' ? null : castedNewValue);
             }}
             onBlur={() => onBlur()}
-          >
-            {props.nullable ? (
-              <option value="NULL">null</option>
-            ) : null}
-            {props.choices.map(choice => (
-              <option
-                key={`${choice.id}`}
-                value={`${choice.id}`}
-                disabled={choice.disabled || false}
-              >
-                {choice.label}
-              </option>
-            ))}
-          </select>
+            options={options}
+          />
         );
       }}
     />
@@ -1259,7 +1273,6 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
     state: J,
     setState: (newState: J, blurAfterStateSet?: boolean) => void,
     item: I,
-    onBlur: () => void,
   ) => {
     const relatedFields = state !== null ? (
       <ForeignKeyFieldModifyMarkup
@@ -1280,12 +1293,11 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
         <div>
           <div style={{display: 'inline-flex', gap: 8, alignItems: 'center'}}>
             <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-              <input
-                type="radio"
+              <Radiobutton
                 checked={state !== null}
                 id={`${props.name}-value`}
-                onChange={e => {
-                  if (e.currentTarget.checked) {
+                onChange={checked => {
+                  if (checked) {
                     setState(props.generateNewRelatedItem());
                   }
                 }}
@@ -1293,12 +1305,11 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
               <label htmlFor={`${props.name}-value`}>Value</label>
             </div>
             <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-              <input
-                type="radio"
+              <Radiobutton
                 checked={state === null}
                 id={`${props.name}-null`}
-                onChange={e => {
-                  if (e.currentTarget.checked) {
+                onChange={checked => {
+                  if (checked) {
                     setState(null);
                   }
                 }}
@@ -1662,7 +1673,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
       }
 
       return (
-        <div style={{ border: '1px solid silver', padding: 2 }}>
+        <div className={styles.foreignKeyFieldModifyMarkupWrapper}>
           {relatedFields.names.length === 0 ? (
             <em style={{color: gray.gray9}}>
               No {props.foreignKeyFieldProps.singularDisplayName.toLowerCase()} fields specified
@@ -1785,8 +1796,10 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                 </div>
               ) : null}
 
-              <button onClick={() => setItemSelectionMode('none')}>Hide</button>
-              <button onClick={() => setItemSelectionMode('create')}>Create New...</button>
+              <div className={styles.foreignKeyFieldModifyMarkupActionBar}>
+                <Button size="small" onClick={() => setItemSelectionMode('none')}>Hide</Button>
+                <Button size="small" onClick={() => setItemSelectionMode('create')}>Create New...</Button>
+              </div>
             </Fragment>
           ) : null}
           {itemSelectionMode === 'create' ? (
@@ -1822,52 +1835,54 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                 );
               })}
 
-              <button onClick={() => setItemSelectionMode('none')}>Cancel</button>
-              <button onClick={async () => {
-                // Aggregate all the state updates to form the update body
-                let relatedItem: Partial<J> = {};
-                for (const field of relatedCreationFields.metadata) {
-                  let state = relatedCreationFieldStates.get(field.name);
-                  if (typeof state === 'undefined') {
-                    continue;
+              <div className={styles.foreignKeyFieldModifyMarkupActionBar}>
+                <Button size="small" onClick={() => setItemSelectionMode('none')}>Cancel</Button>
+                <Button size="small" onClick={async () => {
+                  // Aggregate all the state updates to form the update body
+                  let relatedItem: Partial<J> = {};
+                  for (const field of relatedCreationFields.metadata) {
+                    let state = relatedCreationFieldStates.get(field.name);
+                    if (typeof state === 'undefined') {
+                      continue;
+                    }
+
+                    relatedItem = field.serializeStateToItem(relatedItem, state);
                   }
 
-                  relatedItem = field.serializeStateToItem(relatedItem, state);
-                }
+                  // FIXME: add abort controller
+                  let newlyCreatedRelatedItem: J;
+                  try {
+                    newlyCreatedRelatedItem = await props.foreignKeyFieldProps.createRelatedItem(props.item, relatedItem);
+                  } catch (error: FixMe) {
+                    // if (error.name === 'AbortError') {
+                    //   // The effect unmounted, and the request was terminated
+                    //   return;
+                    // }
 
-                // FIXME: add abort controller
-                let newlyCreatedRelatedItem: J;
-                try {
-                  newlyCreatedRelatedItem = await props.foreignKeyFieldProps.createRelatedItem(props.item, relatedItem);
-                } catch (error: FixMe) {
-                  // if (error.name === 'AbortError') {
-                  //   // The effect unmounted, and the request was terminated
-                  //   return;
-                  // }
+                    alert(`Error creating ${props.foreignKeyFieldProps.singularDisplayName}: ${error}`);
+                    return;
+                  }
 
-                  alert(`Error creating ${props.foreignKeyFieldProps.singularDisplayName}: ${error}`);
-                  return;
-                }
+                  setRelatedData({
+                    ...relatedData,
+                    data: [...relatedData.data, newlyCreatedRelatedItem],
+                  });
+                  if (props.mode === 'detail') {
+                    props.onChangeRelatedItem(newlyCreatedRelatedItem);
+                  } else {
+                    props.onChangeRelatedItems([...props.relatedItems, newlyCreatedRelatedItem]);
+                  }
 
-                setRelatedData({
-                  ...relatedData,
-                  data: [...relatedData.data, newlyCreatedRelatedItem],
-                });
-                if (props.mode === 'detail') {
-                  props.onChangeRelatedItem(newlyCreatedRelatedItem);
-                } else {
-                  props.onChangeRelatedItems([...props.relatedItems, newlyCreatedRelatedItem]);
-                }
-
-                setItemSelectionMode('none');
-              }}>Create</button>
+                  setItemSelectionMode('none');
+                }}>Create</Button>
+              </div>
             </Fragment>
           ) : null}
           {itemSelectionMode === 'none' ? (
-            <Fragment>
-              <button onClick={() => setItemSelectionMode('select')}>Show More...</button>
-              <button onClick={() => setItemSelectionMode('create')}>Create New...</button>
-            </Fragment>
+            <div className={styles.foreignKeyFieldModifyMarkupActionBar}>
+              <Button size="small" onClick={() => setItemSelectionMode('select')}>Show More...</Button>
+              <Button size="small" onClick={() => setItemSelectionMode('create')}>Create New...</Button>
+            </div>
           ) : null}
 
           {/* The children should not render anything, this should purely be Fields for the related items */}
@@ -1911,16 +1926,19 @@ export const ListTableItem = <I = BaseItem, F = BaseFieldName>({
             (e.nativeEvent as FixMe).shiftKey
           )}
         >
-          <input
-            style={{cursor: 'pointer'}}
-            type={checkType}
-            checked={checked}
-            onClick={e => e.stopPropagation()}
-            onChange={e => onChangeChecked(
-              e.currentTarget.checked,
-              (e.nativeEvent as FixMe).shiftKey
+          <div onClick={e => e.stopPropagation()}>
+            {checkType === "checkbox" ? (
+              <Checkbox
+                checked={checked}
+                onChange={onChangeChecked}
+              />
+            ) : (
+              <Radiobutton
+                checked={checked}
+                onChange={onChangeChecked}
+              />
             )}
-          />
+          </div>
         </td>
       ) : null}
       {visibleFieldNames.map(name => {
@@ -1997,7 +2015,7 @@ export const ListActionBar = <I = BaseItem>({
     <Fragment>
       <div className={styles.listActionBar}>
         <span>{numberOfCheckedItems} {numberOfCheckedItems === 1 ? listDataContextData.singularDisplayName : listDataContextData.pluralDisplayName}</span>
-        <button onClick={() => listDataContextData.onChangeCheckedItemKeys([])}>Deselect</button>
+        <Button onClick={() => listDataContextData.onChangeCheckedItemKeys([])}>Deselect</Button>
         |
         {listDataContextData.checkedItemKeys === ALL_ITEMS ? (
           children(ALL_ITEMS)
@@ -2188,10 +2206,10 @@ export const ListFilterBar = <I = BaseItem>({
 
   const filterPresetButtons = Object.entries(filterPresets).map(([name, filterPresetCallback]) => {
     return (
-      <button
+      <Button
         key={name}
         onClick={() => listDataContextData.onChangeFilters(filterPresetCallback(listDataContextData.filters))}
-      >{name}</button>
+      >{name}</Button>
     );
   });
 
@@ -2555,25 +2573,24 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
                     }
                   }}
                 >
-                  <input
-                    type="checkbox"
-                    style={{cursor: 'pointer'}}
-                    disabled={!childrenContainsItems}
-                    checked={allChecked}
-                    onClick={e => e.stopPropagation()}
-                    onChange={e => {
-                      if (listDataContextData.listData.status !== 'COMPLETE') {
-                        return;
-                      }
+                  <div onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                      disabled={!childrenContainsItems}
+                      checked={allChecked}
+                      onChange={checked => {
+                        if (listDataContextData.listData.status !== 'COMPLETE') {
+                          return;
+                        }
 
-                      if (e.currentTarget.checked) {
-                        const keys = listDataContextData.listData.data.map(item => listDataContextData.keyGenerator(item));
-                        listDataContextData.onChangeCheckedItemKeys(keys);
-                      } else {
-                        listDataContextData.onChangeCheckedItemKeys([]);
-                      }
-                    }}
-                  />
+                        if (checked) {
+                          const keys = listDataContextData.listData.data.map(item => listDataContextData.keyGenerator(item));
+                          listDataContextData.onChangeCheckedItemKeys(keys);
+                        } else {
+                          listDataContextData.onChangeCheckedItemKeys([]);
+                        }
+                      }}
+                    />
+                  </div>
                 </th>
               ) : null}
               {visibleFieldNames.map(name => {
@@ -2839,58 +2856,54 @@ export const ListColumnSetSelector = <I = BaseItem, F = BaseFieldName>(props: {
   columnSet: 'all' | string | Array<F>;
   onChangeColumnSet: (newColumnSet: 'all' | string | Array<F>) => void;
 }) => {
-  const [open, setOpen] = useState(false);
-
-  // const 
-
   return (
-    <Fragment>
-      <button style={{width: 24, height: 24}} onClick={() => setOpen(!open)}>&#9707;</button>
-      {open ? createPortal(
-        (
-          <div className={styles.listColumnSetModalBackdrop}>
-            <div className={styles.listColumnSetModal}>
-              <div className={styles.listColumnSetModalHeader}>
-                <span>Column Sets</span>
-                <button style={{width: 24, height: 24}} onClick={() => setOpen(false)}>x</button>
-              </div>
-
-              <h3>All columns</h3>
-              <ul>
-                <li
-                  onClick={() => props.onChangeColumnSet('all')}
-                  style={{cursor: 'pointer', backgroundColor: props.columnSet === 'all' ? 'red' : 'transparent'}}
-                >
-                  All
-                </li>
-              </ul>
-              <br />
-
-              <h3>Server defined column sets</h3>
-              <ul>
-                {Object.entries(props.columnSets).map(([name, columns]) => {
-                  return (
-                    <li
-                      key={name}
-                      onClick={() => props.onChangeColumnSet(name)}
-                      style={{cursor: 'pointer', backgroundColor: props.columnSet === name ? 'red' : 'transparent'}}
-                    >
-                      {name}<br/>
-                      <small>{columns.map(name => props.fields.metadata.find(f => f.name === name)?.singularDisplayName || name).join(', ')}</small>
-                    </li>
-                  );
-                })}
-              </ul>
-              <br />
-
-              <h3>Custom Columns</h3>
-              TODO
-            </div>
+    <Popover
+      target={toggle => (
+        <IconButton onClick={toggle}>&#9707;</IconButton>
+      )}
+    >
+      {close => (
+        <div className={styles.listColumnSetPopup}>
+          <div className={styles.listColumnSetPopupHeader}>
+            <span>Column Sets</span>
+            <IconButton size="small" onClick={close}>&times;</IconButton>
           </div>
-        ),
-        document.body
-      ) : null}
-    </Fragment>
+
+          <div className={styles.listColumnSetBody}>
+            <h3>All columns</h3>
+            <ul>
+              <li
+                onClick={() => props.onChangeColumnSet('all')}
+                style={{cursor: 'pointer', backgroundColor: props.columnSet === 'all' ? 'red' : 'transparent'}}
+              >
+                All
+              </li>
+            </ul>
+            <br />
+
+            <h3>Server defined column sets</h3>
+            <ul>
+              {Object.entries(props.columnSets).map(([name, columns]) => {
+                return (
+                  <li
+                    key={name}
+                    onClick={() => props.onChangeColumnSet(name)}
+                    style={{cursor: 'pointer', backgroundColor: props.columnSet === name ? 'red' : 'transparent'}}
+                  >
+                    {name}<br/>
+                    <small>{columns.map(name => props.fields.metadata.find(f => f.name === name)?.singularDisplayName || name).join(', ')}</small>
+                  </li>
+                );
+              })}
+            </ul>
+            <br />
+
+            <h3>Custom Columns</h3>
+            TODO
+          </div>
+        </div>
+      )}
+    </Popover>
   );
 };
 
@@ -3109,8 +3122,9 @@ export const DetailFieldItem = <I = BaseItem, F = BaseFieldName, S = BaseFieldSt
 
   if (field.modifyMarkup) {
     return (
-      <div>
-        <strong>{field.singularDisplayName}</strong>: {field.modifyMarkup(
+      <div style={{ display: 'flex', flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+        <strong style={{ lineHeight: '32px' }}>{field.singularDisplayName}:</strong>
+        {field.modifyMarkup(
           state,
           (s: S, blurAfterStateSet?: boolean) => {
             setState(s);
@@ -3270,7 +3284,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
           }
 
           return (
-            <div key={field.name as string}>
+            <Fragment key={field.name as string}>
               {renderFieldItem({
                 item: null,
                 field,
@@ -3286,7 +3300,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                   });
                 },
               })}
-            </div>
+            </Fragment>
           );
         })}
       </Fragment>
@@ -3330,7 +3344,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                     return null;
                   }
                   return (
-                    <div key={field.name as string}>
+                    <Fragment key={field.name as string}>
                       {renderFieldItem({
                         item,
                         field,
@@ -3346,7 +3360,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                           });
                         },
                       })}
-                    </div>
+                    </Fragment>
                   );
                 case "ERROR":
                   return (
@@ -3386,7 +3400,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
 
       {detailDataContextData.isCreating ? (
         <div className={styles.detailActions}>
-          <button
+          <Button
             disabled={!detailDataContextData.createItem}
             onClick={async () => {
               if (!detailDataContextData.createItem) {
@@ -3443,11 +3457,11 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
               // After creating, navigate to the newly created item's detail page
               imperativelyNavigateToNavigatable(detailDataContextData.detailLinkGenerator(item as I));
             }}
-          >Create</button>
+          >Create</Button>
         </div>
       ) : (
         <div className={styles.detailActions}>
-          <button
+          <Button
             disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.updateItem}
             onClick={async () => {
               if (!detailDataContextData.updateItem) {
@@ -3511,8 +3525,8 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
               // After updating, go back to the list page
               imperativelyNavigateToNavigatable(detailDataContextData.listLink);
             }}
-          >Update</button>
-          <button
+          >Update</Button>
+          <Button
             disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.deleteItem}
             onClick={async () => {
               if (!detailDataContextData.deleteItem) {
@@ -3542,7 +3556,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
               // After deleting, go back to the list page
               imperativelyNavigateToNavigatable(detailDataContextData.listLink);
             }}
-          >Delete</button>
+          >Delete</Button>
         </div>
       )}
     </FieldsProvider>

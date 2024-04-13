@@ -12,6 +12,7 @@ import {
   AdminContextProvider,
   StateCache,
   MultiLineInputField,
+  ChoiceField,
 } from '@/admin';
 
 export function BattleDataModel() {
@@ -579,14 +580,23 @@ export function PostDataModel() {
         }}
         updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as Comment)}
       />
-      <InputField<Post, 'title'>
+      {/* <InputField<Post, 'title'> */}
+      {/*   name="title" */}
+      {/*   singularDisplayName="Title" */}
+      {/*   pluralDisplayName="Titles" */}
+      {/*   // sortable */}
+      {/*   // getInitialStateFromItem={post => post.title} */}
+      {/*   // getInitialStateWhenCreating={() => ''} */}
+      {/*   // serializeStateToItem={(initialItem, state) => ({ ...initialItem, title: state })} */}
+      {/* /> */}
+      <ChoiceField<Post, 'title'>
         name="title"
         singularDisplayName="Title"
         pluralDisplayName="Titles"
-        // sortable
-        // getInitialStateFromItem={post => post.title}
-        // getInitialStateWhenCreating={() => ''}
-        // serializeStateToItem={(initialItem, state) => ({ ...initialItem, title: state })}
+        choices={[
+          {id: 'foo', label: 'foo'},
+          {id: 'bar', label: 'bar'},
+        ]}
       />
       <MultiLineInputField<Post, 'body'>
         name="body"
