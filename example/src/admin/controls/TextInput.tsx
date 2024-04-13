@@ -36,7 +36,7 @@ const TextInputWithRef: React.FunctionComponent<TextInputProps & {
       className={size === 'regular' ? styles.inputRegular : styles.inputSmall}
       style={{
         borderRadius: invalid ? 2 : undefined,
-        outline: invalid ? '0px solid transparent' : '1px solid transparent',
+        outline: invalid ? '0px solid transparent' : undefined,
         border: invalid ? `2px solid ${red.red9}` : undefined,
       }}
       placeholder={placeholder}
