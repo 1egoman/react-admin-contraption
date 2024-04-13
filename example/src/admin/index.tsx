@@ -2042,9 +2042,9 @@ export const ListActionBar = <I = BaseItem>({
       </div>
 
       {/* If enabled, give the user the ability to be able to select all pages of data that match the query */}
-      {canSelectAllAcrossPages && (areAllInMemoryItemsChecked || listDataContextData.checkedItemKeys === ALL_ITEMS) ? (
+      {canSelectAllAcrossPages && areAllInMemoryItemsChecked ? (
         <Fragment>
-          {areAllInMemoryItemsChecked ? (
+          {listDataContextData.checkedItemKeys !== ALL_ITEMS ? (
             <div
               className={styles.listActionBarSelectAllBanner}
               onClick={() => listDataContextData.onChangeCheckedItemKeys(ALL_ITEMS)}
@@ -2060,8 +2060,7 @@ export const ListActionBar = <I = BaseItem>({
                 that match this query...
               </span>
             </div>
-          ) : null}
-          {listDataContextData.checkedItemKeys === ALL_ITEMS ? (
+          ) : (
             <div
               className={styles.listActionBarSelectAllBanner}
               onClick={() => listDataContextData.onChangeCheckedItemKeys(ALL_ITEMS)}
@@ -2072,7 +2071,7 @@ export const ListActionBar = <I = BaseItem>({
               ) : listDataContextData.pluralDisplayName}{' '}
               that match this query...
             </div>
-          ) : null}
+          )}
         </Fragment>
       ) : null}
     </Fragment>
