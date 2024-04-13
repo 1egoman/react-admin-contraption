@@ -4,21 +4,8 @@ import {
   ListTable,
   ListActionBar,
   ListFilterBar,
-  FilterDefinition,
   StringFilterDefinition,
 } from '@/admin';
-
-// import { BattleParticipantFields } from '../battle-participants';
-
-const PRISMA_BASE_OPERATIONS = [
-  'equals',
-  'lt',
-  'gt',
-  'gte',
-  'contains',
-  'startsWith',
-  'endsWith',
-];
 
 export default function Page() {
   return (
