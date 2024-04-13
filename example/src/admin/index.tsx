@@ -2131,6 +2131,46 @@ export const FilterDefinition = <S extends JSONValue = JSONValue>(props: FilterM
   return null;
 };
 
+type StringFilterDefinitionProps = Partial<FilterMetadata<string>> & {
+  name: FilterMetadata<string>['name'];
+};
+
+export const StringFilterDefinition = (props: StringFilterDefinitionProps) => {
+  const getInitialState = useMemo(() => props.getInitialState || (() => ""), [props.getInitialState]);
+  const onIsComplete = useMemo(() => props.onIsComplete || ((state: string) => state.length > 0), [props.onIsComplete]);
+  const onIsValid = useMemo(() => props.onIsValid || ((state: string) => state.length > 0), [props.onIsValid]);
+  const serialize = useMemo(() => props.serialize || ((state: string) => state), [props.serialize]);
+  const deserialize = useMemo(() => props.deserialize || ((state: string) => state), [props.deserialize]);
+
+  const children = useMemo(() => props.children || ((
+    state: string,
+    setState: (newState: string) => void,
+    filter: Filter<string>,
+    onBlur: () => void
+  ) => (
+    <TextInput
+      size="small"
+      value={state}
+      onChange={setState}
+      onBlur={onBlur}
+      invalid={!filter.isValid}
+    />
+  )), [props.children]);
+
+  return (
+    <FilterDefinition<string>
+      name={props.name}
+      getInitialState={getInitialState}
+      onIsComplete={onIsComplete}
+      onIsValid={onIsValid}
+      serialize={serialize}
+      deserialize={deserialize}
+    >
+      {children}
+    </FilterDefinition>
+  );
+};
+
 
 
 
@@ -2215,159 +2255,190 @@ export const ListFilterBar = <I = BaseItem>({
 
 
   return (
-    <div className={styles.listFilterBar}>
-      <div className={styles.listFilterBarFilters}>
-        {listDataContextData.filters.length > 0 ? (
-          <Fragment>
-            {listDataContextData.filters.map((filter, filterIndex) => {
-              const getPeerOptionsForFilterPath = (path: Array<string>) => {
-                let pointer: typeof filterMetadataNameHierarchy | true = filterMetadataNameHierarchy;
-                let lastPointer = pointer;
-
-                for (const entry of path) {
-                  if (typeof pointer === 'undefined') {
-                    return [];
-                  }
-                  if (pointer === true) {
-                    return [];
-                  }
-                  lastPointer = pointer;
-                  pointer = pointer.get(entry);
-                }
-
-                return Array.from(lastPointer.keys());
-              };
-
-              // Attempt to find a filter definition that matches this new name selection
-              let metadata: FilterMetadata | null = null;
-              for (const item of filterMetadata) {
-                const nameMatches = filter.name.every((e, i) => e === item.name[i]);
-                if (nameMatches) {
-                  metadata = item;
-                  break;
-                }
-              }
-
-              return (
-                <div key={filterIndex} style={{display: 'flex', gap: 4}}>
-                  {filter.name.map((entry, entryIndex) => (
-                    <select
-                      value={entry}
-                      key={entryIndex}
-                      onChange={e => {
-                        // Given the adjustment in filter name, figure out what the new filter name
-                        // would be
-                        const newFilterNamePrefix = filter.name.slice(0, entryIndex);
-                        newFilterNamePrefix[entryIndex] = e.currentTarget.value;
-
-                        // Attempt to find a filter definition that matches this new name selection
-                        let newFilterMetadata: FilterMetadata | null = null;
-                        for (const item of filterMetadata) {
-                          const namePrefixMatches = newFilterNamePrefix.every((e, i) => e === item.name[i]);
-                          if (namePrefixMatches) {
-                            newFilterMetadata = item;
-                            break;
-                          }
-                        }
-                        if (!newFilterMetadata) {
-                          return;
-                        }
-                        const newFilterMetadataNonNull = newFilterMetadata;
-
-                        // Update the given filter to now be of type `newFilterMetadata`
-                        listDataContextData.onChangeFilters(
-                          listDataContextData.filters.map((f, i) => {
-                            if (i === filterIndex) {
-                              const initialState = newFilterMetadataNonNull.getInitialState();
-                              const isValid = newFilterMetadataNonNull.onIsValid(initialState);
-                              return {
-                                name: newFilterMetadataNonNull.name,
-                                isValid,
-                                isComplete: isValid && newFilterMetadataNonNull.onIsComplete(initialState),
-                                workingState: initialState,
-                                state: initialState,
-                              };
-                            } else {
-                              return f;
-                            }
-                          }),
-                        );
-                      }}
-                    >
-                      <option value={FILTER_NOT_SET_YET} disabled>Pick filter...</option>
-                      {getPeerOptionsForFilterPath(filter.name.slice(0, entryIndex+1)).map(choice => (
-                        <option value={choice} key={choice}>{choice}</option>
-                      ))}
-                    </select>
-                  ))}
-                  {metadata ? metadata.children(
-                    filter.workingState,
-                    // Call this function to change the state
-                    (newState) => {
-                      listDataContextData.onChangeFilters(
-                        listDataContextData.filters.map((f, i) => {
-                          if (i === filterIndex) {
-                            return { ...f, workingState: newState };
-                          } else {
-                            return f;
-                          }
-                        }),
-                      );
-                    },
-                    filter,
-                    // Call this function to indicate that editing is complete
-                    () => {
-                      listDataContextData.onChangeFilters(
-                        listDataContextData.filters.map((f, i) => {
-                          if (i === filterIndex) {
-                            const isValid =  metadata.onIsValid(f.workingState);
-                            return {
-                              ...f,
-                              state: f.workingState,
-                              isValid,
-                              isComplete: isValid && metadata.onIsComplete(f.workingState),
-                            };
-                          } else {
-                            return f;
-                          }
-                        }),
-                      );
-                    },
-                  ) : null}
-                  <button onClick={() => {
-                    listDataContextData.onChangeFilters(
-                      listDataContextData.filters.filter((_f, i) => i !== filterIndex)
-                    );
-                  }}>&times;</button>
-                </div>
-              );
-            })}
-          </Fragment>
-        ) : null}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={() => {
-              listDataContextData.onChangeFilters([
-                ...listDataContextData.filters,
-                {
-                  name: [FILTER_NOT_SET_YET],
-                  workingState: FILTER_NOT_SET_YET,
-                  state: FILTER_NOT_SET_YET,
-                  isValid: false,
-                  isComplete: false,
-                },
-              ])
-            }}
-          >Add filter</button>
-          |
-          {filterPresetButtons.length === 0 ? <small style={{color: 'silver', marginTop: 3}}>No presets</small> : filterPresetButtons}
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+    <div className={styles.listFilterBar} style={{ overflow: 'visible' }}>
+      <span className={styles.listFilterBarTitle}>
+        {dataContext.pluralDisplayName.slice(0, 1).toUpperCase()}
+        {dataContext.pluralDisplayName.slice(1)}
+      </span>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center', overflow: 'visible' }}>
         {addable && listDataContextData.createLink ? (
           <NavigationButton navigatable={listDataContextData.createLink}>
             &#65291; Add {listDataContextData.singularDisplayName}
           </NavigationButton>
+        ) : null}
+
+        {filterMetadata.length > 0 ? (
+          <Popover
+            target={toggle => (
+              <Button onClick={toggle}>
+                {listDataContextData.filters.length > 0 ? `Filters (${listDataContextData.filters.length})` : 'Filters'}
+              </Button>
+            )}
+          >
+            {close => (
+              <div className={styles.filterPopup}>
+                <div className={styles.filterPopupHeader}>
+                  <span>Filters</span>
+                  <IconButton size="small" onClick={close}>&times;</IconButton>
+                </div>
+
+                <div className={styles.filterPopupBody}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 200 }}>
+                    {listDataContextData.filters.map((filter, filterIndex) => {
+                      const getPeerOptionsForFilterPath = (path: Array<string>) => {
+                        let pointer: typeof filterMetadataNameHierarchy | true = filterMetadataNameHierarchy;
+                        let lastPointer = pointer;
+
+                        for (const entry of path) {
+                          if (typeof pointer === 'undefined') {
+                            return [];
+                          }
+                          if (pointer === true) {
+                            return [];
+                          }
+                          lastPointer = pointer;
+                          pointer = pointer.get(entry);
+                        }
+
+                        return Array.from(lastPointer.keys());
+                      };
+
+                      // Attempt to find a filter definition that matches this new name selection
+                      let metadata: FilterMetadata | null = null;
+                      for (const item of filterMetadata) {
+                        const nameMatches = filter.name.every((e, i) => e === item.name[i]);
+                        if (nameMatches) {
+                          metadata = item;
+                          break;
+                        }
+                      }
+
+                      return (
+                        <div key={filterIndex} style={{ display: 'flex', justifyContent: 'space-between', gap: 4, alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 14, width: 48 }}>
+                              {filterIndex === 0 ? 'where' : 'and'}
+                            </span>
+                            {filter.name.map((entry, entryIndex) => (
+                              <Select
+                                size="small"
+                                value={entry}
+                                key={entryIndex}
+                                onChange={newValue => {
+                                  // Given the adjustment in filter name, figure out what the new filter name
+                                  // would be
+                                  const newFilterNamePrefix = filter.name.slice(0, entryIndex);
+                                  newFilterNamePrefix[entryIndex] = newValue;
+
+                                  // Attempt to find a filter definition that matches this new name selection
+                                  let newFilterMetadata: FilterMetadata | null = null;
+                                  for (const item of filterMetadata) {
+                                    const namePrefixMatches = newFilterNamePrefix.every((e, i) => e === item.name[i]);
+                                    if (namePrefixMatches) {
+                                      newFilterMetadata = item;
+                                      break;
+                                    }
+                                  }
+                                  if (!newFilterMetadata) {
+                                    return;
+                                  }
+                                  const newFilterMetadataNonNull = newFilterMetadata;
+
+                                  // Update the given filter to now be of type `newFilterMetadata`
+                                  listDataContextData.onChangeFilters(
+                                    listDataContextData.filters.map((f, i) => {
+                                      if (i === filterIndex) {
+                                        const initialState = newFilterMetadataNonNull.getInitialState();
+                                        const isValid = newFilterMetadataNonNull.onIsValid(initialState);
+                                        return {
+                                          name: newFilterMetadataNonNull.name,
+                                          isValid,
+                                          isComplete: isValid && newFilterMetadataNonNull.onIsComplete(initialState),
+                                          workingState: initialState,
+                                          state: initialState,
+                                        };
+                                      } else {
+                                        return f;
+                                      }
+                                    }),
+                                  );
+                                }}
+                                options={[
+                                  { value: FILTER_NOT_SET_YET, disabled: true, label: "Pick filter..." },
+                                  ...getPeerOptionsForFilterPath(filter.name.slice(0, entryIndex+1)).map(choice => ({
+                                    value: choice,
+                                    label: choice,
+                                  })),
+                                ]}
+                              />
+                            ))}
+                            {metadata ? metadata.children(
+                              filter.workingState,
+                              // Call this function to change the state
+                              (newState) => {
+                                listDataContextData.onChangeFilters(
+                                  listDataContextData.filters.map((f, i) => {
+                                    if (i === filterIndex) {
+                                      return { ...f, workingState: newState };
+                                    } else {
+                                      return f;
+                                    }
+                                  }),
+                                );
+                              },
+                              filter,
+                              // Call this function to indicate that editing is complete
+                              () => {
+                                listDataContextData.onChangeFilters(
+                                  listDataContextData.filters.map((f, i) => {
+                                    if (i === filterIndex) {
+                                      const isValid =  metadata.onIsValid(f.workingState);
+                                      return {
+                                        ...f,
+                                        state: f.workingState,
+                                        isValid,
+                                        isComplete: isValid && metadata.onIsComplete(f.workingState),
+                                      };
+                                    } else {
+                                      return f;
+                                    }
+                                  }),
+                                );
+                              },
+                            ) : null}
+                          </div>
+                          <IconButton size="small" onClick={() => {
+                            listDataContextData.onChangeFilters(
+                              listDataContextData.filters.filter((_f, i) => i !== filterIndex)
+                            );
+                          }}>&times;</IconButton>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        listDataContextData.onChangeFilters([
+                          ...listDataContextData.filters,
+                          {
+                            name: [FILTER_NOT_SET_YET],
+                            workingState: FILTER_NOT_SET_YET,
+                            state: FILTER_NOT_SET_YET,
+                            isValid: false,
+                            isComplete: false,
+                          },
+                        ])
+                      }}
+                    >Add filter</Button>
+                    |
+                    {filterPresetButtons.length === 0 ? <small style={{color: 'silver', marginTop: 3}}>No presets</small> : filterPresetButtons}
+                  </div>
+                </div>
+              </div>
+            )}
+          </Popover>
         ) : null}
 
         {searchable ? (
