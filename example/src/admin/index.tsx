@@ -3294,6 +3294,8 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
     };
   }, []);
 
+  const [updateKeepEditing, setUpdateKeepEditing] = useState(false);
+
   const [fields, setFields] = useState<FieldCollection<FieldMetadata<I, F>>>(EMPTY_FIELD_COLLECTION);
 
   // Store each state for each field centrally
@@ -3553,71 +3555,83 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
         </div>
       ) : (
         <div className={styles.detailActions}>
-          <Button
-            disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.updateItem}
-            onClick={async () => {
-              if (!detailDataContextData.updateItem) {
-                return;
-              }
-              if (!detailDataContextData.itemKey) {
-                return;
-              }
-              if (fieldStates.status !== 'COMPLETE') {
-                return;
-              }
-              if (detailDataContextData.detailData.status !== 'COMPLETE') {
-                return;
-              }
-
-              const abortController = new AbortController();
-              addInFlightAbortController(abortController);
-
-              // Aggregate all the state updates to form the update body
-              let item: Partial<I> = detailDataContextData.detailData.data;
-              for (const field of fields.metadata) {
-                let state = fieldStates.data.get(field.name);
-                if (typeof state === 'undefined') {
-                  continue;
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <Button
+              disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.updateItem}
+              onClick={async () => {
+                if (!detailDataContextData.updateItem) {
+                  return;
                 }
-
-                if (field.updateSideEffect) {
-                  try {
-                    state = await field.updateSideEffect(item, state, abortController.signal);
-                  } catch (error: FixMe) {
-                    if (error.name === 'AbortError') {
-                      // The component unmounted, and the request was terminated
-                      return;
-                    }
-
-                    console.error(error);
-                    alert(`Error updating ${detailDataContextData.singularDisplayName} related item ${field.singularDisplayName} on key ${detailDataContextData.itemKey}: ${error}`);
-                    return;
-                  }
+                if (!detailDataContextData.itemKey) {
+                  return;
                 }
-
-                item = field.serializeStateToItem(item, state);
-              }
-
-              try {
-                await detailDataContextData.updateItem(detailDataContextData.itemKey, item, abortController.signal);
-              } catch (error: FixMe) {
-                if (error.name === 'AbortError') {
-                  // The component unmounted, and the request was terminated
+                if (fieldStates.status !== 'COMPLETE') {
+                  return;
+                }
+                if (detailDataContextData.detailData.status !== 'COMPLETE') {
                   return;
                 }
 
-                console.error(error);
-                alert(`Error updating ${detailDataContextData.singularDisplayName} ${detailDataContextData.itemKey}: ${error}`);
-                return;
-              }
+                const abortController = new AbortController();
+                addInFlightAbortController(abortController);
 
-              removeInFlightAbortController(abortController);
-              alert('Update successful!');
+                // Aggregate all the state updates to form the update body
+                let item: Partial<I> = detailDataContextData.detailData.data;
+                for (const field of fields.metadata) {
+                  let state = fieldStates.data.get(field.name);
+                  if (typeof state === 'undefined') {
+                    continue;
+                  }
 
-              // After updating, go back to the list page
-              imperativelyNavigateToNavigatable(detailDataContextData.listLink);
-            }}
-          >Update</Button>
+                  if (field.updateSideEffect) {
+                    try {
+                      state = await field.updateSideEffect(item, state, abortController.signal);
+                    } catch (error: FixMe) {
+                      if (error.name === 'AbortError') {
+                        // The component unmounted, and the request was terminated
+                        return;
+                      }
+
+                      console.error(error);
+                      alert(`Error updating ${detailDataContextData.singularDisplayName} related item ${field.singularDisplayName} on key ${detailDataContextData.itemKey}: ${error}`);
+                      return;
+                    }
+                  }
+
+                  item = field.serializeStateToItem(item, state);
+                }
+
+                try {
+                  await detailDataContextData.updateItem(detailDataContextData.itemKey, item, abortController.signal);
+                } catch (error: FixMe) {
+                  if (error.name === 'AbortError') {
+                    // The component unmounted, and the request was terminated
+                    return;
+                  }
+
+                  console.error(error);
+                  alert(`Error updating ${detailDataContextData.singularDisplayName} ${detailDataContextData.itemKey}: ${error}`);
+                  return;
+                }
+
+                removeInFlightAbortController(abortController);
+                alert('Update successful!');
+
+                // After updating, go back to the list page
+                if (!updateKeepEditing) {
+                  imperativelyNavigateToNavigatable(detailDataContextData.listLink);
+                }
+              }}
+            >Update</Button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Checkbox
+                id="update-keep-editing"
+                checked={updateKeepEditing}
+                onChange={setUpdateKeepEditing}
+              />
+              <label htmlFor="update-keep-editing" style={{ cursor: 'pointer', userSelect: 'none' }}>Keep editing</label>
+            </div>
+          </div>
           <Button
             disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.deleteItem}
             onClick={async () => {
