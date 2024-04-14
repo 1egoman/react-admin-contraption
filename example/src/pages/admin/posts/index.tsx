@@ -25,7 +25,7 @@ export default function Page() {
           ))}
         </ListFilterBar>
         <ListActionBar<Post>
-          // canSelectAllAcrossPages
+          canSelectAllAcrossPages
         >
           {checkedItems => (
             <div style={{ display: 'flex', gap: 8}}>

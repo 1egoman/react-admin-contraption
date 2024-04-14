@@ -136,15 +136,13 @@ export function BattleDataModel() {
       fetchPageOfData={fetchPageOfData}
       fetchItem={fetchItem}
       // createItem={createItem}
-      createItem={null}
       // updateItem={updateItem}
-      updateItem={null}
       // deleteItem={deleteItem}
-      deleteItem={null}
 
       keyGenerator={battle => battle.id}
       detailLinkGenerator={battle => ({ type: 'href' as const, href: `/admin/battles/${battle.id}` })}
       createLink={{ type: 'href', href: `/admin/battles/new` }}
+      listLink={{ type: 'href', href: `/admin/battles` }}
     >
       <Field<BattleWithParticipants, 'id', string>
         name="id"
@@ -216,8 +214,8 @@ export function BattleDataModel() {
       {/*   createRelatedItem={(_item, relatedItem) => Promise.resolve({id: 'aaa', ...relatedItem} as BattleBeat)} */}
       {/*   updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as BattleBeat)} */}
       {/* /> */}
-      <MultiForeignKeyField<BattleWithParticipants, 'beats', BattleBeat>
-        name="beats"
+      <MultiForeignKeyField<BattleWithParticipants, 'beatId', BattleBeat>
+        name="beatId"
         singularDisplayName="Beat"
         pluralDisplayName="Beats"
         columnWidth="165px"
@@ -240,6 +238,7 @@ export function BattleDataModel() {
         getInitialStateFromItem={battle => battle.participants}
         injectAsyncDataIntoInitialStateOnDetailPage={async state => state}
         serializeStateToItem={(initialItem) => initialItem}
+        csvExportData={state => state.map(p => p.id).join(', ')}
         displayMarkup={state => <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
           {state.map((participant) => (
             <div key={participant.id} style={{display: 'flex', alignItems: 'center', gap: 4}}>
@@ -484,6 +483,7 @@ export function PostDataModel() {
         name="id"
         singularDisplayName="Id"
         pluralDisplayName="Ids"
+        csvExportColumnName="id"
         columnWidth={100}
         getInitialStateFromItem={post => post.id}
         injectAsyncDataIntoInitialStateOnDetailPage={async state => state}
@@ -505,6 +505,7 @@ export function PostDataModel() {
         singularDisplayName="User"
         // nullable
         pluralDisplayName="Users"
+        csvExportColumnName="user_id"
         getInitialStateFromItem={post => ({ id: post.userId, name: 'OLD', username: 'OLD', email: 'OLD', phone: 'OLD', website: 'OLD' }) as User}
         injectAsyncDataIntoInitialStateOnDetailPage={async (_state, item, signal) => {
           const response = await fetch(`http://localhost:3003/users/${item.userId}`, { signal });
@@ -539,6 +540,7 @@ export function PostDataModel() {
         name="commentIds"
         singularDisplayName="Comments"
         pluralDisplayName="Comments"
+        csvExportColumnName="comments m2m"
         getInitialStateFromItem={post => post.commentIds.map(cid => ({ id: cid, body: "OLD" }))}
         injectAsyncDataIntoInitialStateOnDetailPage={async (_state, item, signal) => {
           const response = await fetch(`http://localhost:3003/comments`, { signal });
@@ -594,6 +596,7 @@ export function PostDataModel() {
         name="title"
         singularDisplayName="Title"
         pluralDisplayName="Titles"
+        csvExportColumnName="title_value"
         getInitialStateWhenCreating={() => 'unset'}
         choices={[
           {id: 'unset', disabled: true, label: 'unset'},
@@ -601,10 +604,12 @@ export function PostDataModel() {
           {id: 'bar', label: 'bar'},
         ]}
       />
+      {/* <InputField<Post, 'body'> */}
       <MultiLineInputField<Post, 'body'>
         name="body"
         singularDisplayName="Body"
         pluralDisplayName="Bodies"
+        csvExportColumnName="body_text"
         // sortable
         getInitialStateFromItem={post => post.body}
         getInitialStateWhenCreating={() => ''}
@@ -964,7 +969,7 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
   return (
     <AdminContextProvider stateCache={stateCache}>
       <DataModels>
-        {/* <BattleDataModel /> */}
+        <BattleDataModel />
         {/* <BattleBeatDataModel /> */}
 
         <PostDataModel />
