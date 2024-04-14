@@ -75,7 +75,13 @@ export const DataModels: React.FunctionComponent<{ children: React.ReactNode }> 
 
 type DataModelProps<Item = BaseItem> = Omit<
   DataModel<Item>,
-  "fields" | "createItem" | "updateItem" | "deleteItem"
+  | "fields"
+  | "createItem"
+  | "updateItem"
+  | "deleteItem"
+  | "listLink"
+  | "detailLinkGenerator"
+  | "createLink"
 > & {
   name: string,
   createItem?: NonNullable<DataModel<Item>['createItem']>,

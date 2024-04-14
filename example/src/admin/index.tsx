@@ -852,8 +852,8 @@ type SingleForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> =
 
   fetchPageOfRelatedData?: (page: number, item: I, abort: AbortSignal) => Promise<Paginated<J>>;
   generateNewRelatedItem: () => J;
-  createRelatedItem: (item: Partial<I>, relatedItem: Partial<J>) => Promise<J>;
-  updateRelatedItem: (item: Partial<I>, relatedItem: Partial<J>) => Promise<J>;
+  createRelatedItem?: (item: Partial<I>, relatedItem: Partial<J>) => Promise<J>;
+  updateRelatedItem?: (item: Partial<I>, relatedItem: Partial<J>) => Promise<J>;
 
   creationFields?: React.ReactNode;
 
@@ -1013,8 +1013,8 @@ type MultiForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> = 
   getRelatedKey?: (relatedItem: J) => ItemKey;
 
   fetchPageOfRelatedData?: (page: number, item: I, abort: AbortSignal) => Promise<Paginated<J>>;
-  createRelatedItem: (item: I, relatedItem: Partial<J>) => Promise<J>;
-  updateRelatedItem: (item: I, relatedItem: Partial<J>) => Promise<J>;
+  createRelatedItem?: (item: I, relatedItem: Partial<J>) => Promise<J>;
+  updateRelatedItem?: (item: I, relatedItem: Partial<J>) => Promise<J>;
 
   creationFields?: React.ReactNode;
 
@@ -1458,25 +1458,6 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
               )}
             </div>
           )}
-          {itemSelectionMode === 'select' ? (
-            <Fragment>
-              {loadingNextPage ? (
-                <div className={styles.tableNextPageIndicator}>
-                  <div className={styles.tableNextPageLoading}>Loading next page...</div>
-                </div>
-              ) : null}
-              {!loadingNextPage && nextPageAvailable ? (
-                <div className={styles.tableNextPageIndicator}>
-                  <button className={styles.tableNextPageButton} onClick={onLoadNextPage}>Load more...</button>
-                </div>
-              ) : null}
-
-              <div className={styles.foreignKeyFieldModifyMarkupActionBar}>
-                <Button size="small" onClick={() => setItemSelectionMode('none')}>Hide</Button>
-                <Button size="small" onClick={() => setItemSelectionMode('create')}>Create New...</Button>
-              </div>
-            </Fragment>
-          ) : null}
           {itemSelectionMode === 'create' ? (
             <Fragment>
               <span>Create new {relatedDataModel.singularDisplayName}</span>
@@ -1513,6 +1494,10 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
               <div className={styles.foreignKeyFieldModifyMarkupActionBar}>
                 <Button size="small" onClick={() => setItemSelectionMode('none')}>Cancel</Button>
                 <Button size="small" onClick={async () => {
+                  if (!props.foreignKeyFieldProps.createRelatedItem) {
+                    return;
+                  }
+
                   // Aggregate all the state updates to form the update body
                   let relatedItem: Partial<J> = {};
                   for (const field of relatedCreationFields.metadata) {
@@ -1552,13 +1537,35 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                 }}>Create</Button>
               </div>
             </Fragment>
-          ) : null}
-          {itemSelectionMode === 'none' ? (
-            <div className={styles.foreignKeyFieldModifyMarkupActionBar}>
-              <Button size="small" onClick={() => setItemSelectionMode('select')}>Show More...</Button>
-              <Button size="small" onClick={() => setItemSelectionMode('create')}>Create New...</Button>
-            </div>
-          ) : null}
+          ) : (
+            <Fragment>
+              {itemSelectionMode === 'select' ? (
+                <Fragment>
+                  {loadingNextPage ? (
+                    <div className={styles.tableNextPageIndicator}>
+                      <div className={styles.tableNextPageLoading}>Loading next page...</div>
+                    </div>
+                  ) : null}
+                  {!loadingNextPage && nextPageAvailable ? (
+                    <div className={styles.tableNextPageIndicator}>
+                      <button className={styles.tableNextPageButton} onClick={onLoadNextPage}>Load more...</button>
+                    </div>
+                  ) : null}
+                </Fragment>
+              ) : null}
+
+              <div className={styles.foreignKeyFieldModifyMarkupActionBar}>
+                {itemSelectionMode === 'none' ? (
+                  <Button size="small" onClick={() => setItemSelectionMode('select')}>Show More...</Button>
+                ) : (
+                  <Button size="small" onClick={() => setItemSelectionMode('none')}>Hide</Button>
+                )}
+                {props.foreignKeyFieldProps.createRelatedItem ? (
+                  <Button size="small" onClick={() => setItemSelectionMode('create')}>Create New...</Button>
+                ) : null}
+              </div>
+            </Fragment>
+          )}
 
           {/* The children should not render anything, this should purely be Fields for the related items */}
           <FieldsProvider dataModel={relatedDataModel} onChangeFields={setRelatedFields}>

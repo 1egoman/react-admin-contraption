@@ -227,8 +227,8 @@ export function BattleDataModel() {
         relatedName="battleBeat"
 
         // generateNewRelatedItem={() => ({ id: '', beatKey: 'NEW', beatUrl: 'NEW' })}
-        createRelatedItem={(_item, relatedItem) => Promise.resolve({id: 'aaa', ...relatedItem} as BattleBeat)}
-        updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as BattleBeat)}
+        // createRelatedItem={(_item, relatedItem) => Promise.resolve({id: 'aaa', ...relatedItem} as BattleBeat)}
+        // updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as BattleBeat)}
       />
       <Field<BattleWithParticipants, 'participants', BattleWithParticipants['participants']>
         name="participants"
@@ -343,9 +343,6 @@ export function BattleBeatDataModel() {
 
       fetchPageOfData={fetchPageOfData}
       fetchItem={fetchItem}
-      createItem={null}
-      updateItem={null}
-      deleteItem={null}
 
       keyGenerator={beat => beat.id}
     >
@@ -970,7 +967,7 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
     <AdminContextProvider stateCache={stateCache}>
       <DataModels>
         <BattleDataModel />
-        {/* <BattleBeatDataModel /> */}
+        <BattleBeatDataModel />
 
         <PostDataModel />
         <UserDataModel />
