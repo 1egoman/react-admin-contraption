@@ -3278,14 +3278,16 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                 }
               }}
             >Update</Button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Checkbox
-                id="update-keep-editing"
-                checked={updateKeepEditing}
-                onChange={setUpdateKeepEditing}
-              />
-              <label htmlFor="update-keep-editing" style={{ cursor: 'pointer', userSelect: 'none' }}>Keep editing</label>
-            </div>
+            {detailDataContextData.detailData.status === 'COMPLETE' && detailDataContextData.updateItem ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Checkbox
+                  id="update-keep-editing"
+                  checked={updateKeepEditing}
+                  onChange={setUpdateKeepEditing}
+                />
+                <label htmlFor="update-keep-editing" style={{ cursor: 'pointer', userSelect: 'none' }}>Keep editing</label>
+              </div>
+            ) : null}
           </div>
           <Button
             disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.deleteItem}
