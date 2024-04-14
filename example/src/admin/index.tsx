@@ -1600,6 +1600,9 @@ export const ListTableItem = <I = BaseItem, F = BaseFieldName>({
             !checked,
             (e.nativeEvent as FixMe).shiftKey
           )}
+          // Ensure that clicking on checkboxes doesn't accidentally select stuff in the table
+          onMouseDown={() => { document.body.style.userSelect = 'none'; }}
+          onMouseUp={() => { document.body.style.userSelect = ''; }}
         >
           <div onClick={e => e.stopPropagation()}>
             {checkType === "checkbox" ? (
