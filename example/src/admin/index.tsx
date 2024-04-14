@@ -47,6 +47,27 @@ export { Field };
 import InputField from './fields/InputField';
 export { InputField };
 
+export const useInFlightAbortControllers = () => {
+  const inFlightRequestAbortControllers = useRef<Array<AbortController>>([]);
+  const addInFlightAbortController = useCallback((abort: AbortController) => {
+    inFlightRequestAbortControllers.current.push(abort);
+  }, []);
+  const removeInFlightAbortController = useCallback((abort: AbortController) => {
+    inFlightRequestAbortControllers.current = inFlightRequestAbortControllers.current.filter(c => c !== abort);
+  }, []);
+
+  // When the component unmounts, terminate all in flight requests
+  useEffect(() => {
+    return () => {
+      for (const abortController of inFlightRequestAbortControllers.current) {
+        abortController.abort();
+      }
+    };
+  }, []);
+
+  return [addInFlightAbortController, removeInFlightAbortController];
+};
+
 const SearchInput: React.FunctionComponent<{
   pluralDisplayName: string;
   value: string;
@@ -195,20 +216,10 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
   const [listData, setListData] = useState<ListData<I>>({ status: 'IDLE' });
 
   // When the component unmounts, terminate all in flight requests
-  const inFlightRequestAbortControllers = useRef<Array<AbortController>>([]);
-  const addInFlightAbortController = useCallback((abort: AbortController) => {
-    inFlightRequestAbortControllers.current.push(abort);
-  }, []);
-  const removeInFlightAbortController = useCallback((abort: AbortController) => {
-    inFlightRequestAbortControllers.current = inFlightRequestAbortControllers.current.filter(c => c !== abort);
-  }, []);
-  useEffect(() => {
-    return () => {
-      for (const abortController of inFlightRequestAbortControllers.current) {
-        abortController.abort();
-      }
-    };
-  }, []);
+  const [
+    addInFlightAbortController,
+    removeInFlightAbortController,
+  ] = useInFlightAbortControllers();
 
   const [checkedItemKeys, setCheckedItemKeys] = useState<CheckedItemKeys>([]);
 
@@ -1053,22 +1064,10 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     return null;
   }, [props.foreignKeyFieldProps.fetchPageOfRelatedData, relatedDataModel]);
 
-  // When the component unmounts, terminate all in flight requests
-  const inFlightRequestAbortControllers = useRef<Array<AbortController>>([]);
-  const addInFlightAbortController = useCallback((abort: AbortController) => {
-    inFlightRequestAbortControllers.current.push(abort);
-  }, []);
-  const removeInFlightAbortController = useCallback((abort: AbortController) => {
-    inFlightRequestAbortControllers.current = inFlightRequestAbortControllers.current.filter(c => c !== abort);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      for (const abortController of inFlightRequestAbortControllers.current) {
-        abortController.abort();
-      }
-    };
-  }, []);
+  const [
+    addInFlightAbortController,
+    removeInFlightAbortController,
+  ] = useInFlightAbortControllers();
 
   const [initialRelatedItem] = useState(props.mode === "detail" ? props.relatedItem : null);
   const [initialRelatedItems] = useState(props.mode === "list" ? props.relatedItems : null);
@@ -2658,22 +2657,10 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
 
   const [detailData, setDetailData] = useState<DetailData<I>>({ status: 'IDLE' });
 
-  // When the component unmounts, terminate all in flight requests
-  const inFlightRequestAbortControllers = useRef<Array<AbortController>>([]);
-  const addInFlightAbortController = useCallback((abort: AbortController) => {
-    inFlightRequestAbortControllers.current.push(abort);
-  }, []);
-  const removeInFlightAbortController = useCallback((abort: AbortController) => {
-    inFlightRequestAbortControllers.current = inFlightRequestAbortControllers.current.filter(c => c !== abort);
-  }, []);
-  useEffect(() => {
-    return () => {
-      for (const abortController of inFlightRequestAbortControllers.current) {
-        abortController.abort();
-      }
-    };
-  }, []);
-
+  const [
+    addInFlightAbortController,
+    removeInFlightAbortController,
+  ] = useInFlightAbortControllers();
 
   // When the component initially loads, fetch the item
   useEffect(() => {
@@ -2860,21 +2847,10 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
     throw new Error(`Error: <DetailFields ... /> cannot find data model with name ${detailDataContextData.name}!`);
   }
 
-  // When the component unmounts, terminate all in flight requests
-  const inFlightRequestAbortControllers = useRef<Array<AbortController>>([]);
-  const addInFlightAbortController = useCallback((abort: AbortController) => {
-    inFlightRequestAbortControllers.current.push(abort);
-  }, []);
-  const removeInFlightAbortController = useCallback((abort: AbortController) => {
-    inFlightRequestAbortControllers.current = inFlightRequestAbortControllers.current.filter(c => c !== abort);
-  }, []);
-  useEffect(() => {
-    return () => {
-      for (const abortController of inFlightRequestAbortControllers.current) {
-        abortController.abort();
-      }
-    };
-  }, []);
+  const [
+    addInFlightAbortController,
+    removeInFlightAbortController,
+  ] = useInFlightAbortControllers();
 
   const [updateKeepEditing, setUpdateKeepEditing] = useState(false);
 
