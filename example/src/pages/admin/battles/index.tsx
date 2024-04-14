@@ -7,6 +7,7 @@ import {
   ListTable,
   ListActionBar,
   ListFilterBar,
+  StringFilterDefinition,
   FilterDefinition,
 } from '@/admin';
 
@@ -41,25 +42,29 @@ export default function Page() {
           ].map(field => (
             <Fragment key={field}>
               {PRISMA_BASE_OPERATIONS.flatMap(o => [[o], ['not', o]]).map((keys, index) => (
-                <FilterDefinition<string>
+                <StringFilterDefinition
                   key={index}
                   name={[field, ...keys]}
-                  getInitialState={() => ""}
-                  onIsComplete={state => state.length > 0}
-                  onIsValid={state => state.length > 0}
-                  serialize={state => state}
-                  deserialize={state => state}
-                >
-                  {(state, setState, filter, onBlur) => (
-                    <input
-                      type="text"
-                      value={state}
-                      onChange={(e) => setState(e.currentTarget.value)}
-                      onBlur={() => onBlur()}
-                      style={{border: !filter.isValid ? '1px solid red' : ''}}
-                    />
-                  )}
-                </FilterDefinition>
+                />
+                // <FilterDefinition<string>
+                //   key={index}
+                //   name={[field, ...keys]}
+                //   getInitialState={() => ""}
+                //   onIsComplete={state => state.length > 0}
+                //   onIsValid={state => state.length > 0}
+                //   serialize={state => state}
+                //   deserialize={state => state}
+                // >
+                //   {(state, setState, filter, onBlur) => (
+                //     <input
+                //       type="text"
+                //       value={state}
+                //       onChange={(e) => setState(e.currentTarget.value)}
+                //       onBlur={() => onBlur()}
+                //       style={{border: !filter.isValid ? '1px solid red' : ''}}
+                //     />
+                //   )}
+                // </FilterDefinition>
               ))}
               {[["in"], ["not", "in"]].map((keys, index) => (
                 <FilterDefinition<Array<string>>
