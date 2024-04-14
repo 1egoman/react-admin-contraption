@@ -40,7 +40,7 @@ export type DataModel<Item = BaseItem> = {
   ) => Promise<Item>;
 
   createItem: ((createData: Partial<Item>, abort: AbortSignal) => Promise<Item>) | null;
-  updateItem: ((itemKey: ItemKey, updateData: Item, abort: AbortSignal) => Promise<void>) | null;
+  updateItem: ((itemKey: ItemKey, updateData: Partial<Item>, abort: AbortSignal) => Promise<void>) | null;
   deleteItem: ((itemKey: ItemKey, abort: AbortSignal) => Promise<void>) | null;
 
   listLink: Navigatable | null;
@@ -75,21 +75,22 @@ export const DataModels: React.FunctionComponent<{ children: React.ReactNode }> 
 
 type DataModelProps<Item = BaseItem> = Omit<
   DataModel<Item>,
-  | "fields"
   | "createItem"
   | "updateItem"
   | "deleteItem"
   | "listLink"
   | "detailLinkGenerator"
   | "createLink"
+  | "fields"
 > & {
-  name: string,
   createItem?: NonNullable<DataModel<Item>['createItem']>,
   updateItem?: NonNullable<DataModel<Item>['updateItem']>,
   deleteItem?: NonNullable<DataModel<Item>['deleteItem']>,
   listLink?: NonNullable<DataModel<Item>['listLink']>,
   detailLinkGenerator?: NonNullable<DataModel<Item>['detailLinkGenerator']>,
   createLink?: NonNullable<DataModel<Item>['createLink']>,
+
+  name: string,
   children: React.ReactNode, // fields
 };
 

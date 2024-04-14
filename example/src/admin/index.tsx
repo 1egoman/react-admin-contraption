@@ -2700,7 +2700,7 @@ type DataContextDetail<I = BaseItem> = {
   detailData: DetailData<I>;
 
   createItem: ((createData: Partial<I>, abort: AbortSignal) => Promise<I>) | null;
-  updateItem: ((itemKey: ItemKey, updateData: I, abort: AbortSignal) => Promise<void>) | null;
+  updateItem: ((itemKey: ItemKey, updateData: Partial<I>, abort: AbortSignal) => Promise<void>) | null;
   deleteItem: ((itemKey: ItemKey, abort: AbortSignal) => Promise<void>) | null;
 
   detailLinkGenerator: null | ((item: I) => Navigatable);
