@@ -20,14 +20,16 @@ const Button: React.FunctionComponent<{
 
 export const IconButton: React.FunctionComponent<{
   size?: 'regular' | 'small';
+  disabled?: boolean;
   children: React.ReactNode;
   onClick: () => void;
-}> = ({ size = 'regular', onClick, children }) => {
+}> = ({ size = 'regular', disabled, onClick, children }) => {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       style={{
-        cursor: 'pointer',
+        cursor: !disabled ? 'pointer' : undefined,
         fontSize: size === 'regular' ? 16 : 14,
         width: size === 'regular' ? 32 : 24,
         height: size === 'regular' ? 32 : 24,
