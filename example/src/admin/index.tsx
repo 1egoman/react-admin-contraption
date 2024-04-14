@@ -45,6 +45,7 @@ import Field, { FieldMetadata, FieldCollection, FieldsProvider, EMPTY_FIELD_COLL
 export { Field };
 
 import InputField from './fields/InputField';
+import ListCSVExport from './csv-export';
 export { InputField };
 
 export const useInFlightAbortControllers = () => {
@@ -160,7 +161,7 @@ type DataContextList<I = BaseItem, F = BaseFieldName> = {
   createLink: null | Navigatable;
 };
 
-type ListData<T> =
+export type ListData<T> =
   | { status: 'IDLE' }
   | { status: 'LOADING_INITIAL' }
   | {
@@ -2390,16 +2391,26 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
               {detailLinkEnabled ? (
                 <th style={{ minWidth: detailLinkWidth || undefined }}></th>
               ) : null}
-              {columnSets && renderColumnSetSelector ? (
-                <th className={styles.floatingColumnSetSelectorWrapper}>
-                  {renderColumnSetSelector({
+              <th className={styles.listTableHeaderActionsWrapper}>
+                {columnSets && renderColumnSetSelector ? (
+                  renderColumnSetSelector({
                     fields,
                     columnSets,
                     columnSet: listDataContextData.columnSet,
                     onChangeColumnSet: listDataContextData.onChangeColumnSet,
-                  })}
-                </th>
-              ) : null}
+                  })
+                ) : null}
+
+                <ListCSVExport<I, F>
+                  pluralDisplayName={listDataContextData.pluralDisplayName}
+                  fields={fields}
+                  fetchAllListData={listDataContextData.fetchAllListData}
+                  listData={listDataContextData.listData}
+                  columnSets={columnSets}
+                  keyGenerator={listDataContextData.keyGenerator}
+                  checkedItemKeys={listDataContextData.checkedItemKeys}
+                />
+              </th>
             </tr>
           </ManuallyStickyTHead>
           {childrenContainsItems ? (

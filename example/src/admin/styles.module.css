@@ -4,6 +4,7 @@
 
   width: 100%;
   border: 1px solid #ccc;
+  position: relative;
 }
 
 .detail {
@@ -162,16 +163,20 @@
   color: var(--red8);
 }
 
-.floatingColumnSetSelectorWrapper {
-  position: sticky;
-  right: 0px;
+.listTableHeaderActionsWrapper {
   height: 47px;
+  position: absolute;
+  right: 0px;
+
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+
   background-color: rgba(255,255,255,0.9);
   padding-left: 16px;
 }
-.tableWrapper .floatingColumnSetSelectorWrapper:last-child {
+.tableWrapper .listTableHeaderActionsWrapper:last-child {
   overflow: visible;
 }
 
@@ -320,6 +325,121 @@
   gap: 8px;
   background-color: var(--gray-4);
   height: 40px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+/* ------------------
+// List CSV Export
+// ------------------ */
+.listCSVExportModal {
+  font-family: 'Roboto Mono', 'menlo', 'monospace';
+
+  width: 320px;
+  overflow: hidden;
+}
+.listCSVExportModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  border-bottom: 1px solid var(--gray-8);
+  font-weight: bold;
+  user-select: none;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.listCSVExportBody {
+  display: flex;
+  flex-direction: row;
+}
+.listCSVExportBodySidebar {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border-right: 1px solid var(--gray-8);
+  min-width: 128px;
+}
+.listCSVExportBodyTable {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  padding-right: 0px;
+  min-width: 360px;
+  max-width: 1200px;
+  overflow-y: auto;
+}
+.listCSVExportActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+
+  height: 40px;
+  border-top: 1px solid var(--gray-10);
+  background-color: var(--gray-3);
+
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.csvExportPreviewTable {
+  display: flex;
+  flex-direction: row;
+  border: 1px solid var(--gray-10);
+}
+.csvExportPreviewTableColumn {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--gray-10);
+  background-color: var(--gray-1);
+  cursor: grab;
+}
+.csvExportPreviewTableColumn:last-child {
+  border-right: 0px;
+}
+.csvExportPreviewTableColumnData {
+  font-family: 'Roboto Mono', 'menlo', 'monospace';
+  font-size: 14px;
+
+  height: 32px;
+  padding-left: 4px;
+  padding-right: 4px;
+  border-bottom: 1px solid var(--gray-6);
+  max-width: 175px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.csvExportPreviewTableColumnData:last-child {
+  border-bottom: 0px;
+}
+.csvExportPreviewTableColumnHeader {
+  composes: csvExportPreviewTableColumnData; /* FIXME: maybe it isn't the best idea to use this since it is css modules specific ... */
+  background-color: var(--gray-5);
+}
+.csvExportPreviewTableColumnHeaderHandle {
+  font-size: 32px;
+  color: var(--gray-9);
+  transform: translateY(-2px);
+}
+.csvExportPreviewTableColumnHeaderSelect {
+  width: 100%;
+  flex-grow: 1;
+  flex-shrink: 1;
+}
+.csvExportPreviewTableColumnHeaderRemove {
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+.csvExportPreviewTableAddButton {
+  composes: csvExportPreviewTableColumnData; /* FIXME: maybe it isn't the best idea to use this since it is css modules specific ... */
+  justify-content: center;
+  padding: 0px;
   padding-left: 8px;
   padding-right: 8px;
 }
