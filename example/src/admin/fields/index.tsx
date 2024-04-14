@@ -73,6 +73,7 @@ export type FieldMetadata<Item = BaseItem, FieldName = BaseFieldName, State = Ba
   name: FieldName;
   singularDisplayName: string;
   pluralDisplayName: string;
+  csvExportColumnName?: string;
 
   sortable?: boolean;
   columnWidth?: string | number;
@@ -99,6 +100,9 @@ export type FieldMetadata<Item = BaseItem, FieldName = BaseFieldName, State = Ba
     item: Item,
     onBlur: () => void, // Call onBlur once the user has completed editing the state
   ) => React.ReactNode;
+
+  // When performing a csv export, this is the data that this field maps to within the csv
+  csvExportData?: (state: State, item: Item) => string,
 };
 
 /*
@@ -137,6 +141,7 @@ const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props: Field
       name: props.name,
       pluralDisplayName: props.pluralDisplayName,
       singularDisplayName: props.singularDisplayName,
+      csvExportColumnName: props.csvExportColumnName,
       getInitialStateFromItem: props.getInitialStateFromItem,
       injectAsyncDataIntoInitialStateOnDetailPage: props.injectAsyncDataIntoInitialStateOnDetailPage,
       getInitialStateWhenCreating: props.getInitialStateWhenCreating,
@@ -145,6 +150,7 @@ const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props: Field
       serializeStateToItem: props.serializeStateToItem,
       displayMarkup: props.displayMarkup,
       modifyMarkup: props.modifyMarkup,
+      csvExportData: props.csvExportData,
     };
 
     // NOTE: convert FieldMetadata<I, F, S> into a generic `FieldMetadata` with base values so it
@@ -160,6 +166,7 @@ const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props: Field
     props.name,
     props.pluralDisplayName,
     props.singularDisplayName,
+    props.csvExportColumnName,
     props.columnWidth,
     props.sortable,
     props.getInitialStateFromItem,
@@ -168,6 +175,7 @@ const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props: Field
     props.serializeStateToItem,
     props.displayMarkup,
     props.modifyMarkup,
+    props.csvExportData,
   ]);
 
   return null;
@@ -210,7 +218,7 @@ export const NullableWrapper = <
     //     }
     //   }, 0);
     // }
-  }, [props.setState, props.onBlur, props.inputRef]);
+  }, [props.setState, props.getInitialStateWhenCreating, props.onBlur, props.inputRef]);
 
   const onMakeNull = useCallback(() => {
     props.setState(null);

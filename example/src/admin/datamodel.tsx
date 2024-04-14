@@ -25,6 +25,7 @@ import { FieldMetadata, FieldCollection, FieldsProvider, EMPTY_FIELD_COLLECTION 
 export type DataModel<Item = BaseItem> = {
   singularDisplayName: string;
   pluralDisplayName: string;
+  csvExportColumnName?: string;
 
   fetchPageOfData: (
     page: number,
@@ -120,6 +121,7 @@ export const DataModel = <Item = BaseItem>(props: DataModelProps<Item>) => {
       const base: Omit<DataModel<Item>, "fields"> = {
         singularDisplayName: props.singularDisplayName,
         pluralDisplayName: props.pluralDisplayName,
+        csvExportColumnName: props.csvExportColumnName,
         fetchPageOfData: props.fetchPageOfData,
         fetchItem: props.fetchItem,
         createItem: props.createItem || null,
@@ -140,6 +142,7 @@ export const DataModel = <Item = BaseItem>(props: DataModelProps<Item>) => {
   }, [
     props.singularDisplayName,
     props.pluralDisplayName,
+    props.csvExportColumnName,
     props.fetchPageOfData,
     props.fetchItem,
     props.createItem,
