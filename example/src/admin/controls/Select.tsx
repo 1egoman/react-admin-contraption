@@ -8,6 +8,7 @@ type SelectProps = {
   value: SelectOption['value'];
   options: Array<SelectOption>;
   disabled?: boolean;
+  width?: string | number;
   onChange: (optionValue: SelectOption['value']) => void;
   onBlur?: () => void;
 };
@@ -18,7 +19,7 @@ type SelectRefInterface = {
 
 const SelectWithRef: React.FunctionComponent<SelectProps & {
   includedRef: React.ForwardedRef<SelectRefInterface>;
-}> = ({ size = 'regular', options, disabled, value, onChange, onBlur, includedRef }) => {
+}> = ({ size = 'regular', options, disabled, value, width, onChange, onBlur, includedRef }) => {
   const wrappedOnChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     onChange(e.currentTarget.value);
   }, [onChange]);
@@ -36,6 +37,7 @@ const SelectWithRef: React.FunctionComponent<SelectProps & {
       value={value}
       onChange={wrappedOnChange}
       onBlur={wrappedOnBlur}
+      style={{ width }}
     >
       {options.map(option => (
         <option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</option>
