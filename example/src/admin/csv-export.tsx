@@ -4,13 +4,10 @@ import { stringify } from "csv-stringify";
 
 import { BaseFieldName, BaseItem, CheckedItemKeys, FixMe, ItemKey } from "./types";
 
-import Button, { IconButton } from "./controls/Button";
-import Modal from "./controls/Modal";
-
 import styles from "./styles.module.css";
 import { FieldCollection, FieldMetadata } from "./fields";
-import Select from "./controls/Select";
-import { DataModel, ListData, useInFlightAbortControllers } from ".";
+import { ListData, useInFlightAbortControllers } from ".";
+import { useControls } from "./controls";
 
 // a little function to help us with reordering the result
 function reorder<T>(list: Array<T>, startIndex: number, endIndex: number): Array<T> {
@@ -36,6 +33,8 @@ type CSVExportPreviewTableProps<Item = BaseItem, FieldName = BaseFieldName> = Pi
 };
 
 const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props: CSVExportPreviewTableProps<Item, FieldName>) => {
+  const Controls = useControls();
+
   const fieldOptions = useMemo(() => {
     return props.fields.metadata.map(metadata => ({
       value: metadata.name,
@@ -127,7 +126,7 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
                           <div className={styles.csvExportPreviewTableColumnHeader}>
                             <div className={styles.csvExportPreviewTableColumnHeaderHandle}>&#8801;</div>
                             <div className={styles.csvExportPreviewTableColumnHeaderSelect}>
-                              <Select
+                              <Controls.Select
                                 size="small"
                                 value={name as string}
                                 options={fieldOptions}
@@ -144,7 +143,7 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
                               />
                             </div>
                             <div className={styles.csvExportPreviewTableColumnHeaderRemove}>
-                              <IconButton
+                              <Controls.IconButton
                                 disabled={props.columnNamesInOrder.length < 2}
                                 onClick={() => {
                                   const copy = props.columnNamesInOrder.slice();
@@ -152,7 +151,7 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
                                   props.onChangeColumnNamesInOrder(copy);
                                 }}
                                 size="small"
-                              >&times;</IconButton>
+                              >&times;</Controls.IconButton>
                             </div>
                           </div>
                           {cells}
@@ -164,7 +163,7 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
                 {provided.placeholder}
               </div>
               <div className={styles.csvExportPreviewTableAddButton}>
-                <IconButton
+                <Controls.IconButton
                   disabled={props.fields.names.length === props.columnNamesInOrder.length}
                   onClick={() => {
                     const nextUnSpecifiedColumnName = props.fields.names.find(n => !props.columnNamesInOrder.includes(n));
@@ -178,7 +177,7 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
                     ]);
                   }}
                   size="small"
-                >+</IconButton>
+                >+</Controls.IconButton>
               </div>
             </div>
           </div>
@@ -203,6 +202,8 @@ type ListCSVExportProps<Item = BaseItem, FieldName = BaseFieldName> = {
 };
 
 const ListCSVExport = <Item = BaseItem, FieldName = BaseFieldName>(props: ListCSVExportProps<Item, FieldName>) => {
+  const Controls = useControls();
+
   const [ addInFlightAbortController, removeInFlightAbortController ] = useInFlightAbortControllers();
 
   const [columnNamesInOrder, setColumnNamesInOrder] = useState(props.fields.names);
@@ -299,16 +300,16 @@ const ListCSVExport = <Item = BaseItem, FieldName = BaseFieldName>(props: ListCS
   ]);
 
   return (
-    <Modal
+    <Controls.Modal
       target={toggle => (
-        <Button onClick={toggle}>Export</Button>
+        <Controls.Button onClick={toggle}>Export</Controls.Button>
       )}
     >
       {(close) => (
         <div className={styles.ListCSVExportModal}>
           <div className={styles.listCSVExportModalHeader}>
             Export as CSV
-            <IconButton size="small" onClick={close}>&times;</IconButton>
+            <Controls.IconButton size="small" onClick={close}>&times;</Controls.IconButton>
           </div>
 
           <div className={styles.listCSVExportBody}>
@@ -347,14 +348,14 @@ const ListCSVExport = <Item = BaseItem, FieldName = BaseFieldName>(props: ListCS
           </div>
 
           <div className={styles.listCSVExportActions}>
-            <Button
+            <Controls.Button
               onClick={() => onClickExport(close)}
               disabled={exportInProgress}
-            >{exportInProgress ? 'Exporting...' : 'Export'}</Button>
+            >{exportInProgress ? 'Exporting...' : 'Export'}</Controls.Button>
           </div>
         </div>
       )}
-    </Modal>
+    </Controls.Modal>
   );
 };
 

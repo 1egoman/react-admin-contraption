@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { NextRouter } from 'next/router';
 import {
   Fragment,
   useMemo,
@@ -29,14 +30,8 @@ import {
 } from './types';
 
 import Navigatable, { imperativelyNavigateToNavigatable } from "./navigatable";
-
-import Button, { IconButton, NavigationButton } from './controls/Button';
-import TextInput from './controls/TextInput';
-import Checkbox from './controls/Checkbox';
-import Radiobutton from './controls/Radiobutton';
-import Select, { SelectOption } from './controls/Select';
-import Popover from './controls/Popover';
-import TextArea from './controls/TextArea';
+import { Controls, useControls } from './controls';
+import { SelectOption } from './controls/Select';
 
 import { DataModel, DataModels, DataModelsContext } from './datamodel';
 export { DataModel, DataModels };
@@ -51,7 +46,6 @@ import Launcher from './launcher';
 export { Launcher };
 
 import ListCSVExport from './csv-export';
-import { NextRouter } from 'next/router';
 
 export const useInFlightAbortControllers = () => {
   const inFlightRequestAbortControllers = useRef<Array<AbortController>>([]);
@@ -79,13 +73,15 @@ const SearchInput: React.FunctionComponent<{
   value: string;
   onChange: (text: string) => void;
 }> = ({ pluralDisplayName, value, onChange }) => {
+  const Controls = useControls();
+
   const [text, setText] = useState('');
   useEffect(() => {
     setText(value);
   }, [value]);
 
   return (
-    <TextInput
+    <Controls.TextInput
       placeholder={`Search ${pluralDisplayName}...`}
       value={text}
       onChange={setText}
@@ -116,8 +112,10 @@ type AbstractNextRouter = Pick<NextRouter, 'push' | 'replace'>;
 export type AdminContextData = {
   stateCache?: StateCache;
   nextRouter?: AbstractNextRouter;
+
+  controls?: Controls,
 };
-const AdminContext = React.createContext<AdminContextData | null>(null);
+export const AdminContext = React.createContext<AdminContextData | null>(null);
 export const AdminContextProvider: React.FunctionComponent<AdminContextData & { children: React.ReactNode }> = ({ children, ...rest }) => (
   <AdminContext.Provider value={rest}>
     {children}
@@ -597,6 +595,8 @@ export const MultiLineInputField = <
   Field = BaseFieldName,
   Nullable = false,
 >(props: MultiLineInputFieldProps<Item, Field, Nullable>) => {
+  const Controls = useControls();
+
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const getInitialStateFromItem = useMemo(() => {
@@ -636,7 +636,7 @@ export const MultiLineInputField = <
       }}
       modifyMarkup={(state, setState, item, onBlur) => {
         const input = props.inputMarkup ? props.inputMarkup(state, setState, item, onBlur) : (
-          <TextArea
+          <Controls.TextArea
             value={state === null ? '' : `${state}`}
             disabled={state === null}
             onChange={setState}
@@ -648,7 +648,7 @@ export const MultiLineInputField = <
           return (
             <div style={{display: 'inline-flex', gap: 8, alignItems: 'center'}}>
               <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-                <Radiobutton
+                <Controls.Radiobutton
                   checked={state !== null}
                   onChange={checked => {
                     if (checked) {
@@ -675,7 +675,7 @@ export const MultiLineInputField = <
                 }}>{input}</div>
               </div>
               <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-                <Radiobutton
+                <Controls.Radiobutton
                   checked={state === null}
                   id={`${props.name}-null`}
                   onChange={checked => {
@@ -734,6 +734,8 @@ Example ChoiceField:
 />
 */
 export const ChoiceField = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props: ChoiceFieldProps<I, F, S>) => {
+  const Controls = useControls();
+
   const getInitialStateFromItem = useMemo(() => {
     return props.getInitialStateFromItem || ((item: I) => `${(item as FixMe)[props.name as FixMe]}` as S);
   }, [props.getInitialStateFromItem, props.name]);
@@ -784,7 +786,7 @@ export const ChoiceField = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>
         }
 
         return (
-          <Select
+          <Controls.Select
             value={stateAsString}
             onChange={newValue => {
               const castedNewValue = newValue as S;
@@ -1135,6 +1137,8 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     throw new Error('Error: <ForeignKeyFieldModifyMarkup ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
   const relatedDataModel = dataModelsContextData[0].get(props.foreignKeyFieldProps.relatedName) as DataModel<J> | undefined;
+
+  const Controls = useControls();
 
   const getRelatedKey = props.getRelatedKey || relatedDataModel?.keyGenerator || null;
   const fetchPageOfRelatedData = useMemo(() => {
@@ -1500,8 +1504,8 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
               })}
 
               <div className={styles.foreignKeyFieldModifyMarkupActionBar}>
-                <Button size="small" onClick={() => setItemSelectionMode('none')}>Cancel</Button>
-                <Button size="small" onClick={async () => {
+                <Controls.Button size="small" onClick={() => setItemSelectionMode('none')}>Cancel</Controls.Button>
+                <Controls.Button size="small" onClick={async () => {
                   if (!props.foreignKeyFieldProps.createRelatedItem) {
                     return;
                   }
@@ -1542,7 +1546,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                   }
 
                   setItemSelectionMode('none');
-                }}>Create</Button>
+                }}>Create</Controls.Button>
               </div>
             </Fragment>
           ) : (
@@ -1564,12 +1568,12 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
 
               <div className={styles.foreignKeyFieldModifyMarkupActionBar}>
                 {itemSelectionMode === 'none' ? (
-                  <Button size="small" onClick={() => setItemSelectionMode('select')}>Show More...</Button>
+                  <Controls.Button size="small" onClick={() => setItemSelectionMode('select')}>Show More...</Controls.Button>
                 ) : (
-                  <Button size="small" onClick={() => setItemSelectionMode('none')}>Hide</Button>
+                  <Controls.Button size="small" onClick={() => setItemSelectionMode('none')}>Hide</Controls.Button>
                 )}
                 {props.foreignKeyFieldProps.createRelatedItem ? (
-                  <Button size="small" onClick={() => setItemSelectionMode('create')}>Create New...</Button>
+                  <Controls.Button size="small" onClick={() => setItemSelectionMode('create')}>Create New...</Controls.Button>
                 ) : null}
               </div>
             </Fragment>
@@ -1606,6 +1610,7 @@ export const ListTableItem = <I = BaseItem, F = BaseFieldName>({
   checked,
   onChangeChecked,
 }: Parameters<ListTableProps<I, F>['renderTableItem']>[0]) => {
+  const Controls = useControls();
   return (
     <tr>
       {checkable ? (
@@ -1621,12 +1626,12 @@ export const ListTableItem = <I = BaseItem, F = BaseFieldName>({
         >
           <div onClick={e => e.stopPropagation()}>
             {checkType === "checkbox" ? (
-              <Checkbox
+              <Controls.Checkbox
                 checked={checked}
                 onChange={onChangeChecked}
               />
             ) : (
-              <Radiobutton
+              <Controls.Radiobutton
                 checked={checked}
                 onChange={onChangeChecked}
               />
@@ -1650,10 +1655,10 @@ export const ListTableItem = <I = BaseItem, F = BaseFieldName>({
         <Fragment>
           {/* This element acts as a spacer to ensure there is enough room all the way at the right for "details" */}
           <td style={{visibility: 'hidden'}}>
-            <NavigationButton navigatable={detailLink}>Details...</NavigationButton>
+            <Controls.NavigationButton navigatable={detailLink}>Details...</Controls.NavigationButton>
           </td>
           <td className={styles.floatingDetails}>
-            <NavigationButton navigatable={detailLink}>Details...</NavigationButton>
+            <Controls.NavigationButton navigatable={detailLink}>Details...</Controls.NavigationButton>
           </td>
         </Fragment>
       ) : null}
@@ -1683,6 +1688,8 @@ export const ListActionBar = <I = BaseItem>({
   }
   const listDataContextData = dataContext as DataContextList<I>;
 
+  const Controls = useControls();
+
   // This control is hidden when nothing is checked
   if (
     listDataContextData.checkedItemKeys !== ALL_ITEMS &&
@@ -1708,7 +1715,7 @@ export const ListActionBar = <I = BaseItem>({
     <Fragment>
       <div className={styles.listActionBar}>
         <span>{numberOfCheckedItems} {numberOfCheckedItems === 1 ? listDataContextData.singularDisplayName : listDataContextData.pluralDisplayName}</span>
-        <Button onClick={() => listDataContextData.onChangeCheckedItemKeys([])}>Deselect</Button>
+        <Controls.Button onClick={() => listDataContextData.onChangeCheckedItemKeys([])}>Deselect</Controls.Button>
         |
         {listDataContextData.checkedItemKeys === ALL_ITEMS ? (
           children(ALL_ITEMS)
@@ -1828,6 +1835,8 @@ type StringFilterDefinitionProps = Partial<FilterMetadata<string>> & {
 };
 
 export const StringFilterDefinition = (props: StringFilterDefinitionProps) => {
+  const Controls = useControls();
+
   const getInitialState = useMemo(() => props.getInitialState || (() => ""), [props.getInitialState]);
   const onIsComplete = useMemo(() => props.onIsComplete || ((state: string) => state.length > 0), [props.onIsComplete]);
   const onIsValid = useMemo(() => props.onIsValid || ((state: string) => state.length > 0), [props.onIsValid]);
@@ -1840,7 +1849,7 @@ export const StringFilterDefinition = (props: StringFilterDefinitionProps) => {
     filter: Filter<string>,
     onBlur: () => void
   ) => (
-    <TextInput
+    <Controls.TextInput
       size="small"
       value={state}
       onChange={setState}
@@ -1886,6 +1895,8 @@ export const ListFilterBar = <I = BaseItem>({
     throw new Error('Error: <ListFilterBar ... /> was not rendered inside of a <List> ... </List> component!');
   }
   const listDataContextData = dataContext as DataContextList<I>;
+
+  const Controls = useControls();
 
   const filterMetadataContextData = useContext(FilterMetadataContext);
   if (!filterMetadataContextData) {
@@ -1938,10 +1949,10 @@ export const ListFilterBar = <I = BaseItem>({
 
   const filterPresetButtons = Object.entries(filterPresets).map(([name, filterPresetCallback]) => {
     return (
-      <Button
+      <Controls.Button
         key={name}
         onClick={() => listDataContextData.onChangeFilters(filterPresetCallback(listDataContextData.filters))}
-      >{name}</Button>
+      >{name}</Controls.Button>
     );
   });
 
@@ -1954,24 +1965,24 @@ export const ListFilterBar = <I = BaseItem>({
       </span>
       <div style={{ display: 'flex', gap: 16, alignItems: 'center', overflow: 'visible' }}>
         {addable && listDataContextData.createLink ? (
-          <NavigationButton navigatable={listDataContextData.createLink}>
+          <Controls.NavigationButton navigatable={listDataContextData.createLink}>
             &#65291; Add {listDataContextData.singularDisplayName}
-          </NavigationButton>
+          </Controls.NavigationButton>
         ) : null}
 
         {filterMetadata.length > 0 ? (
-          <Popover
+          <Controls.Popover
             target={toggle => (
-              <Button onClick={toggle}>
+              <Controls.Button onClick={toggle}>
                 {listDataContextData.filters.length > 0 ? `Filters (${listDataContextData.filters.length})` : 'Filters'}
-              </Button>
+              </Controls.Button>
             )}
           >
             {close => (
               <div className={styles.filterPopup}>
                 <div className={styles.filterPopupHeader}>
                   <span>Filters</span>
-                  <IconButton size="small" onClick={close}>&times;</IconButton>
+                  <Controls.IconButton size="small" onClick={close}>&times;</Controls.IconButton>
                 </div>
 
                 <div className={styles.filterPopupBody}>
@@ -2012,7 +2023,7 @@ export const ListFilterBar = <I = BaseItem>({
                               {filterIndex === 0 ? 'where' : 'and'}
                             </span>
                             {filter.name.map((entry, entryIndex) => (
-                              <Select
+                              <Controls.Select
                                 size="small"
                                 value={entry}
                                 key={entryIndex}
@@ -2099,17 +2110,17 @@ export const ListFilterBar = <I = BaseItem>({
                               },
                             ) : null}
                           </div>
-                          <IconButton size="small" onClick={() => {
+                          <Controls.IconButton size="small" onClick={() => {
                             listDataContextData.onChangeFilters(
                               listDataContextData.filters.filter((_f, i) => i !== filterIndex)
                             );
-                          }}>&times;</IconButton>
+                          }}>&times;</Controls.IconButton>
                         </div>
                       );
                     })}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Button
+                    <Controls.Button
                       size="small"
                       onClick={() => {
                         listDataContextData.onChangeFilters([
@@ -2123,14 +2134,14 @@ export const ListFilterBar = <I = BaseItem>({
                           },
                         ])
                       }}
-                    >Add filter</Button>
+                    >Add filter</Controls.Button>
                     |
                     {filterPresetButtons.length === 0 ? <small style={{color: 'silver', marginTop: 3}}>No presets</small> : filterPresetButtons}
                   </div>
                 </div>
               </div>
             )}
-          </Popover>
+          </Controls.Popover>
         ) : null}
 
         {searchable ? (
@@ -2305,6 +2316,8 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
     childrenContainsItems,
     children,
   }) => {
+    const Controls = useControls();
+
     const allChecked = listDataContextData.checkedItemKeys === ALL_ITEMS ? (
       true
     ) : (
@@ -2337,7 +2350,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
                   }}
                 >
                   <div onClick={e => e.stopPropagation()}>
-                    <Checkbox
+                    <Controls.Checkbox
                       disabled={!childrenContainsItems}
                       checked={allChecked}
                       onChange={checked => {
@@ -2629,17 +2642,18 @@ export const ListColumnSetSelector = <I = BaseItem, F = BaseFieldName>(props: {
   columnSet: 'all' | string | Array<F>;
   onChangeColumnSet: (newColumnSet: 'all' | string | Array<F>) => void;
 }) => {
+  const Controls = useControls();
   return (
-    <Popover
+    <Controls.Popover
       target={toggle => (
-        <IconButton onClick={toggle}>&#9707;</IconButton>
+        <Controls.IconButton onClick={toggle}>&#9707;</Controls.IconButton>
       )}
     >
       {close => (
         <div className={styles.listColumnSetPopup}>
           <div className={styles.listColumnSetPopupHeader}>
             <span>Column Sets</span>
-            <IconButton size="small" onClick={close}>&times;</IconButton>
+            <Controls.IconButton size="small" onClick={close}>&times;</Controls.IconButton>
           </div>
 
           <div className={styles.listColumnSetBody}>
@@ -2676,7 +2690,7 @@ export const ListColumnSetSelector = <I = BaseItem, F = BaseFieldName>(props: {
           </div>
         </div>
       )}
-    </Popover>
+    </Controls.Popover>
   );
 };
 
@@ -2949,6 +2963,8 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
   }
   const detailDataContextData = dataContext as DataContextDetail<I>;
 
+  const Controls = useControls();
+
   // Then get the data model context data
   const dataModelsContextData = useContext(DataModelsContext);
   if (!dataModelsContextData) {
@@ -3138,7 +3154,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
   return (
     <FieldsProvider dataModel={dataModel} onChangeFields={setFields}>
       <div className={styles.detailHeader}>
-        <NavigationButton navigatable={detailDataContextData.listLink}>&larr; Back</NavigationButton>
+        <Controls.NavigationButton navigatable={detailDataContextData.listLink}>&larr; Back</Controls.NavigationButton>
         {detailDataContextData.isCreating ? (
           <strong>
             Create {detailDataContextData.singularDisplayName[0].toUpperCase()}{detailDataContextData.singularDisplayName.slice(1)}
@@ -3161,7 +3177,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
 
       {detailDataContextData.isCreating ? (
         <div className={styles.detailActions}>
-          <Button
+          <Controls.Button
             disabled={!detailDataContextData.createItem}
             onClick={async () => {
               if (!detailDataContextData.createItem) {
@@ -3221,12 +3237,12 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                 imperativelyNavigateToNavigatable(detailDataContextData.detailLinkGenerator(createResult));
               }
             }}
-          >Create</Button>
+          >Create</Controls.Button>
         </div>
       ) : (
         <div className={styles.detailActions}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <Button
+            <Controls.Button
               disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.updateItem}
               onClick={async () => {
                 if (!detailDataContextData.updateItem) {
@@ -3292,10 +3308,10 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                   imperativelyNavigateToNavigatable(detailDataContextData.listLink);
                 }
               }}
-            >Update</Button>
+            >Update</Controls.Button>
             {detailDataContextData.detailData.status === 'COMPLETE' && detailDataContextData.updateItem ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Checkbox
+                <Controls.Checkbox
                   id="update-keep-editing"
                   checked={updateKeepEditing}
                   onChange={setUpdateKeepEditing}
@@ -3304,7 +3320,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
               </div>
             ) : null}
           </div>
-          <Button
+          <Controls.Button
             disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.deleteItem}
             onClick={async () => {
               if (!detailDataContextData.deleteItem) {
@@ -3334,7 +3350,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
               // After deleting, go back to the list page
               imperativelyNavigateToNavigatable(detailDataContextData.listLink);
             }}
-          >Delete</Button>
+          >Delete</Controls.Button>
         </div>
       )}
     </FieldsProvider>
