@@ -1,11 +1,14 @@
 import { LinkProps } from "next/link";
 
+import { AdminContextData } from ".";
+
+
 type Navigatable =
   | { type: 'href', href: string, target?: '_blank' }
   | ({ type: 'next-link' } & LinkProps)
   | { type: 'function', onClick: () => void };
 
-export const imperativelyNavigateToNavigatable = (navigatable: Navigatable | null) => {
+export const imperativelyNavigateToNavigatable = (adminContext: AdminContextData, navigatable: Navigatable | null) => {
   switch (navigatable?.type) {
     case 'href':
       if (navigatable.target === '_blank') {
@@ -15,9 +18,18 @@ export const imperativelyNavigateToNavigatable = (navigatable: Navigatable | nul
       }
       return;
     case 'next-link':
-      // TODO: how does one imperatively navigate to a next route without having access to
-      // `useRouter()`?
-      alert('Not yet implemented.');
+      if (!adminContext.nextRouter) {
+        console.error('Error running imperativelyNavigateToNavigatable: adminContext.nextRouter is not defined!');
+        return;
+      }
+
+      // FIXME: this probably isn't perfect and mishandles some parameters, but will likely work for
+      // now
+      if (navigatable.replace) {
+        adminContext.nextRouter.replace(navigatable.href, navigatable.as, navigatable);
+      } else {
+        adminContext.nextRouter.push(navigatable.href, navigatable.as, navigatable);
+      }
       return;
     case 'function':
       navigatable.onClick();

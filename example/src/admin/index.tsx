@@ -51,6 +51,7 @@ import Launcher from './launcher';
 export { Launcher };
 
 import ListCSVExport from './csv-export';
+import { NextRouter } from 'next/router';
 
 export const useInFlightAbortControllers = () => {
   const inFlightRequestAbortControllers = useRef<Array<AbortController>>([]);
@@ -108,8 +109,13 @@ export type StateCache = {
   ]>;
 };
 
-type AdminContextData = {
+// NOTE: only the methods that are used are defined below so that if somebody wanted to implement
+// their own router (ie, another framework, overriding things, etc) it wouldn't be such a PITA
+type AbstractNextRouter = Pick<NextRouter, 'push' | 'replace'>;
+
+export type AdminContextData = {
   stateCache?: StateCache;
+  nextRouter?: AbstractNextRouter;
 };
 const AdminContext = React.createContext<AdminContextData | null>(null);
 export const AdminContextProvider: React.FunctionComponent<AdminContextData & { children: React.ReactNode }> = ({ children, ...rest }) => (
