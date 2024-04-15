@@ -25,7 +25,6 @@ import { FieldMetadata, FieldCollection, FieldsProvider, EMPTY_FIELD_COLLECTION 
 export type DataModel<Item = BaseItem> = {
   singularDisplayName: string;
   pluralDisplayName: string;
-  csvExportColumnName?: string;
 
   fetchPageOfData: (
     page: number,
