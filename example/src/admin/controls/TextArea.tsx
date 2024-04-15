@@ -1,10 +1,12 @@
 import { LegacyRef, forwardRef, useCallback } from "react";
 import styles from "./TextArea.module.css";
+import { red } from "@radix-ui/colors";
 
 type TextAreaProps = {
   size?: 'regular' | 'small';
   placeholder?: string;
   disabled?: boolean;
+  invalid?: boolean;
   value: string;
   onChange: (newText: string) => void;
   onBlur?: () => void;
@@ -16,7 +18,7 @@ type TextAreaRefInterface = {
 
 const TextAreaWithRef: React.FunctionComponent<TextAreaProps & {
   includedRef: React.ForwardedRef<TextAreaRefInterface>;
-}> = ({ size = 'regular', placeholder, disabled, value, onChange, onBlur, includedRef }) => {
+}> = ({ size = 'regular', placeholder, disabled, invalid, value, onChange, onBlur, includedRef }) => {
   const wrappedOnChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.currentTarget.value);
   }, [onChange]);
@@ -35,6 +37,11 @@ const TextAreaWithRef: React.FunctionComponent<TextAreaProps & {
       value={value}
       onChange={wrappedOnChange}
       onBlur={wrappedOnBlur}
+      style={{
+        borderRadius: invalid ? 2 : undefined,
+        outline: invalid ? '0px solid transparent' : undefined,
+        border: invalid ? `2px solid ${red.red9}` : undefined,
+      }}
     />
   );
 };
