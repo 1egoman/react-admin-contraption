@@ -11,8 +11,8 @@ type Navigatable =
 export const imperativelyNavigateToNavigatable = (adminContext: AdminContextData, navigatable: Navigatable | null) => {
   switch (navigatable?.type) {
     case 'href':
-      if (navigatable.target === '_blank') {
-        window.open(navigatable.href, '_blank');
+      if (navigatable.target) {
+        window.open(navigatable.href, navigatable.target);
       } else {
         window.location.href = navigatable.href;
       }
