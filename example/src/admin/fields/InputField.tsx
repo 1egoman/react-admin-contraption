@@ -5,7 +5,7 @@ import Field, { FieldMetadata, NullableWrapper } from ".";
 import TextInput from "../controls/TextInput";
 
 
-type InputFieldProps<
+export type InputFieldProps<
   Item = BaseItem,
   Field = BaseFieldName,
   // FIXME: this Nullable thing isn't quire right, either get rid of it and make state always
@@ -17,9 +17,11 @@ type InputFieldProps<
   | 'name'
   | 'singularDisplayName'
   | 'pluralDisplayName'
+  | 'csvExportColumnName'
   | 'columnWidth'
   | 'sortable'
   | 'getInitialStateWhenCreating'
+  | 'csvExportData'
 > & {
   getInitialStateFromItem?: (item: Item) => State;
   getInitialStateWhenCreating?: () => State | undefined;
@@ -48,8 +50,20 @@ const InputField = <
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const getInitialStateFromItem = useMemo(() => {
-    return props.getInitialStateFromItem || ((item: Item) => `${(item as FixMe)[props.name as FixMe]}`);
-  }, [props.getInitialStateFromItem, props.name]);
+    if (props.getInitialStateFromItem) {
+      return props.getInitialStateFromItem;
+    } else {
+      return ((item: Item) => {
+        const value = (item as FixMe)[props.name as FixMe];
+
+        if (props.nullable && value === null) {
+          return value;
+        } else {
+          return `${value}`;
+        }
+      });
+    }
+  }, [props.getInitialStateFromItem, props.name, props.nullable]);
 
   const injectAsyncDataIntoInitialStateOnDetailPage = useMemo(() => {
     return (state: Nullable extends true ? (string | null) : string) => Promise.resolve(state)
@@ -60,6 +74,7 @@ const InputField = <
       name={props.name}
       singularDisplayName={props.singularDisplayName}
       pluralDisplayName={props.pluralDisplayName}
+      csvExportColumnName={props.csvExportColumnName}
       columnWidth={props.columnWidth}
       sortable={props.sortable}
       getInitialStateFromItem={getInitialStateFromItem}
@@ -93,6 +108,7 @@ const InputField = <
           </NullableWrapper>
         );
       }}
+      csvExportData={props.csvExportData}
     />
   );
 };

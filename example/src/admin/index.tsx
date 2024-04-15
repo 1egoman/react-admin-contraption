@@ -44,7 +44,7 @@ export { DataModel, DataModels };
 import Field, { FieldMetadata, FieldCollection, FieldsProvider, EMPTY_FIELD_COLLECTION, NullableWrapper } from './fields';
 export { Field };
 
-import InputField from './fields/InputField';
+import InputField, { InputFieldProps } from './fields/InputField';
 export { InputField };
 
 import Launcher from './launcher';
@@ -861,7 +861,6 @@ type SingleForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> =
   getRelatedKey?: (relatedItem: J) => ItemKey;
 
   fetchPageOfRelatedData?: (page: number, item: I, abort: AbortSignal) => Promise<Paginated<J>>;
-  generateNewRelatedItem: () => J;
   createRelatedItem?: (item: Partial<I>, relatedItem: Partial<J>) => Promise<J>;
   updateRelatedItem?: (item: Partial<I>, relatedItem: Partial<J>) => Promise<J>;
 
@@ -890,7 +889,6 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
 
   const singularDisplayName = props.singularDisplayName || relatedDataModel?.singularDisplayName || '';
   const pluralDisplayName = props.pluralDisplayName || relatedDataModel?.pluralDisplayName || '';
-  const csvExportColumnName = props.csvExportColumnName || relatedDataModel?.csvExportColumnName || '';
   const getRelatedKey = props.getRelatedKey || relatedDataModel?.keyGenerator;
 
   const getInitialStateFromItem = useMemo(() => {
@@ -987,7 +985,7 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
       name={props.name}
       singularDisplayName={singularDisplayName}
       pluralDisplayName={pluralDisplayName}
-      csvExportColumnName={csvExportColumnName}
+      csvExportColumnName={props.csvExportColumnName}
       columnWidth={props.columnWidth}
       sortable={props.sortable}
       getInitialStateFromItem={getInitialStateFromItem}
