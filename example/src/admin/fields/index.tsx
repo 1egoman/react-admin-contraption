@@ -69,6 +69,7 @@ export type FieldCollection<M = FieldMetadata<BaseItem, BaseFieldName, BaseField
 };
 export const EMPTY_FIELD_COLLECTION: FieldCollection = { names: [], metadata: [] };
 
+// A FieldMetadata defines a specification for what a field within a data model looks like.
 export type FieldMetadata<Item = BaseItem, FieldName = BaseFieldName, State = BaseFieldState> = {
   name: FieldName;
   singularDisplayName: string;
@@ -81,13 +82,33 @@ export type FieldMetadata<Item = BaseItem, FieldName = BaseFieldName, State = Ba
   // Serialize back and forth between the state (internal representation) and the item (external
   // representation)
   getInitialStateFromItem: (item: Item) => State;
-  injectAsyncDataIntoInitialStateOnDetailPage: (oldState: State, item: Item, signal: AbortSignal) => Promise<State>;
   getInitialStateWhenCreating?: () => State | undefined;
   serializeStateToItem: (initialItem: Partial<Item>, state: State) => Partial<Item>;
 
-  // When specified, these functions are called prior to `serializeStateToItem` and allows related
-  // models to be saved to the database
+  // When in the detail view, a common pattern is to show more information about the item. Only when
+  // a field is rendered on the detail view, this function is called to allow extra information to
+  // be "injected" into the state to facilutate this.
+  //
+  // Note that to do the opposite (ie, inject data in the list view), make whatever request you
+  // need in the `fetchPageOfData` function on the data model and then in `getInitialStateFromItem`,
+  // make sure to include whatever data you need in the field state.
+  injectAsyncDataIntoInitialStateOnDetailPage: (oldState: State, item: Item, signal: AbortSignal) => Promise<State>;
+
+  /**
+  * When specified, these functions are called prior to `serializeStateToItem` and allows related
+  * models to be saved to the database
+  * FIXME: remove this
+  *
+  * @deprecated Don't use this, it ended up being a bad idea that needs to be removed
+  */
   createSideEffect?: (item: Partial<Item>, state: State, signal: AbortSignal) => Promise<State>;
+  /**
+  * When specified, these functions are called prior to `serializeStateToItem` and allows related
+  * models to be saved to the database
+  * FIXME: remove this
+  *
+  * @deprecated Don't use this, it ended up being a bad idea that needs to be removed
+  */
   updateSideEffect?: (item: Partial<Item>, state: State, signal: AbortSignal) => Promise<State>;
 
   // The presentation of the field when in a read only context
@@ -102,6 +123,7 @@ export type FieldMetadata<Item = BaseItem, FieldName = BaseFieldName, State = Ba
   ) => React.ReactNode;
 
   // When performing a csv export, this is the data that this field maps to within the csv
+  // If this is not specified, the default is `item[fieldName].toString()`
   csvExportData?: (state: State, item: Item) => string,
 };
 
