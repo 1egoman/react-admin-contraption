@@ -5,10 +5,11 @@ import styles from "./Button.module.css";
 
 const Button: React.FunctionComponent<{
   size?: 'regular' | 'small';
+  variant?: 'primary' | 'default';
   disabled?: boolean;
   children: React.ReactNode;
   onClick: () => void;
-}> = ({ size = 'regular', disabled, onClick, children }) => {
+}> = ({ size = 'regular', variant = 'default', disabled, onClick, children }) => {
   return (
     <button
       className={size === 'regular' ? styles.buttonRegular : styles.buttonSmall}
