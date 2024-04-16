@@ -2003,9 +2003,9 @@ export const ListFilterBar = <I = BaseItem>({
           </span>
         }
         actions={
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', overflow: 'visible' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', overflow: 'visible' }}>
             {addable && listDataContextData.createLink ? (
-              <Controls.NavigationButton navigatable={listDataContextData.createLink}>
+              <Controls.NavigationButton variant="primary" navigatable={listDataContextData.createLink}>
                 &#65291; Add {listDataContextData.singularDisplayName}
               </Controls.NavigationButton>
             ) : null}

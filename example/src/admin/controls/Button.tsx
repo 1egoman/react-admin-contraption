@@ -21,6 +21,7 @@ const Button: React.FunctionComponent<{
 
 export const IconButton: React.FunctionComponent<{
   size?: 'regular' | 'small';
+  variant?: 'primary' | 'default';
   disabled?: boolean;
   children: React.ReactNode;
   onClick: () => void;
@@ -40,6 +41,9 @@ export const IconButton: React.FunctionComponent<{
 };
 
 export const NavigationButton: React.FunctionComponent<{
+  size?: 'regular' | 'small';
+  variant?: 'primary' | 'default';
+  disabled?: boolean;
   navigatable: Navigatable | null,
   children: React.ReactNode,
 }> = ({ navigatable, children }) => {
