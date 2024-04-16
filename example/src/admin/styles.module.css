@@ -1,5 +1,5 @@
 .list {
-  font-family: 'Roboto Mono', 'menlo', 'monospace';
+  /* font-family: 'Roboto Mono', 'menlo', 'monospace'; */
   font-size: 16px;
 
   width: 100%;
@@ -8,7 +8,7 @@
 }
 
 .detail {
-  font-family: 'Roboto Mono', 'menlo', 'monospace';
+  /* font-family: 'Roboto Mono', 'menlo', 'monospace'; */
   font-size: 16px;
 
   width: 100%;
@@ -103,7 +103,7 @@
   border-top: 1px solid #ccc;
 }
 .tableNextPageButton {
-  font-family: 'Roboto Mono', 'menlo', 'monospace';
+  font-family: inherit;
   font-size: 16px;
   font-style: italic;
 
@@ -180,8 +180,6 @@
 }
 
 .listColumnSetPopup {
-  font-family: 'Roboto Mono', 'menlo', 'monospace';
-
   width: 320px;
 }
 .listColumnSetPopupHeaderName {
@@ -220,13 +218,11 @@
   border-bottom: 1px solid #ccc;
 }
 .listFilterBarTitle {
-  font-family: 'Roboto Mono', 'menlo', 'monospace';
   font-size: 18px;
   font-weight: bold;
 }
 
 .filterPopup {
-  font-family: 'Roboto Mono', 'menlo', 'monospace';
   font-size: 16px;
 
   min-width: 320px;
@@ -296,8 +292,6 @@
 // List CSV Export
 // ------------------ */
 .listCSVExportModal {
-  font-family: 'Roboto Mono', 'menlo', 'monospace';
-
   min-width: 768px;
   min-height: 512px;
   overflow: hidden;
