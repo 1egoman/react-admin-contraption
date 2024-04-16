@@ -197,18 +197,6 @@
 /* ------------------
 // Action bar styles
 // ------------------ */
-.listActionBar {
-  display: flex;
-  gap: 8px;
-  background-color: #eee;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  padding-left: 16px;
-  padding-right: 16px;
-  border-bottom: 1px solid #ccc;
-}
-
 .listActionBarSelectAllBanner {
   height: 36px;
   background-color: wheat;

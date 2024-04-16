@@ -1729,19 +1729,37 @@ export const ListActionBar = <I = BaseItem>({
 
   return (
     <Fragment>
-      <div className={styles.listActionBar}>
-        <span>{numberOfCheckedItems} {numberOfCheckedItems === 1 ? listDataContextData.singularDisplayName : listDataContextData.pluralDisplayName}</span>
-        <Controls.Button onClick={() => listDataContextData.onChangeCheckedItemKeys([])}>Deselect</Controls.Button>
-        |
-        {listDataContextData.checkedItemKeys === ALL_ITEMS ? (
-          children(ALL_ITEMS)
-        ) : children(
-          listDataContextData.listData.data.filter((item) => {
-            const key = listDataContextData.keyGenerator(item)
-            return listDataContextData.checkedItemKeys.includes(key);
-          })
-        )}
-      </div>
+      <Controls.AppBar
+        size="regular"
+        intent="header"
+        title={
+          <Fragment>
+            <span>{numberOfCheckedItems} {numberOfCheckedItems === 1 ? listDataContextData.singularDisplayName : listDataContextData.pluralDisplayName}</span>
+            <Controls.Button onClick={() => listDataContextData.onChangeCheckedItemKeys([])}>
+              Deselect
+            </Controls.Button>
+            |
+            {/* FIXME: get `fields` in here so I can add this! */}
+            {/* <ListCSVExport<I, F> */}
+            {/*   pluralDisplayName={listDataContextData.pluralDisplayName} */}
+            {/*   fields={dataContext.f} */}
+            {/*   // fetchPageOfData={listDataContextData.fe} */}
+            {/*   listData={listDataContextData.listData} */}
+            {/*   columnSets={columnSets} */}
+            {/*   keyGenerator={listDataContextData.keyGenerator} */}
+            {/*   checkedItemKeys={listDataContextData.checkedItemKeys} */}
+            {/* /> */}
+            {listDataContextData.checkedItemKeys === ALL_ITEMS ? (
+              children(ALL_ITEMS)
+            ) : children(
+              listDataContextData.listData.data.filter((item) => {
+                const key = listDataContextData.keyGenerator(item)
+                return listDataContextData.checkedItemKeys.includes(key);
+              })
+            )}
+          </Fragment>
+        }
+      />
 
       {/* If enabled, give the user the ability to be able to select all pages of data that match the query */}
       {canSelectAllAcrossPages && areAllInMemoryItemsChecked ? (
