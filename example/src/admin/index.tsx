@@ -2903,7 +2903,9 @@ export const DetailFieldItem = <I = BaseItem, F = BaseFieldName, S = BaseFieldSt
   if (field.modifyMarkup) {
     return (
       <div style={{ display: 'flex', flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-        <strong style={{ lineHeight: '32px' }}>{field.singularDisplayName}:</strong>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <strong>{field.singularDisplayName}:</strong>
+        </div>
         {field.modifyMarkup(
           state,
           (s: S, blurAfterStateSet?: boolean) => {
