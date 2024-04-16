@@ -2171,7 +2171,7 @@ export const ListFilterBar = <I = BaseItem>({
                       intent="footer"
                       size="small"
                       title={
-                        <div style={{ display: 'flex', gap: 8, userSelect: 'none' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, userSelect: 'none' }}>
                           <Controls.Button
                             size="small"
                             variant="primary"
@@ -2188,8 +2188,14 @@ export const ListFilterBar = <I = BaseItem>({
                               ])
                             }}
                           >Add filter</Controls.Button>
-                          |
-                          {filterPresetButtons.length === 0 ? <small style={{color: 'var(--gray-10)', marginTop: 3}}>No presets</small> : filterPresetButtons}
+                          <div style={{
+                            borderLeft: `1.5px solid var(--gray-12)`,
+                            paddingLeft: 8,
+                          }}>
+                            {filterPresetButtons.length === 0 ? (
+                              <small style={{color: 'var(--gray-10)', marginTop: 3}}>No presets</small>
+                            ) : filterPresetButtons}
+                          </div>
                         </div>
                       }
                     />
