@@ -2,7 +2,7 @@ import { useRef, useMemo } from "react";
 
 import { FixMe, BaseItem, BaseFieldName } from "../types";
 import Field, { FieldMetadata, NullableWrapper } from ".";
-import TextInput from "../controls/TextInput";
+import { useControls } from "../controls";
 
 
 export type InputFieldProps<
@@ -47,6 +47,8 @@ const InputField = <
   FieldName = BaseFieldName,
   Nullable = false,
 >(props: InputFieldProps<Item, FieldName, Nullable>) => {
+  const Controls = useControls();
+
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const getInitialStateFromItem = useMemo(() => {
@@ -84,7 +86,7 @@ const InputField = <
       displayMarkup={state => state === null ? <em style={{color: 'silver'}}>null</em> : <span>{state}</span>}
       modifyMarkup={(state, setState, item, onBlur) => {
         const input = props.inputMarkup ? props.inputMarkup(state, setState, item, onBlur) : (
-          <TextInput
+          <Controls.TextInput
             ref={inputRef}
             type={props.type || "text"}
             value={state === null ? '' : `${state}`}
