@@ -102,8 +102,7 @@ const InputField = <
             name={props.name}
             state={state}
             setState={setState}
-            getInitialStateWhenCreating={props.getInitialStateWhenCreating}
-            onBlur={onBlur}
+            getInitialStateWhenCreating={props.getInitialStateWhenCreating || (() => '')}
             inputRef={inputRef}
           >
             {input}

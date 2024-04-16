@@ -210,9 +210,8 @@ type NullableWrapperProps<State = BaseFieldState, FieldName = BaseFieldName> = {
   nullable?: boolean;
   name: FieldName;
   state: State | null;
-  setState: (newState: State | null) => void;
+  setState: (newState: State | null, blurAfterStateSet?: boolean) => void;
   getInitialStateWhenCreating: () => State;
-  onBlur: () => void;
   inputRef?: React.MutableRefObject<{ focus: () => void } | null>;
   children: React.ReactNode;
 };
@@ -225,27 +224,25 @@ export const NullableWrapper = <
   // null radio button needs to be clicked twice for it to be set
 
   const onMakeNotNull = useCallback(() => {
-    props.setState(props.getInitialStateWhenCreating());
-    props.onBlur();
+    props.setState(props.getInitialStateWhenCreating(), true);
 
     // Focus the control now that it is the active one
-    // if (props.inputRef?.current) {
-    //   setTimeout(() => {
-    //     if (!props.inputRef?.current) {
-    //       return;
-    //     }
+    if (props.inputRef?.current) {
+      setTimeout(() => {
+        if (!props.inputRef?.current) {
+          return;
+        }
 
-    //     if (props.inputRef.current) {
-    //       props.inputRef.current.focus();
-    //     }
-    //   }, 0);
-    // }
-  }, [props.setState, props.getInitialStateWhenCreating, props.onBlur, props.inputRef]);
+        if (props.inputRef.current) {
+          props.inputRef.current.focus();
+        }
+      }, 0);
+    }
+  }, [props.setState, props.getInitialStateWhenCreating, props.inputRef]);
 
   const onMakeNull = useCallback(() => {
-    props.setState(null);
-    props.onBlur();
-  }, [props.setState, props.onBlur]);
+    props.setState(null, true);
+  }, [props.setState]);
 
   if (!props.nullable) {
     return props.children;
@@ -262,11 +259,23 @@ export const NullableWrapper = <
             }
           }}
         />
-        <div onClick={() => {
-          if (props.state === null) {
-            onMakeNotNull();
-          }
-        }}>{props.children}</div>
+        <div
+          style={{ position: 'relative' }}
+          onClick={() => {
+            if (props.state === null) {
+              onMakeNotNull();
+            }
+          }}
+        >
+          {/*
+          Disabled fields likely have something like `user-select: none;`. So, put this
+          div on top so that it will soak up click events and make the input no longer null.
+          */}
+          {props.state === null ? (
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+          ) : null}
+          {props.children}
+        </div>
       </div>
       <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
         <Radiobutton

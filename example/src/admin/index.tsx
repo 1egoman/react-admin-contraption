@@ -955,7 +955,6 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
             // `ForeignKeyFieldModifyMarkup` component aware of `nullable` when in
             // SingleForeignKeyField mode and get rid of the `NullableWrapper` stuff in here.
             getInitialStateWhenCreating={getInitialStateWhenCreating}
-            onBlur={onBlur}
           >
             Value
           </NullableWrapper>
