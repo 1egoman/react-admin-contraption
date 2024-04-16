@@ -64,7 +64,6 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
             {...provided.droppableProps}
             ref={provided.innerRef}
             key="columns"
-            className={styles.listCSVExportBody}
           >
             <div style={{ display: 'flex' }}>
               <div className={styles.csvExportPreviewTable}>
@@ -306,7 +305,7 @@ const ListCSVExport = <Item = BaseItem, FieldName = BaseFieldName>(props: ListCS
       )}
     >
       {(close) => (
-        <div className={styles.ListCSVExportModal}>
+        <div className={styles.listCSVExportModal}>
           <Controls.AppBar
             size="regular"
             intent="header"
