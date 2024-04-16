@@ -1503,51 +1503,57 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                 );
               })}
 
-              <div className={styles.foreignKeyFieldModifyMarkupActionBar}>
-                <Controls.Button size="small" onClick={() => setItemSelectionMode('none')}>Cancel</Controls.Button>
-                <Controls.Button size="small" onClick={async () => {
-                  if (!props.foreignKeyFieldProps.createRelatedItem) {
-                    return;
-                  }
+              <Controls.AppBar
+                intent="footer"
+                size="small"
+                title={
+                  <Fragment>
+                    <Controls.Button size="small" onClick={() => setItemSelectionMode('none')}>Cancel</Controls.Button>
+                    <Controls.Button size="small" onClick={async () => {
+                      if (!props.foreignKeyFieldProps.createRelatedItem) {
+                        return;
+                      }
 
-                  // Aggregate all the state updates to form the update body
-                  let relatedItem: Partial<J> = {};
-                  for (const field of relatedCreationFields.metadata) {
-                    let state = relatedCreationFieldStates.get(field.name);
-                    if (typeof state === 'undefined') {
-                      continue;
-                    }
+                      // Aggregate all the state updates to form the update body
+                      let relatedItem: Partial<J> = {};
+                      for (const field of relatedCreationFields.metadata) {
+                        let state = relatedCreationFieldStates.get(field.name);
+                        if (typeof state === 'undefined') {
+                          continue;
+                        }
 
-                    relatedItem = field.serializeStateToItem(relatedItem, state);
-                  }
+                        relatedItem = field.serializeStateToItem(relatedItem, state);
+                      }
 
-                  // FIXME: add abort controller
-                  let newlyCreatedRelatedItem: J;
-                  try {
-                    newlyCreatedRelatedItem = await props.foreignKeyFieldProps.createRelatedItem(props.item, relatedItem);
-                  } catch (error: FixMe) {
-                    // if (error.name === 'AbortError') {
-                    //   // The effect unmounted, and the request was terminated
-                    //   return;
-                    // }
+                      // FIXME: add abort controller
+                      let newlyCreatedRelatedItem: J;
+                      try {
+                        newlyCreatedRelatedItem = await props.foreignKeyFieldProps.createRelatedItem(props.item, relatedItem);
+                      } catch (error: FixMe) {
+                        // if (error.name === 'AbortError') {
+                        //   // The effect unmounted, and the request was terminated
+                        //   return;
+                        // }
 
-                    alert(`Error creating ${props.foreignKeyFieldProps.singularDisplayName}: ${error}`);
-                    return;
-                  }
+                        alert(`Error creating ${props.foreignKeyFieldProps.singularDisplayName}: ${error}`);
+                        return;
+                      }
 
-                  setRelatedData({
-                    ...relatedData,
-                    data: [...relatedData.data, newlyCreatedRelatedItem],
-                  });
-                  if (props.mode === 'detail') {
-                    props.onChangeRelatedItem(newlyCreatedRelatedItem);
-                  } else {
-                    props.onChangeRelatedItems([...props.relatedItems, newlyCreatedRelatedItem]);
-                  }
+                      setRelatedData({
+                        ...relatedData,
+                        data: [...relatedData.data, newlyCreatedRelatedItem],
+                      });
+                      if (props.mode === 'detail') {
+                        props.onChangeRelatedItem(newlyCreatedRelatedItem);
+                      } else {
+                        props.onChangeRelatedItems([...props.relatedItems, newlyCreatedRelatedItem]);
+                      }
 
-                  setItemSelectionMode('none');
-                }}>Create</Controls.Button>
-              </div>
+                      setItemSelectionMode('none');
+                    }}>Create</Controls.Button>
+                  </Fragment>
+                }
+              />
             </Fragment>
           ) : (
             <Fragment>
@@ -1566,16 +1572,26 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                 </Fragment>
               ) : null}
 
-              <div className={styles.foreignKeyFieldModifyMarkupActionBar}>
-                {itemSelectionMode === 'none' ? (
-                  <Controls.Button size="small" onClick={() => setItemSelectionMode('select')}>Show More...</Controls.Button>
-                ) : (
-                  <Controls.Button size="small" onClick={() => setItemSelectionMode('none')}>Hide</Controls.Button>
-                )}
-                {props.foreignKeyFieldProps.createRelatedItem ? (
-                  <Controls.Button size="small" onClick={() => setItemSelectionMode('create')}>Create New...</Controls.Button>
-                ) : null}
-              </div>
+              <Controls.AppBar
+                intent="footer"
+                size="small"
+                title={
+                  <Fragment>
+                    {itemSelectionMode === 'none' ? (
+                      <Controls.Button size="small" onClick={() => setItemSelectionMode('select')}>Show More...</Controls.Button>
+                    ) : (
+                      <Controls.Button size="small" onClick={() => setItemSelectionMode('none')}>Hide</Controls.Button>
+                    )}
+                    {props.foreignKeyFieldProps.createRelatedItem ? (
+                      <Controls.Button
+                        size="small"
+                        variant="primary"
+                        onClick={() => setItemSelectionMode('create')}
+                      >Create New...</Controls.Button>
+                    ) : null}
+                  </Fragment>
+                }
+              />
             </Fragment>
           )}
 
@@ -1958,206 +1974,228 @@ export const ListFilterBar = <I = BaseItem>({
 
 
   return (
-    <div className={styles.listFilterBar} style={{ overflow: 'visible' }}>
-      <span className={styles.listFilterBarTitle}>
-        {dataContext.pluralDisplayName.slice(0, 1).toUpperCase()}
-        {dataContext.pluralDisplayName.slice(1)}
-      </span>
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center', overflow: 'visible' }}>
-        {addable && listDataContextData.createLink ? (
-          <Controls.NavigationButton navigatable={listDataContextData.createLink}>
-            &#65291; Add {listDataContextData.singularDisplayName}
-          </Controls.NavigationButton>
-        ) : null}
+    <Fragment>
+      <Controls.AppBar
+        intent="header"
+        size="regular"
+        title={
+          <span className={styles.listFilterBarTitle}>
+            {dataContext.pluralDisplayName.slice(0, 1).toUpperCase()}
+            {dataContext.pluralDisplayName.slice(1)}
+          </span>
+        }
+        actions={
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', overflow: 'visible' }}>
+            {addable && listDataContextData.createLink ? (
+              <Controls.NavigationButton navigatable={listDataContextData.createLink}>
+                &#65291; Add {listDataContextData.singularDisplayName}
+              </Controls.NavigationButton>
+            ) : null}
 
-        {filterMetadata.length > 0 ? (
-          <Controls.Popover
-            target={toggle => (
-              <Controls.Button onClick={toggle}>
-                {listDataContextData.filters.length > 0 ? `Filters (${listDataContextData.filters.length})` : 'Filters'}
-              </Controls.Button>
-            )}
-          >
-            {close => (
-              <div className={styles.filterPopup}>
-                <div className={styles.filterPopupHeader}>
-                  <span>Filters</span>
-                  <Controls.IconButton size="small" onClick={close}>&times;</Controls.IconButton>
-                </div>
-
-                <div className={styles.filterPopupBody}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 200 }}>
-                    {listDataContextData.filters.map((filter, filterIndex) => {
-                      const getPeerOptionsForFilterPath = (path: Array<string>) => {
-                        let pointer: typeof filterMetadataNameHierarchy | true = filterMetadataNameHierarchy;
-                        let lastPointer = pointer;
-
-                        for (const entry of path) {
-                          if (typeof pointer === 'undefined') {
-                            return [];
-                          }
-                          if (pointer === true) {
-                            return [];
-                          }
-                          lastPointer = pointer;
-                          pointer = pointer.get(entry);
-                        }
-
-                        return Array.from(lastPointer.keys());
-                      };
-
-                      // Attempt to find a filter definition that matches this new name selection
-                      let metadata: FilterMetadata | null = null;
-                      for (const item of filterMetadata) {
-                        const nameMatches = filter.name.every((e, i) => e === item.name[i]);
-                        if (nameMatches) {
-                          metadata = item;
-                          break;
-                        }
-                      }
-
-                      return (
-                        <div key={filterIndex} style={{ display: 'flex', justifyContent: 'space-between', gap: 4, alignItems: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ fontSize: 14, width: 48 }}>
-                              {filterIndex === 0 ? 'where' : 'and'}
-                            </span>
-                            {filter.name.map((entry, entryIndex) => (
-                              <Controls.Select
-                                size="small"
-                                value={entry}
-                                key={entryIndex}
-                                onChange={newValue => {
-                                  // Given the adjustment in filter name, figure out what the new filter name
-                                  // would be
-                                  const newFilterNamePrefix = filter.name.slice(0, entryIndex);
-                                  newFilterNamePrefix[entryIndex] = newValue;
-
-                                  // Attempt to find a filter definition that matches this new name selection
-                                  let newFilterMetadata: FilterMetadata | null = null;
-                                  for (const item of filterMetadata) {
-                                    const namePrefixMatches = newFilterNamePrefix.every((e, i) => e === item.name[i]);
-                                    if (namePrefixMatches) {
-                                      newFilterMetadata = item;
-                                      break;
-                                    }
-                                  }
-                                  if (!newFilterMetadata) {
-                                    return;
-                                  }
-                                  const newFilterMetadataNonNull = newFilterMetadata;
-
-                                  // Update the given filter to now be of type `newFilterMetadata`
-                                  listDataContextData.onChangeFilters(
-                                    listDataContextData.filters.map((f, i) => {
-                                      if (i === filterIndex) {
-                                        const initialState = newFilterMetadataNonNull.getInitialState();
-                                        const isValid = newFilterMetadataNonNull.onIsValid(initialState);
-                                        return {
-                                          name: newFilterMetadataNonNull.name,
-                                          isValid,
-                                          isComplete: isValid && newFilterMetadataNonNull.onIsComplete(initialState),
-                                          workingState: initialState,
-                                          state: initialState,
-                                        };
-                                      } else {
-                                        return f;
-                                      }
-                                    }),
-                                  );
-                                }}
-                                options={[
-                                  { value: FILTER_NOT_SET_YET, disabled: true, label: "Pick filter..." },
-                                  ...getPeerOptionsForFilterPath(filter.name.slice(0, entryIndex+1)).map(choice => ({
-                                    value: choice,
-                                    label: choice,
-                                  })),
-                                ]}
-                              />
-                            ))}
-                            {metadata ? metadata.children(
-                              filter.workingState,
-                              // Call this function to change the state
-                              (newState) => {
-                                listDataContextData.onChangeFilters(
-                                  listDataContextData.filters.map((f, i) => {
-                                    if (i === filterIndex) {
-                                      return { ...f, workingState: newState };
-                                    } else {
-                                      return f;
-                                    }
-                                  }),
-                                );
-                              },
-                              filter,
-                              // Call this function to indicate that editing is complete
-                              () => {
-                                listDataContextData.onChangeFilters(
-                                  listDataContextData.filters.map((f, i) => {
-                                    if (i === filterIndex) {
-                                      const isValid =  metadata.onIsValid(f.workingState);
-                                      return {
-                                        ...f,
-                                        state: f.workingState,
-                                        isValid,
-                                        isComplete: isValid && metadata.onIsComplete(f.workingState),
-                                      };
-                                    } else {
-                                      return f;
-                                    }
-                                  }),
-                                );
-                              },
-                            ) : null}
-                          </div>
-                          <Controls.IconButton size="small" onClick={() => {
-                            listDataContextData.onChangeFilters(
-                              listDataContextData.filters.filter((_f, i) => i !== filterIndex)
-                            );
-                          }}>&times;</Controls.IconButton>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Controls.Button
+            {filterMetadata.length > 0 ? (
+              <Controls.Popover
+                target={toggle => (
+                  <Controls.Button onClick={toggle}>
+                    {listDataContextData.filters.length > 0 ? `Filters (${listDataContextData.filters.length})` : 'Filters'}
+                  </Controls.Button>
+                )}
+              >
+                {close => (
+                  <div className={styles.filterPopup}>
+                    <Controls.AppBar
+                      intent="header"
                       size="small"
-                      onClick={() => {
-                        listDataContextData.onChangeFilters([
-                          ...listDataContextData.filters,
-                          {
-                            name: [FILTER_NOT_SET_YET],
-                            workingState: FILTER_NOT_SET_YET,
-                            state: FILTER_NOT_SET_YET,
-                            isValid: false,
-                            isComplete: false,
-                          },
-                        ])
-                      }}
-                    >Add filter</Controls.Button>
-                    |
-                    {filterPresetButtons.length === 0 ? <small style={{color: 'silver', marginTop: 3}}>No presets</small> : filterPresetButtons}
-                  </div>
-                </div>
-              </div>
-            )}
-          </Controls.Popover>
-        ) : null}
+                      title={<span className={styles.filterPopupHeaderName}>Filters</span>}
+                      actions={
+                        <Controls.IconButton size="small" onClick={close}>
+                          &times;
+                        </Controls.IconButton>
+                      }
+                    />
 
-        {searchable ? (
-          <div className={styles.listFilterBarSearch}>
-            <SearchInput
-              pluralDisplayName={listDataContextData.pluralDisplayName}
-              value={listDataContextData.searchText}
-              onChange={text => listDataContextData.onChangeSearchText(text)}
-            />
+                    <div className={styles.filterPopupBody}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 200 }}>
+                        {listDataContextData.filters.map((filter, filterIndex) => {
+                          const getPeerOptionsForFilterPath = (path: Array<string>) => {
+                            let pointer: typeof filterMetadataNameHierarchy | true = filterMetadataNameHierarchy;
+                            let lastPointer = pointer;
+
+                            for (const entry of path) {
+                              if (typeof pointer === 'undefined') {
+                                return [];
+                              }
+                              if (pointer === true) {
+                                return [];
+                              }
+                              lastPointer = pointer;
+                              pointer = pointer.get(entry);
+                            }
+
+                            return Array.from(lastPointer.keys());
+                          };
+
+                          // Attempt to find a filter definition that matches this new name selection
+                          let metadata: FilterMetadata | null = null;
+                          for (const item of filterMetadata) {
+                            const nameMatches = filter.name.every((e, i) => e === item.name[i]);
+                            if (nameMatches) {
+                              metadata = item;
+                              break;
+                            }
+                          }
+
+                          return (
+                            <div key={filterIndex} style={{ display: 'flex', justifyContent: 'space-between', gap: 4, alignItems: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ fontSize: 14, width: 48 }}>
+                                  {filterIndex === 0 ? 'where' : 'and'}
+                                </span>
+                                {filter.name.map((entry, entryIndex) => (
+                                  <Controls.Select
+                                    size="small"
+                                    value={entry}
+                                    key={entryIndex}
+                                    onChange={newValue => {
+                                      // Given the adjustment in filter name, figure out what the new filter name
+                                      // would be
+                                      const newFilterNamePrefix = filter.name.slice(0, entryIndex);
+                                      newFilterNamePrefix[entryIndex] = newValue;
+
+                                      // Attempt to find a filter definition that matches this new name selection
+                                      let newFilterMetadata: FilterMetadata | null = null;
+                                      for (const item of filterMetadata) {
+                                        const namePrefixMatches = newFilterNamePrefix.every((e, i) => e === item.name[i]);
+                                        if (namePrefixMatches) {
+                                          newFilterMetadata = item;
+                                          break;
+                                        }
+                                      }
+                                      if (!newFilterMetadata) {
+                                        return;
+                                      }
+                                      const newFilterMetadataNonNull = newFilterMetadata;
+
+                                      // Update the given filter to now be of type `newFilterMetadata`
+                                      listDataContextData.onChangeFilters(
+                                        listDataContextData.filters.map((f, i) => {
+                                          if (i === filterIndex) {
+                                            const initialState = newFilterMetadataNonNull.getInitialState();
+                                            const isValid = newFilterMetadataNonNull.onIsValid(initialState);
+                                            return {
+                                              name: newFilterMetadataNonNull.name,
+                                              isValid,
+                                              isComplete: isValid && newFilterMetadataNonNull.onIsComplete(initialState),
+                                              workingState: initialState,
+                                              state: initialState,
+                                            };
+                                          } else {
+                                            return f;
+                                          }
+                                        }),
+                                      );
+                                    }}
+                                    options={[
+                                      { value: FILTER_NOT_SET_YET, disabled: true, label: "Pick filter..." },
+                                      ...getPeerOptionsForFilterPath(filter.name.slice(0, entryIndex+1)).map(choice => ({
+                                        value: choice,
+                                        label: choice,
+                                      })),
+                                    ]}
+                                  />
+                                ))}
+                                {metadata ? metadata.children(
+                                  filter.workingState,
+                                  // Call this function to change the state
+                                  (newState) => {
+                                    listDataContextData.onChangeFilters(
+                                      listDataContextData.filters.map((f, i) => {
+                                        if (i === filterIndex) {
+                                          return { ...f, workingState: newState };
+                                        } else {
+                                          return f;
+                                        }
+                                      }),
+                                    );
+                                  },
+                                  filter,
+                                  // Call this function to indicate that editing is complete
+                                  () => {
+                                    listDataContextData.onChangeFilters(
+                                      listDataContextData.filters.map((f, i) => {
+                                        if (i === filterIndex) {
+                                          const isValid =  metadata.onIsValid(f.workingState);
+                                          return {
+                                            ...f,
+                                            state: f.workingState,
+                                            isValid,
+                                            isComplete: isValid && metadata.onIsComplete(f.workingState),
+                                          };
+                                        } else {
+                                          return f;
+                                        }
+                                      }),
+                                    );
+                                  },
+                                ) : null}
+                              </div>
+                              <Controls.IconButton size="small" onClick={() => {
+                                listDataContextData.onChangeFilters(
+                                  listDataContextData.filters.filter((_f, i) => i !== filterIndex)
+                                );
+                              }}>&times;</Controls.IconButton>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <Controls.AppBar
+                      intent="footer"
+                      size="small"
+                      title={
+                        <div style={{ display: 'flex', gap: 8, userSelect: 'none' }}>
+                          <Controls.Button
+                            size="small"
+                            variant="primary"
+                            onClick={() => {
+                              listDataContextData.onChangeFilters([
+                                ...listDataContextData.filters,
+                                {
+                                  name: [FILTER_NOT_SET_YET],
+                                  workingState: FILTER_NOT_SET_YET,
+                                  state: FILTER_NOT_SET_YET,
+                                  isValid: false,
+                                  isComplete: false,
+                                },
+                              ])
+                            }}
+                          >Add filter</Controls.Button>
+                          |
+                          {filterPresetButtons.length === 0 ? <small style={{color: 'var(--gray-10)', marginTop: 3}}>No presets</small> : filterPresetButtons}
+                        </div>
+                      }
+                    />
+                  </div>
+                )}
+              </Controls.Popover>
+            ) : null}
+
+            {searchable ? (
+              <div className={styles.listFilterBarSearch}>
+                <SearchInput
+                  pluralDisplayName={listDataContextData.pluralDisplayName}
+                  value={listDataContextData.searchText}
+                  onChange={text => listDataContextData.onChangeSearchText(text)}
+                />
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </div>
+        }
+      />
 
       {/* The children should not render anything, this should purely be Filters */}
       {children}
-    </div>
+    </Fragment>
   );
 };
 
@@ -2651,10 +2689,16 @@ export const ListColumnSetSelector = <I = BaseItem, F = BaseFieldName>(props: {
     >
       {close => (
         <div className={styles.listColumnSetPopup}>
-          <div className={styles.listColumnSetPopupHeader}>
-            <span>Column Sets</span>
-            <Controls.IconButton size="small" onClick={close}>&times;</Controls.IconButton>
-          </div>
+          <Controls.AppBar
+            intent="header"
+            size="small"
+            title={<span className={styles.listColumnSetPopupHeaderName}>Column Sets</span>}
+            actions={
+              <Controls.IconButton size="small" onClick={close}>
+                &times;
+              </Controls.IconButton>
+            }
+          />
 
           <div className={styles.listColumnSetBody}>
             <h3>All columns</h3>
@@ -3159,19 +3203,24 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
 
   return (
     <FieldsProvider dataModel={dataModel} onChangeFields={setFields}>
-      <div className={styles.detailHeader}>
-        <Controls.NavigationButton navigatable={detailDataContextData.listLink}>&larr; Back</Controls.NavigationButton>
-        {detailDataContextData.isCreating ? (
-          <strong>
-            Create {detailDataContextData.singularDisplayName[0].toUpperCase()}{detailDataContextData.singularDisplayName.slice(1)}
-          </strong>
-        ) : (
-          <strong>
-            {detailDataContextData.singularDisplayName[0].toUpperCase()}{detailDataContextData.singularDisplayName.slice(1)}{' '}
-            {detailDataContextData.itemKey}
-          </strong>
-        )}
-      </div>
+      <Controls.AppBar
+        intent="header"
+        title={
+          <Fragment>
+            <Controls.NavigationButton navigatable={detailDataContextData.listLink}>&larr; Back</Controls.NavigationButton>
+            {detailDataContextData.isCreating ? (
+              <strong>
+                Create {detailDataContextData.singularDisplayName[0].toUpperCase()}{detailDataContextData.singularDisplayName.slice(1)}
+              </strong>
+            ) : (
+              <strong>
+                {detailDataContextData.singularDisplayName[0].toUpperCase()}{detailDataContextData.singularDisplayName.slice(1)}{' '}
+                {detailDataContextData.itemKey}
+              </strong>
+            )}
+          </Fragment>
+        }
+      />
 
       {renderFieldsWrapper({
         detailDataContextData,
@@ -3182,85 +3231,17 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
       {children}
 
       {detailDataContextData.isCreating ? (
-        <div className={styles.detailActions}>
-          <Controls.Button
-            disabled={!detailDataContextData.createItem}
-            onClick={async () => {
-              if (!detailDataContextData.createItem) {
-                return;
-              }
-              if (fieldStates.status !== 'COMPLETE') {
-                return;
-              }
-
-              const abortController = new AbortController();
-              addInFlightAbortController(abortController);
-
-              // Aggregate all the state updates to form the update body
-              let item: Partial<I> = {};
-              for (const field of fields.metadata) {
-                let state = fieldStates.data.get(field.name);
-                if (typeof state === 'undefined') {
-                  continue;
-                }
-
-                if (field.createSideEffect) {
-                  try {
-                    state = await field.createSideEffect(item, state, abortController.signal);
-                  } catch (error: FixMe) {
-                    if (error.name === 'AbortError') {
-                      // The component unmounted, and the request was terminated
-                      return;
-                    }
-
-                    console.error(error);
-                    alert(`Error creating ${detailDataContextData.singularDisplayName} related item ${field.singularDisplayName} on key ${detailDataContextData.itemKey}: ${error}`);
-                    return;
-                  }
-                }
-
-                item = field.serializeStateToItem(item, state);
-              }
-
-              let createResult: I;
-              try {
-                createResult = await detailDataContextData.createItem(item, abortController.signal);
-              } catch (error: FixMe) {
-                if (error.name === 'AbortError') {
-                  // The component unmounted, and the request was terminated
-                  return;
-                }
-
-                console.error(error);
-                alert(`Error creating ${detailDataContextData.singularDisplayName} ${detailDataContextData.itemKey}: ${error}`);
-                return;
-              }
-
-              removeInFlightAbortController(abortController);
-
-              // After creating, navigate to the newly created item's detail page
-              if (detailDataContextData.detailLinkGenerator) {
-                imperativelyNavigateToNavigatable(adminContextData, detailDataContextData.detailLinkGenerator(createResult));
-              }
-            }}
-          >Create</Controls.Button>
-        </div>
-      ) : (
-        <div className={styles.detailActions}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <Controls.AppBar
+          intent="footer"
+          actions={
             <Controls.Button
-              disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.updateItem}
+              disabled={!detailDataContextData.createItem}
+              variant="primary"
               onClick={async () => {
-                if (!detailDataContextData.updateItem) {
-                  return;
-                }
-                if (!detailDataContextData.itemKey) {
+                if (!detailDataContextData.createItem) {
                   return;
                 }
                 if (fieldStates.status !== 'COMPLETE') {
-                  return;
-                }
-                if (detailDataContextData.detailData.status !== 'COMPLETE') {
                   return;
                 }
 
@@ -3268,16 +3249,16 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                 addInFlightAbortController(abortController);
 
                 // Aggregate all the state updates to form the update body
-                let item: Partial<I> = detailDataContextData.detailData.data;
+                let item: Partial<I> = {};
                 for (const field of fields.metadata) {
                   let state = fieldStates.data.get(field.name);
                   if (typeof state === 'undefined') {
                     continue;
                   }
 
-                  if (field.updateSideEffect) {
+                  if (field.createSideEffect) {
                     try {
-                      state = await field.updateSideEffect(item, state, abortController.signal);
+                      state = await field.createSideEffect(item, state, abortController.signal);
                     } catch (error: FixMe) {
                       if (error.name === 'AbortError') {
                         // The component unmounted, and the request was terminated
@@ -3285,7 +3266,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                       }
 
                       console.error(error);
-                      alert(`Error updating ${detailDataContextData.singularDisplayName} related item ${field.singularDisplayName} on key ${detailDataContextData.itemKey}: ${error}`);
+                      alert(`Error creating ${detailDataContextData.singularDisplayName} related item ${field.singularDisplayName} on key ${detailDataContextData.itemKey}: ${error}`);
                       return;
                     }
                   }
@@ -3293,8 +3274,9 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                   item = field.serializeStateToItem(item, state);
                 }
 
+                let createResult: I;
                 try {
-                  await detailDataContextData.updateItem(detailDataContextData.itemKey, item, abortController.signal);
+                  createResult = await detailDataContextData.createItem(item, abortController.signal);
                 } catch (error: FixMe) {
                   if (error.name === 'AbortError') {
                     // The component unmounted, and the request was terminated
@@ -3302,62 +3284,139 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                   }
 
                   console.error(error);
-                  alert(`Error updating ${detailDataContextData.singularDisplayName} ${detailDataContextData.itemKey}: ${error}`);
+                  alert(`Error creating ${detailDataContextData.singularDisplayName} ${detailDataContextData.itemKey}: ${error}`);
                   return;
                 }
 
                 removeInFlightAbortController(abortController);
-                alert('Update successful!');
 
-                // After updating, go back to the list page
-                if (!updateKeepEditing) {
-                  imperativelyNavigateToNavigatable(adminContextData, detailDataContextData.listLink);
+                // After creating, navigate to the newly created item's detail page
+                if (detailDataContextData.detailLinkGenerator) {
+                  imperativelyNavigateToNavigatable(adminContextData, detailDataContextData.detailLinkGenerator(createResult));
                 }
               }}
-            >Update</Controls.Button>
-            {detailDataContextData.detailData.status === 'COMPLETE' && detailDataContextData.updateItem ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Controls.Checkbox
-                  id="update-keep-editing"
-                  checked={updateKeepEditing}
-                  onChange={setUpdateKeepEditing}
-                />
-                <label htmlFor="update-keep-editing" style={{ cursor: 'pointer', userSelect: 'none' }}>Keep editing</label>
-              </div>
-            ) : null}
-          </div>
-          <Controls.Button
-            disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.deleteItem}
-            onClick={async () => {
-              if (!detailDataContextData.deleteItem) {
-                return;
-              }
-              if (!confirm('Are you sure?')) {
-                return;
-              }
+            >Create</Controls.Button>
+          }
+        />
+      ) : (
+        <Controls.AppBar
+          intent="footer"
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <Controls.Button
+                disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.updateItem}
+                variant="primary"
+                onClick={async () => {
+                  if (!detailDataContextData.updateItem) {
+                    return;
+                  }
+                  if (!detailDataContextData.itemKey) {
+                    return;
+                  }
+                  if (fieldStates.status !== 'COMPLETE') {
+                    return;
+                  }
+                  if (detailDataContextData.detailData.status !== 'COMPLETE') {
+                    return;
+                  }
 
-              const abortController = new AbortController();
-              addInFlightAbortController(abortController);
-              try {
-                await detailDataContextData.deleteItem(detailDataContextData.itemKey, abortController.signal);
-              } catch (error: FixMe) {
-                if (error.name === 'AbortError') {
-                  // The component unmounted, and the request was terminated
+                  const abortController = new AbortController();
+                  addInFlightAbortController(abortController);
+
+                  // Aggregate all the state updates to form the update body
+                  let item: Partial<I> = detailDataContextData.detailData.data;
+                  for (const field of fields.metadata) {
+                    let state = fieldStates.data.get(field.name);
+                    if (typeof state === 'undefined') {
+                      continue;
+                    }
+
+                    if (field.updateSideEffect) {
+                      try {
+                        state = await field.updateSideEffect(item, state, abortController.signal);
+                      } catch (error: FixMe) {
+                        if (error.name === 'AbortError') {
+                          // The component unmounted, and the request was terminated
+                          return;
+                        }
+
+                        console.error(error);
+                        alert(`Error updating ${detailDataContextData.singularDisplayName} related item ${field.singularDisplayName} on key ${detailDataContextData.itemKey}: ${error}`);
+                        return;
+                      }
+                    }
+
+                    item = field.serializeStateToItem(item, state);
+                  }
+
+                  try {
+                    await detailDataContextData.updateItem(detailDataContextData.itemKey, item, abortController.signal);
+                  } catch (error: FixMe) {
+                    if (error.name === 'AbortError') {
+                      // The component unmounted, and the request was terminated
+                      return;
+                    }
+
+                    console.error(error);
+                    alert(`Error updating ${detailDataContextData.singularDisplayName} ${detailDataContextData.itemKey}: ${error}`);
+                    return;
+                  }
+
+                  removeInFlightAbortController(abortController);
+                  alert('Update successful!');
+
+                  // After updating, go back to the list page
+                  if (!updateKeepEditing) {
+                    imperativelyNavigateToNavigatable(adminContextData, detailDataContextData.listLink);
+                  }
+                }}
+              >Update</Controls.Button>
+              {detailDataContextData.detailData.status === 'COMPLETE' && detailDataContextData.updateItem ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Controls.Checkbox
+                    id="update-keep-editing"
+                    checked={updateKeepEditing}
+                    onChange={setUpdateKeepEditing}
+                  />
+                  <label htmlFor="update-keep-editing" style={{ cursor: 'pointer', userSelect: 'none' }}>Keep editing</label>
+                </div>
+              ) : null}
+            </div>
+          }
+          actions={
+            <Controls.Button
+              disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.deleteItem}
+              onClick={async () => {
+                if (!detailDataContextData.deleteItem) {
+                  return;
+                }
+                if (!confirm('Are you sure?')) {
                   return;
                 }
 
-                console.error(error);
-                alert(`Error deleting ${detailDataContextData.singularDisplayName} ${detailDataContextData.itemKey}: ${error}`);
-                return;
-              }
+                const abortController = new AbortController();
+                addInFlightAbortController(abortController);
+                try {
+                  await detailDataContextData.deleteItem(detailDataContextData.itemKey, abortController.signal);
+                } catch (error: FixMe) {
+                  if (error.name === 'AbortError') {
+                    // The component unmounted, and the request was terminated
+                    return;
+                  }
 
-              removeInFlightAbortController(abortController);
+                  console.error(error);
+                  alert(`Error deleting ${detailDataContextData.singularDisplayName} ${detailDataContextData.itemKey}: ${error}`);
+                  return;
+                }
 
-              // After deleting, go back to the list page
-              imperativelyNavigateToNavigatable(adminContextData, detailDataContextData.listLink);
-            }}
-          >Delete</Controls.Button>
-        </div>
+                removeInFlightAbortController(abortController);
+
+                // After deleting, go back to the list page
+                imperativelyNavigateToNavigatable(adminContextData, detailDataContextData.listLink);
+              }}
+            >Delete</Controls.Button>
+          }
+        />
       )}
     </FieldsProvider>
   );

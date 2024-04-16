@@ -72,7 +72,7 @@
 }
 
 .tableWrapper table thead th {
-  background-color: #eee;
+  background-color: var(--gray-2);
   text-align: left;
   user-select: none;
 }
@@ -84,7 +84,6 @@
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  background-color: #eee;
   padding-left: 17px;
   cursor: pointer;
 }
@@ -182,22 +181,15 @@
 
 .listColumnSetPopup {
   font-family: 'Roboto Mono', 'menlo', 'monospace';
-  font-size: 16px;
 
   width: 320px;
 }
-.listColumnSetPopupHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 40px;
-  border-bottom: 1px solid #ccc;
+.listColumnSetPopupHeaderName {
   font-weight: bold;
   user-select: none;
-  padding-left: 8px;
-  padding-right: 8px;
 }
 .listColumnSetBody {
+  font-size: 16px;
   padding: 8px;
 }
 
@@ -251,16 +243,9 @@
 
   min-width: 320px;
 }
-.filterPopupHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 40px;
-  border-bottom: 1px solid #ccc;
+.filterPopupHeaderName {
   font-weight: bold;
   user-select: none;
-  padding-left: 8px;
-  padding-right: 8px;
 }
 .filterPopupBody {
   display: flex;
@@ -288,16 +273,6 @@
   justify-content: center;
 
   font-style: italic;
-}
-.detailHeader {
-  background-color: #eee;
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-left: 16px;
-  padding-right: 16px;
-  border-bottom: 1px solid #ccc;
 }
 .detailActions {
   background-color: #eee;
@@ -338,16 +313,9 @@
   width: 320px;
   overflow: hidden;
 }
-.listCSVExportModalHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 40px;
-  border-bottom: 1px solid var(--gray-8);
+.listCSVExportModalHeaderName {
   font-weight: bold;
   user-select: none;
-  padding-left: 8px;
-  padding-right: 8px;
 }
 .listCSVExportBody {
   display: flex;
@@ -363,24 +331,11 @@
 .listCSVExportBodyTable {
   display: flex;
   flex-direction: column;
-  padding: 8px;
+  padding: 16px;
   padding-right: 0px;
   min-width: 360px;
   max-width: 1200px;
   overflow-y: auto;
-}
-.listCSVExportActions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-
-  height: 40px;
-  border-top: 1px solid var(--gray-10);
-  background-color: var(--gray-3);
-
-  padding-left: 8px;
-  padding-right: 8px;
 }
 
 .csvExportPreviewTable {
@@ -441,5 +396,5 @@
   justify-content: center;
   padding: 0px;
   padding-left: 8px;
-  padding-right: 8px;
+  padding-right: 16px;
 }

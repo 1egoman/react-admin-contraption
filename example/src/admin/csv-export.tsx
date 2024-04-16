@@ -307,10 +307,16 @@ const ListCSVExport = <Item = BaseItem, FieldName = BaseFieldName>(props: ListCS
     >
       {(close) => (
         <div className={styles.ListCSVExportModal}>
-          <div className={styles.listCSVExportModalHeader}>
-            Export as CSV
-            <Controls.IconButton size="small" onClick={close}>&times;</Controls.IconButton>
-          </div>
+          <Controls.AppBar
+            size="regular"
+            intent="header"
+            title={<span className={styles.listCSVExportModalHeaderName}>Export as CSV</span>}
+            actions={
+              <Controls.IconButton size="small" onClick={close}>
+                &times;
+              </Controls.IconButton>
+            }
+          />
 
           <div className={styles.listCSVExportBody}>
             <div className={styles.listCSVExportBodySidebar}>
@@ -347,12 +353,16 @@ const ListCSVExport = <Item = BaseItem, FieldName = BaseFieldName>(props: ListCS
             </div>
           </div>
 
-          <div className={styles.listCSVExportActions}>
-            <Controls.Button
-              onClick={() => onClickExport(close)}
-              disabled={exportInProgress}
-            >{exportInProgress ? 'Exporting...' : 'Export'}</Controls.Button>
-          </div>
+          <Controls.AppBar
+            size="regular"
+            intent="footer"
+            actions={
+              <Controls.Button
+                onClick={() => onClickExport(close)}
+                disabled={exportInProgress}
+              >{exportInProgress ? 'Exporting...' : 'Export'}</Controls.Button>
+            }
+          />
         </div>
       )}
     </Controls.Modal>
