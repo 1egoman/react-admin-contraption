@@ -2527,7 +2527,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
                     item,
                     fields,
                     visibleFieldNames,
-                    detailLink: listDataContextData.detailLinkGenerator ? listDataContextData.detailLinkGenerator(item) : null,
+                    detailLink: listDataContextData.detailLinkGenerator ? listDataContextData.detailLinkGenerator(item) : undefined,
                     checkable: listDataContextData.checkable,
                     checkType: 'checkbox',
                     checked: listDataContextData.checkedItemKeys === ALL_ITEMS ? true : listDataContextData.checkedItemKeys.includes(key),
@@ -2964,6 +2964,10 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
   const detailDataContextData = dataContext as DataContextDetail<I>;
 
   const Controls = useControls();
+  const adminContextData = useContext(AdminContext);
+  if (!adminContextData) {
+    throw new Error('Error: <DetailFields ... /> was not rendered inside of a <AdminContextProvider> ...</AdminContextProvider> component!');
+  }
 
   // Then get the data model context data
   const dataModelsContextData = useContext(DataModelsContext);
@@ -3234,7 +3238,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
 
               // After creating, navigate to the newly created item's detail page
               if (detailDataContextData.detailLinkGenerator) {
-                imperativelyNavigateToNavigatable(detailDataContextData.detailLinkGenerator(createResult));
+                imperativelyNavigateToNavigatable(adminContextData, detailDataContextData.detailLinkGenerator(createResult));
               }
             }}
           >Create</Controls.Button>
@@ -3305,7 +3309,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
 
                 // After updating, go back to the list page
                 if (!updateKeepEditing) {
-                  imperativelyNavigateToNavigatable(detailDataContextData.listLink);
+                  imperativelyNavigateToNavigatable(adminContextData, detailDataContextData.listLink);
                 }
               }}
             >Update</Controls.Button>
@@ -3348,7 +3352,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
               removeInFlightAbortController(abortController);
 
               // After deleting, go back to the list page
-              imperativelyNavigateToNavigatable(detailDataContextData.listLink);
+              imperativelyNavigateToNavigatable(adminContextData, detailDataContextData.listLink);
             }}
           >Delete</Controls.Button>
         </div>
