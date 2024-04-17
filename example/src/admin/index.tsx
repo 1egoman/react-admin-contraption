@@ -888,8 +888,7 @@ type SingleForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName, Rela
   getRelatedKey?: (relatedItem: RelatedItem) => ItemKey;
 
   fetchPageOfRelatedData?: (page: number, item: Item | null, abort: AbortSignal) => Promise<Paginated<RelatedItem>>;
-  createRelatedItem?: (item: Partial<Item>, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>;
-  updateRelatedItem?: (item: Partial<Item>, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>;
+  createRelatedItem?: (item: Item | null, relatedItem: Partial<RelatedItem>, signal: AbortSignal) => Promise<RelatedItem>;
 
   creationFields?: React.ReactNode;
 
@@ -999,6 +998,30 @@ export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName
     }
   }, [getRelatedKey]);
 
+  const createRelatedItem = useMemo(() => {
+    if (props.createRelatedItem) {
+      return async (item: Item | null, relatedItem: Partial<RelatedItem>) => {
+        const abort = new AbortController();
+        addInFlightAbortController(abort);
+        const result = await props.createRelatedItem!(item, relatedItem, abort.signal);
+        removeInFlightAbortController(abort);
+        return result;
+      };
+    }
+
+    if (relatedDataModel && relatedDataModel.createItem) {
+      return async (_item: Item | null, relatedItem: Partial<RelatedItem>) => {
+        const abort = new AbortController();
+        addInFlightAbortController(abort);
+        const result = await relatedDataModel.createItem!(relatedItem, abort.signal);
+        removeInFlightAbortController(abort);
+        return result;
+      }
+    }
+
+    return null;
+  }, [props.createRelatedItem, relatedDataModel]);
+
   const modifyMarkup = useCallback((
     state: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null,
     setState: (newState: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null, blurAfterStateSet?: boolean) => void,
@@ -1018,6 +1041,7 @@ export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName
         checkboxesWidth={null}
         onChangeRelatedItem={newRelatedItem => setState({ type: "FULL", item: newRelatedItem }, true)}
         foreignKeyFieldProps={props}
+        createRelatedItem={createRelatedItem}
         getRelatedKey={getRelatedKey}
       >
         {props.children}
@@ -1047,7 +1071,7 @@ export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName
     } else {
       return relatedFields;
     }
-  }, [props]);
+  }, [props, createRelatedItem]);
 
   const csvExportData = useCallback((state: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null, item: Item) => {
     if (props.csvExportData) {
@@ -1160,7 +1184,6 @@ type MultiForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName, Relat
 
   fetchPageOfRelatedData?: (page: number, item: Item | null, abort: AbortSignal) => Promise<Paginated<RelatedItem>>;
   createRelatedItem?: (item: Item, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>;
-  updateRelatedItem?: (item: Item, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>;
 
   creationFields?: React.ReactNode;
 
@@ -1256,6 +1279,7 @@ export const MultiForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName,
             checkboxesWidth={null}
             onChangeRelatedItems={newRelatedItems => setState(newRelatedItems.map(n => ({ type: 'FULL', item: n })), true)}
             foreignKeyFieldProps={props}
+            createRelatedItem={props.createRelatedItem || null}
             getRelatedKey={props.getRelatedKey}
           >
             {props.children}
@@ -1277,6 +1301,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
     checkboxesWidth: null | string | number;
     foreignKeyFieldProps: MultiForeignKeyFieldProps<Item, FieldName, RelatedItem>,
     getRelatedKey?: (relatedItem: RelatedItem) => ItemKey;
+    createRelatedItem: ((item: Item | null, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>) | null;
     children: React.ReactNode;
   }
   | {
@@ -1288,6 +1313,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
     checkboxesWidth: null | string | number;
     foreignKeyFieldProps: SingleForeignKeyFieldProps<Item, FieldName, RelatedItem>,
     getRelatedKey?: (relatedItem: RelatedItem) => ItemKey;
+    createRelatedItem: ((item: Item | null, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>) | null;
     children: React.ReactNode;
   }
 ) => {
@@ -1669,7 +1695,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
                   <Fragment>
                     <Controls.Button size="small" onClick={() => setItemSelectionMode('none')}>Cancel</Controls.Button>
                     <Controls.Button size="small" onClick={async () => {
-                      if (!props.foreignKeyFieldProps.createRelatedItem) {
+                      if (!props.createRelatedItem) {
                         return;
                       }
 
@@ -1687,7 +1713,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
                       // FIXME: add abort controller
                       let newlyCreatedRelatedItem: RelatedItem;
                       try {
-                        newlyCreatedRelatedItem = await props.foreignKeyFieldProps.createRelatedItem(props.item, relatedItem);
+                        newlyCreatedRelatedItem = await props.createRelatedItem(props.item, relatedItem);
                       } catch (error: FixMe) {
                         // if (error.name === 'AbortError') {
                         //   // The effect unmounted, and the request was terminated
@@ -1741,7 +1767,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
                     ) : (
                       <Controls.Button size="small" onClick={() => setItemSelectionMode('none')}>Hide</Controls.Button>
                     )}
-                    {props.foreignKeyFieldProps.createRelatedItem ? (
+                    {props.createRelatedItem ? (
                       <Controls.Button
                         size="small"
                         variant="primary"
