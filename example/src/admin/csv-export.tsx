@@ -123,35 +123,45 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
                           className={styles.csvExportPreviewTableColumn}
                         >
                           <div className={styles.csvExportPreviewTableColumnHeader}>
-                            <div className={styles.csvExportPreviewTableColumnHeaderHandle}>&#8801;</div>
-                            <div className={styles.csvExportPreviewTableColumnHeaderSelect}>
-                              <Controls.Select
-                                size="small"
-                                value={name as string}
-                                options={fieldOptions}
-                                width="100%"
-                                onChange={newName => {
-                                  const newNameAsFieldName = newName as FieldName;
-                                  const copy = props.columnNamesInOrder.slice();
-                                  if (copy.indexOf(newNameAsFieldName) >= 0) {
-                                    copy.splice(copy.indexOf(newNameAsFieldName), 1);
-                                  }
-                                  copy[props.columnNamesInOrder.indexOf(name)] = newNameAsFieldName;
-                                  props.onChangeColumnNamesInOrder(copy);
-                                }}
-                              />
-                            </div>
-                            <div className={styles.csvExportPreviewTableColumnHeaderRemove}>
-                              <Controls.IconButton
-                                disabled={props.columnNamesInOrder.length < 2}
-                                onClick={() => {
-                                  const copy = props.columnNamesInOrder.slice();
-                                  copy.splice(props.columnNamesInOrder.indexOf(name), 1);
-                                  props.onChangeColumnNamesInOrder(copy);
-                                }}
-                                size="small"
-                              >&times;</Controls.IconButton>
-                            </div>
+                            <Controls.AppBar
+                              intent="header"
+                              size="small"
+                              title={
+                                <Fragment>
+                                  <div className={styles.csvExportPreviewTableColumnHeaderHandle}>&#8801;</div>
+                                  <div className={styles.csvExportPreviewTableColumnHeaderSelect}>
+                                    <Controls.Select
+                                      size="small"
+                                      value={name as string}
+                                      options={fieldOptions}
+                                      width="100%"
+                                      onChange={newName => {
+                                        const newNameAsFieldName = newName as FieldName;
+                                        const copy = props.columnNamesInOrder.slice();
+                                        if (copy.indexOf(newNameAsFieldName) >= 0) {
+                                          copy.splice(copy.indexOf(newNameAsFieldName), 1);
+                                        }
+                                        copy[props.columnNamesInOrder.indexOf(name)] = newNameAsFieldName;
+                                        props.onChangeColumnNamesInOrder(copy);
+                                      }}
+                                    />
+                                  </div>
+                                </Fragment>
+                              }
+                              actions={
+                                <div className={styles.csvExportPreviewTableColumnHeaderRemove}>
+                                  <Controls.IconButton
+                                    disabled={props.columnNamesInOrder.length < 2}
+                                    onClick={() => {
+                                      const copy = props.columnNamesInOrder.slice();
+                                      copy.splice(props.columnNamesInOrder.indexOf(name), 1);
+                                      props.onChangeColumnNamesInOrder(copy);
+                                    }}
+                                    size="small"
+                                  >&times;</Controls.IconButton>
+                                </div>
+                              }
+                            />
                           </div>
                           {cells}
                         </div>
