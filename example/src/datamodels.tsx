@@ -533,29 +533,9 @@ export function PostDataModel() {
         singularDisplayName="Comments"
         pluralDisplayName="Comments"
         csvExportColumnName="comments m2m"
-        getInitialStateFromItem={post => post.commentIds.map(cid => ({ type: "KEY_ONLY", key: cid }))}
-        injectAsyncDataIntoInitialStateOnDetailPage={async (state, _item, signal) => {
-          if (state.every(n => n.type === "FULL")) {
-            return state as any as Array<ForeignKeyFullItem<Comment>>;
-          } else {
-            return Promise.all(state.map(async n => {
-              switch (n.type) {
-                case "KEY_ONLY":
-                  const response = await fetch(`http://localhost:3003/comments/${n.key}`, { signal });
-                  if (!response.ok) {
-                    throw new Error(`Error fetching comments: received ${response.status} ${await response.text()}`);
-                  }
-
-                  return { type: 'FULL', item: await response.json() };
-                case "FULL":
-                  return n;
-              }
-            }));
-          }
-        }}
-        serializeStateToItem={(initialItem, comments) => ({ ...initialItem, commentIds: comments.map(c => c.id) })}
 
         relatedName="comment"
+        getInitialStateFromItem={post => ({ type: "KEY_ONLY", key: post.commentIds })}
       />
       {/* <InputField<Post, 'title'> */}
       {/*   name="title" */}

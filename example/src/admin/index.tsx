@@ -842,7 +842,7 @@ export const BooleanField = <I = BaseItem, F = BaseFieldName>(props: BooleanFiel
 };
 
 
-export type ForeignKeyKeyOnlyItem = { type: "KEY_ONLY", key: ItemKey };
+export type ForeignKeyKeyOnlyItem<Key = ItemKey> = { type: "KEY_ONLY", key: Key };
 export type ForeignKeyFullItem<Item> = { type: "FULL", item: Item };
 export type ForeignKeyUnset = { type: "UNSET" };
 
@@ -1147,7 +1147,7 @@ export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName
 };
 
 type MultiForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName, RelatedItem = BaseItem> = Pick<
-  FieldMetadata<Item, FieldName, Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>>,
+  FieldMetadata<Item, FieldName, ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>>,
   | 'name'
   | 'singularDisplayName'
   | 'pluralDisplayName'
@@ -1166,17 +1166,17 @@ type MultiForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName, Relat
   // - If the Item contains a list of embedded RelatedItems (ie, { id: 'xxx', related: [{ id:
   //   'yyy', ...}, { id: 'zzz', ... }],
   //   then one should return [{type: 'FULL', item: {id: 'yyy', ... }}, { type: 'FULL', item: {id: 'zzz', ... }}].
-  getInitialStateFromItem: (item: Item) => Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>;
+  getInitialStateFromItem: (item: Item) => ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>;
 
   // When on the detail page, a full on `RelatedItem` is required and just the key from the
   // `RelatedItem` isn't enough. This function allows the detail page to map the return value of
   // `getInitialStateFromItem` (which may not be a FULL RelatedItem) into a FULL RelatedItem. This
   // likely involves making a network request.
   injectAsyncDataIntoInitialStateOnDetailPage?: (
-    oldState: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>,
+    oldState: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>,
     item: Item | null,
     signal: AbortSignal,
-  ) => Promise<Array<ForeignKeyFullItem<RelatedItem>>>;
+  ) => Promise<ForeignKeyFullItem<Array<RelatedItem>>>;
 
   serializeStateToItem?: (initialItem: Partial<Item>, state: Array<RelatedItem>) => Partial<Item>;
 
@@ -1217,80 +1217,73 @@ export const MultiForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName,
     removeInFlightAbortController,
   ] = useInFlightAbortControllers();
 
-  const getInitialStateFromItem = useCallback((item: Item) => {
-    return props.getInitialStateFromItem(item);
-  }, [props.getInitialStateFromItem]);
-
   const getInitialStateWhenCreating = useMemo(() => {
-    return props.getInitialStateWhenCreating || (() => []);
+    return props.getInitialStateWhenCreating || (() => ({ type: 'FULL' as const, item: [] }));
   }, [props.getInitialStateWhenCreating]);
 
   const serializeStateToItem = useCallback((
     initialItem: Partial<Item>,
-    state: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>,
+    state: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>,
   ): Partial<Item> => {
     const preexistingSerializeStateToItem = props.serializeStateToItem || ((initialItem: Partial<Item>, state: Array<RelatedItem>) => {
       // As a default, use the value from `getInitialStateFromItem` to determine if the item key
       // should be serialized or if the full object should be embedded.
       const initialState = props.getInitialStateFromItem(initialItem);
 
-      if (state.length < 1 || initialState.length < 1) {
+      if (state.length === 0) {
         return { ...initialItem, [props.name as FixMe]: [] };
-      } else if (initialState[0].type === 'KEY_ONLY') {
+      } else if (initialState.type === 'KEY_ONLY') {
         return { ...initialItem, [props.name as FixMe]: state.map(getRelatedKey) };
       } else {
         return { ...initialItem, [props.name as FixMe]: state };
       };
     });
 
-    if (state.length === 0) {
-      return preexistingSerializeStateToItem(initialItem, []);
-    } else if (state.find(n => n.type === "KEY_ONLY")) {
+    if (state.type === "KEY_ONLY") {
       console.warn(`MultiForeignKeyField.serializeStateToItem ran with a field state of ${JSON.stringify(state)}, this is not allowed!`);
       return initialItem;
     } else {
-      return preexistingSerializeStateToItem(initialItem, ((state as any) as Array<ForeignKeyFullItem<RelatedItem>>).map(n => n.item));
+      return preexistingSerializeStateToItem(initialItem, state.item);
     }
-  }, [props.serializeStateToItem, getRelatedKey]);
+  }, [props.serializeStateToItem, props.getInitialStateFromItem, getRelatedKey]);
 
   const injectAsyncDataIntoInitialStateOnDetailPage = useCallback(async (
-    oldState: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>,
+    oldState: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>,
     item: Item,
     signal: AbortSignal,
-  ): Promise<Array<ForeignKeyFullItem<RelatedItem>>> => {
+  ): Promise<ForeignKeyFullItem<Array<RelatedItem>>> => {
     if (props.injectAsyncDataIntoInitialStateOnDetailPage) {
       return props.injectAsyncDataIntoInitialStateOnDetailPage(oldState, item, signal);
     } else {
       // If no custom `injectAsyncDataIntoInitialStateOnDetailPage` is defined, then use the
       // `relatedDataModel.fetchItem` to do the conversion to a FULL object if need be
-      return Promise.all(oldState.map(async n => {
-        switch (n.type) {
-          case "KEY_ONLY":
-            if (!relatedDataModel) {
-              throw new Error('Error running autogenerated SingleForeignKeyField.injectAsyncDataIntoInitialStateOnDetailPage - relatedDataModel is unset!');
-            }
-            return {
-              type: 'FULL',
-              item: await relatedDataModel.fetchItem(n.key, signal),
-            };
-          case "FULL":
-            return n;
-        }
-      }));
+      switch (oldState.type) {
+        case "KEY_ONLY":
+          if (!relatedDataModel) {
+            throw new Error('Error running autogenerated SingleForeignKeyField.injectAsyncDataIntoInitialStateOnDetailPage - relatedDataModel is unset!');
+          }
+
+          return {
+            type: 'FULL',
+            // FIXME: this is a n+1 query! I think in practice `n` will be pretty small so maybe
+            // this won't turn out to be a bottleneck. But it would be good to fix this!
+            item: await Promise.all(oldState.key.map(async key => relatedDataModel.fetchItem(key, signal))),
+          };
+        case "FULL":
+          return oldState;
+      }
     }
   }, [props.injectAsyncDataIntoInitialStateOnDetailPage, relatedDataModel]);
 
-  const computeStateKeyList = useCallback((state: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>) => {
-    return state.map(n => {
-      if (n.type === "FULL") {
-        return getRelatedKey(n.item);
-      } else {
-        return n.key;
-      }
-    });
+  const computeStateKeyList = useCallback((state: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>) => {
+    if (state.type === "FULL") {
+      return state.item.map(getRelatedKey);
+    } else {
+      return state.key;
+    }
   }, [getRelatedKey]);
 
-  const csvExportData = useCallback((state: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>, item: Item) => {
+  const csvExportData = useCallback((state: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>, item: Item) => {
     if (props.csvExportData) {
       return props.csvExportData(state, item);
     }
@@ -1322,16 +1315,16 @@ export const MultiForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName,
     return null;
   }, [props.createRelatedItem, relatedDataModel, addInFlightAbortController, removeInFlightAbortController]);
 
-  const displayMarkup = useCallback((state: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>) => (
+  const displayMarkup = useCallback((state: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>) => (
     <span>{computeStateKeyList(state).join(', ')}</span>
   ), [computeStateKeyList]);
 
   const modifyMarkup = useCallback((
-    state: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>,
-    setState: (newState: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>, blurAfterStateSet?: boolean) => void,
+    state: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>,
+    setState: (newState: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>, blurAfterStateSet?: boolean) => void,
     item: Item | null,
   ) => {
-    if (state.find(n => n.type === 'KEY_ONLY')) {
+    if (state.type === 'KEY_ONLY') {
       return (
         <span>Loading full object representation asyncronously...</span>
       );
@@ -1341,9 +1334,9 @@ export const MultiForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName,
       <ForeignKeyFieldModifyMarkup<Item, FieldName, RelatedItem>
         mode="list"
         item={item}
-        relatedItems={((state as any) as Array<ForeignKeyFullItem<RelatedItem>>).map(n => n.item)}
+        relatedItems={state.item}
         checkboxesWidth={null}
-        onChangeRelatedItems={newRelatedItems => setState(newRelatedItems.map(n => ({ type: 'FULL', item: n })), true)}
+        onChangeRelatedItems={newRelatedItems => setState({ type: 'FULL', item: newRelatedItems }, true)}
         foreignKeyFieldProps={props}
         createRelatedItem={createRelatedItem}
         getRelatedKey={getRelatedKey}
@@ -1354,14 +1347,14 @@ export const MultiForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName,
   }, [props, createRelatedItem, getRelatedKey]);
 
   return (
-    <Field<Item, FieldName, Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>>
+    <Field<Item, FieldName, ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>>
       name={props.name}
       singularDisplayName={props.singularDisplayName}
       pluralDisplayName={props.pluralDisplayName}
       csvExportColumnName={props.csvExportColumnName}
       columnWidth={props.columnWidth}
       sortable={props.sortable}
-      getInitialStateFromItem={getInitialStateFromItem}
+      getInitialStateFromItem={props.getInitialStateFromItem}
       injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
       getInitialStateWhenCreating={getInitialStateWhenCreating}
       serializeStateToItem={serializeStateToItem}
