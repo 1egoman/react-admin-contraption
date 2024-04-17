@@ -14,6 +14,7 @@ import {
   BaseFieldState, 
 } from './types';
 import Radiobutton from '../controls/Radiobutton';
+import { DataModel } from '..';
 
 export const FieldsContext = React.createContext<[
   FieldCollection,
@@ -112,13 +113,13 @@ export type FieldMetadata<Item = BaseItem, FieldName = BaseFieldName, State = Ba
   updateSideEffect?: (item: Partial<Item>, state: State, signal: AbortSignal) => Promise<State>;
 
   // The presentation of the field when in a read only context
-  displayMarkup: (state: State, item: Item) => React.ReactNode;
+  displayMarkup: (state: State, item: Item | null) => React.ReactNode;
 
   // The presentation of the component in a read-write context
   modifyMarkup?: (
     state: State,
     setState: (newState: State, blurAfterStateSet?: boolean) => void,
-    item: Item,
+    item: Item | null,
     onBlur: () => void, // Call onBlur once the user has completed editing the state
   ) => React.ReactNode;
 
@@ -272,7 +273,7 @@ export const NullableWrapper = <
           div on top so that it will soak up click events and make the input no longer null.
           */}
           {props.state === null ? (
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} />
           ) : null}
           {props.children}
         </div>
