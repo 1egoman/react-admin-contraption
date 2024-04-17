@@ -524,40 +524,9 @@ export function PostDataModel() {
         // nullable
         pluralDisplayName="Users"
         csvExportColumnName="user_id"
-        getInitialStateFromItem={post => ({ type: 'KEY_ONLY' as const, key: post.userId })}
-        injectAsyncDataIntoInitialStateOnDetailPage={async (state, _item, signal) => {
-          switch (state.type) {
-            case "KEY_ONLY":
-              const response = await fetch(`http://localhost:3003/users/${state.key}`, { signal });
-              if (!response.ok) {
-                throw new Error(`Error fetching user with id ${state.key}: received ${response.status} ${await response.text()}`);
-              }
-
-              return { type: 'FULL', item: await response.json() };
-            case "FULL":
-              return state;
-          }
-        }}
-        serializeStateToItem={(initialItem, user) => ({ ...initialItem, userId: user.id })}
 
         relatedName="user"
-
-        generateNewRelatedItem={() => ({ id: 0, name: 'OLD', username: 'OLD', email: 'OLD', phone: 'OLD', website: 'OLD' }) as User}
-        createRelatedItem={async (post, relatedUser) => {
-          const user = { ...relatedUser, postId: post.id };
-          const response = await fetch(`http://localhost:3003/users`, {
-            /* signal, */
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(user),
-          });
-          if (!response.ok) {
-            throw new Error(`Error creating user with data ${JSON.stringify(user)}: received ${response.status} ${await response.text()}`);
-          }
-
-          return response.json();
-        }}
-        updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as User)}
+        getInitialStateFromItem={post => ({ type: 'KEY_ONLY' as const, key: post.userId })}
       />
       <MultiForeignKeyField<Post, 'commentIds', Comment>
         name="commentIds"
@@ -587,33 +556,6 @@ export function PostDataModel() {
         serializeStateToItem={(initialItem, comments) => ({ ...initialItem, commentIds: comments.map(c => c.id) })}
 
         relatedName="comment"
-
-        createRelatedItem={async (post, relatedComment) => {
-          const response = await fetch(`http://localhost:3003/comments`, {
-            /* signal, */
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(relatedComment),
-          });
-          if (!response.ok) {
-            throw new Error(`Error creating comment with data ${JSON.stringify(relatedComment)}: received ${response.status} ${await response.text()}`);
-          }
-
-          const comment = await response.json();
-
-          const postResponse = await fetch(`http://localhost:3003/posts/${post.id}`, {
-            /* signal, */
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...post, commentIds: [...post.commentIds, comment.id]}),
-          });
-          if (!postResponse.ok) {
-            throw new Error(`Error updating post to add comment ${relatedComment.id}: received ${postResponse.status} ${await postResponse.text()}`);
-          }
-
-          return comment;
-        }}
-        updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as Comment)}
       />
       {/* <InputField<Post, 'title'> */}
       {/*   name="title" */}
