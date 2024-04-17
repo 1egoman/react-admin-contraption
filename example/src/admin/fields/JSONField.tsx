@@ -14,7 +14,6 @@ type JSONFieldProps<Item = BaseItem, Field = BaseFieldName> = Pick<
   | 'csvExportColumnName'
   | 'columnWidth'
   | 'sortable'
-  | 'getInitialStateWhenCreating'
 > & {
   getInitialStateFromItem?: (item: Item) => JSONValue;
   getInitialStateWhenCreating?: () => JSONValue | undefined;
@@ -47,7 +46,9 @@ const JSONField = <
   }, [props.getInitialStateFromItem, props.name]);
 
   const getInitialStateWhenCreating = useCallback((): [string, boolean] | undefined => {
-    const result = props.getInitialStateWhenCreating ? JSON.stringify(props.getInitialStateWhenCreating(), null, 2) : '{}';
+    const result = JSON.stringify(
+      props.getInitialStateWhenCreating ? props.getInitialStateWhenCreating() : {}
+    );
     if (result) {
       return [result, false];
     } else {
@@ -58,7 +59,7 @@ const JSONField = <
   const serializeStateToItem = useMemo(() => {
     const preexisting = props.serializeStateToItem || ((item: Partial<Item>, state: string) => ({
       ...item,
-      [props.name as FixMe]: JSON.parse(state[1]),
+      [props.name as FixMe]: JSON.parse(state),
     }));
 
     return (item: Partial<Item>, state: [string, boolean]) => {
