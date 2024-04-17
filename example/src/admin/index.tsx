@@ -915,7 +915,10 @@ export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName
 
   const singularDisplayName = props.singularDisplayName || relatedDataModel?.singularDisplayName || '';
   const pluralDisplayName = props.pluralDisplayName || relatedDataModel?.pluralDisplayName || '';
-  const getRelatedKey = props.getRelatedKey || relatedDataModel?.keyGenerator;
+  const getRelatedKey = useMemo(
+    () => props.getRelatedKey || relatedDataModel?.keyGenerator || ((input: RelatedItem) => (input as FixMe).id as ItemKey),
+    [props.getRelatedKey, relatedDataModel],
+  );
 
   const [
     addInFlightAbortController,
@@ -993,7 +996,7 @@ export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName
       );
     } else {
       return (
-        <span>{getRelatedKey ? getRelatedKey(state.item) : (state as FixMe).id}</span>
+        <span>{getRelatedKey(state.item)}</span>
       );
     }
   }, [getRelatedKey]);
@@ -1020,7 +1023,7 @@ export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName
     }
 
     return null;
-  }, [props.createRelatedItem, relatedDataModel]);
+  }, [props.createRelatedItem, relatedDataModel, addInFlightAbortController, removeInFlightAbortController]);
 
   const modifyMarkup = useCallback((
     state: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null,
@@ -1071,7 +1074,7 @@ export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName
     } else {
       return relatedFields;
     }
-  }, [props, createRelatedItem]);
+  }, [props, createRelatedItem, getRelatedKey]);
 
   const csvExportData = useCallback((state: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null, item: Item) => {
     if (props.csvExportData) {
@@ -1080,17 +1083,15 @@ export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName
 
     if (state === null) {
       return 'null';
-    } else if (getRelatedKey) {
-      switch (state.type) {
-        case "KEY_ONLY":
-          return state.key;
-        case "FULL":
-          return getRelatedKey(state.item);
-        case "UNSET":
-          return "";
-      }
-    } else {
-      return `${(item as FixMe).id}`;
+    }
+
+    switch (state.type) {
+      case "KEY_ONLY":
+        return state.key;
+      case "FULL":
+        return getRelatedKey(state.item);
+      case "UNSET":
+        return "";
     }
   }, [props.csvExportData, getRelatedKey]);
 
@@ -1106,7 +1107,7 @@ export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName
       if (!state || !initialState) {
         return { ...initialItem, [props.name as FixMe]: null };
       } else if (initialState.type === 'KEY_ONLY') {
-        return { ...initialItem, [props.name as FixMe]: getRelatedKey ? getRelatedKey(state) : (state as FixMe).id };
+        return { ...initialItem, [props.name as FixMe]: getRelatedKey(state) };
       } else {
         return { ...initialItem, [props.name as FixMe]: state };
       };
@@ -1171,19 +1172,19 @@ type MultiForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName, Relat
   // `RelatedItem` isn't enough. This function allows the detail page to map the return value of
   // `getInitialStateFromItem` (which may not be a FULL RelatedItem) into a FULL RelatedItem. This
   // likely involves making a network request.
-  injectAsyncDataIntoInitialStateOnDetailPage: (
+  injectAsyncDataIntoInitialStateOnDetailPage?: (
     oldState: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>,
     item: Item | null,
     signal: AbortSignal,
   ) => Promise<Array<ForeignKeyFullItem<RelatedItem>>>;
 
-  serializeStateToItem: (initialItem: Partial<Item>, state: Array<RelatedItem>) => Partial<Item>;
+  serializeStateToItem?: (initialItem: Partial<Item>, state: Array<RelatedItem>) => Partial<Item>;
 
   relatedName: string;
   getRelatedKey?: (relatedItem: RelatedItem) => ItemKey;
 
   fetchPageOfRelatedData?: (page: number, item: Item | null, abort: AbortSignal) => Promise<Paginated<RelatedItem>>;
-  createRelatedItem?: (item: Item, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>;
+  createRelatedItem?: (item: Item | null, relatedItem: Partial<RelatedItem>, signal: AbortSignal) => Promise<RelatedItem>;
 
   creationFields?: React.ReactNode;
 
@@ -1201,6 +1202,21 @@ Example MultiForeignKeyField:
 />
 */
 export const MultiForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, RelatedItem = BaseItem>(props: MultiForeignKeyFieldProps<Item, FieldName, RelatedItem>) => {
+  const dataModelsContextData = useContext(DataModelsContext);
+  if (!dataModelsContextData) {
+    throw new Error('Error: <MultiForeignKeyField ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModel> ... </DataModel>.');
+  }
+  const relatedDataModel = dataModelsContextData[0].get(props.relatedName) as DataModel<RelatedItem> | undefined;
+  const getRelatedKey = useMemo(
+    () => props.getRelatedKey || relatedDataModel?.keyGenerator || ((input: RelatedItem) => (input as FixMe).id as ItemKey),
+    [props.getRelatedKey, relatedDataModel],
+  );
+
+  const [
+    addInFlightAbortController,
+    removeInFlightAbortController,
+  ] = useInFlightAbortControllers();
+
   const getInitialStateFromItem = useCallback((item: Item) => {
     return props.getInitialStateFromItem(item);
   }, [props.getInitialStateFromItem]);
@@ -1213,33 +1229,66 @@ export const MultiForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName,
     initialItem: Partial<Item>,
     state: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>,
   ): Partial<Item> => {
+    const preexistingSerializeStateToItem = props.serializeStateToItem || ((initialItem: Partial<Item>, state: Array<RelatedItem>) => {
+      // As a default, use the value from `getInitialStateFromItem` to determine if the item key
+      // should be serialized or if the full object should be embedded.
+      const initialState = props.getInitialStateFromItem(initialItem);
+
+      if (state.length < 1 || initialState.length < 1) {
+        return { ...initialItem, [props.name as FixMe]: [] };
+      } else if (initialState[0].type === 'KEY_ONLY') {
+        return { ...initialItem, [props.name as FixMe]: state.map(getRelatedKey) };
+      } else {
+        return { ...initialItem, [props.name as FixMe]: state };
+      };
+    });
+
     if (state.length === 0) {
-      return props.serializeStateToItem(initialItem, []);
+      return preexistingSerializeStateToItem(initialItem, []);
     } else if (state.find(n => n.type === "KEY_ONLY")) {
       console.warn(`MultiForeignKeyField.serializeStateToItem ran with a field state of ${JSON.stringify(state)}, this is not allowed!`);
       return initialItem;
     } else {
-      return props.serializeStateToItem(initialItem, ((state as any) as Array<ForeignKeyFullItem<RelatedItem>>).map(n => n.item));
+      return preexistingSerializeStateToItem(initialItem, ((state as any) as Array<ForeignKeyFullItem<RelatedItem>>).map(n => n.item));
     }
-  }, [props.serializeStateToItem]);
+  }, [props.serializeStateToItem, getRelatedKey]);
 
-  const injectAsyncDataIntoInitialStateOnDetailPage = useMemo(() => {
-    return props.injectAsyncDataIntoInitialStateOnDetailPage;
-  }, [props.injectAsyncDataIntoInitialStateOnDetailPage, props.name]);
+  const injectAsyncDataIntoInitialStateOnDetailPage = useCallback(async (
+    oldState: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>,
+    item: Item,
+    signal: AbortSignal,
+  ): Promise<Array<ForeignKeyFullItem<RelatedItem>>> => {
+    if (props.injectAsyncDataIntoInitialStateOnDetailPage) {
+      return props.injectAsyncDataIntoInitialStateOnDetailPage(oldState, item, signal);
+    } else {
+      // If no custom `injectAsyncDataIntoInitialStateOnDetailPage` is defined, then use the
+      // `relatedDataModel.fetchItem` to do the conversion to a FULL object if need be
+      return Promise.all(oldState.map(async n => {
+        switch (n.type) {
+          case "KEY_ONLY":
+            if (!relatedDataModel) {
+              throw new Error('Error running autogenerated SingleForeignKeyField.injectAsyncDataIntoInitialStateOnDetailPage - relatedDataModel is unset!');
+            }
+            return {
+              type: 'FULL',
+              item: await relatedDataModel.fetchItem(n.key, signal),
+            };
+          case "FULL":
+            return n;
+        }
+      }));
+    }
+  }, [props.injectAsyncDataIntoInitialStateOnDetailPage, relatedDataModel]);
 
   const computeStateKeyList = useCallback((state: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>) => {
     return state.map(n => {
       if (n.type === "FULL") {
-        if (!props.getRelatedKey) {
-          return `${(n.item as FixMe).id}`;
-        } else {
-          return props.getRelatedKey(n.item);
-        }
+        return getRelatedKey(n.item);
       } else {
         return n.key;
       }
     });
-  }, []);
+  }, [getRelatedKey]);
 
   const csvExportData = useCallback((state: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>, item: Item) => {
     if (props.csvExportData) {
@@ -1247,7 +1296,62 @@ export const MultiForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName,
     }
 
     return computeStateKeyList(state).join(',');
-  }, [props.csvExportData, props.getRelatedKey, computeStateKeyList]);
+  }, [props.csvExportData, computeStateKeyList]);
+
+  const createRelatedItem = useMemo(() => {
+    if (props.createRelatedItem) {
+      return async (item: Item | null, relatedItem: Partial<RelatedItem>) => {
+        const abort = new AbortController();
+        addInFlightAbortController(abort);
+        const result = await props.createRelatedItem!(item, relatedItem, abort.signal);
+        removeInFlightAbortController(abort);
+        return result;
+      };
+    }
+
+    if (relatedDataModel && relatedDataModel.createItem) {
+      return async (_item: Item | null, relatedItem: Partial<RelatedItem>) => {
+        const abort = new AbortController();
+        addInFlightAbortController(abort);
+        const result = await relatedDataModel.createItem!(relatedItem, abort.signal);
+        removeInFlightAbortController(abort);
+        return result;
+      }
+    }
+
+    return null;
+  }, [props.createRelatedItem, relatedDataModel, addInFlightAbortController, removeInFlightAbortController]);
+
+  const displayMarkup = useCallback((state: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>) => (
+    <span>{computeStateKeyList(state).join(', ')}</span>
+  ), [computeStateKeyList]);
+
+  const modifyMarkup = useCallback((
+    state: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>,
+    setState: (newState: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>, blurAfterStateSet?: boolean) => void,
+    item: Item | null,
+  ) => {
+    if (state.find(n => n.type === 'KEY_ONLY')) {
+      return (
+        <span>Loading full object representation asyncronously...</span>
+      );
+    }
+
+    return (
+      <ForeignKeyFieldModifyMarkup<Item, FieldName, RelatedItem>
+        mode="list"
+        item={item}
+        relatedItems={((state as any) as Array<ForeignKeyFullItem<RelatedItem>>).map(n => n.item)}
+        checkboxesWidth={null}
+        onChangeRelatedItems={newRelatedItems => setState(newRelatedItems.map(n => ({ type: 'FULL', item: n })), true)}
+        foreignKeyFieldProps={props}
+        createRelatedItem={createRelatedItem}
+        getRelatedKey={getRelatedKey}
+      >
+        {props.children}
+      </ForeignKeyFieldModifyMarkup>
+    );
+  }, [props, createRelatedItem, getRelatedKey]);
 
   return (
     <Field<Item, FieldName, Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>>
@@ -1261,31 +1365,8 @@ export const MultiForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName,
       injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
       getInitialStateWhenCreating={getInitialStateWhenCreating}
       serializeStateToItem={serializeStateToItem}
-      displayMarkup={state => (
-        <span>{computeStateKeyList(state).join(', ')}</span>
-      )}
-      modifyMarkup={(state, setState, item) => {
-        if (state.find(n => n.type === 'KEY_ONLY')) {
-          return (
-            <span>Loading full object representation asyncronously...</span>
-          );
-        }
-
-        return (
-          <ForeignKeyFieldModifyMarkup<Item, FieldName, RelatedItem>
-            mode="list"
-            item={item}
-            relatedItems={((state as any) as Array<ForeignKeyFullItem<RelatedItem>>).map(n => n.item)}
-            checkboxesWidth={null}
-            onChangeRelatedItems={newRelatedItems => setState(newRelatedItems.map(n => ({ type: 'FULL', item: n })), true)}
-            foreignKeyFieldProps={props}
-            createRelatedItem={props.createRelatedItem || null}
-            getRelatedKey={props.getRelatedKey}
-          >
-            {props.children}
-          </ForeignKeyFieldModifyMarkup>
-        );
-      }}
+      displayMarkup={displayMarkup}
+      modifyMarkup={modifyMarkup}
       csvExportData={csvExportData}
     />
   );
@@ -1300,7 +1381,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
     disabled?: boolean;
     checkboxesWidth: null | string | number;
     foreignKeyFieldProps: MultiForeignKeyFieldProps<Item, FieldName, RelatedItem>,
-    getRelatedKey?: (relatedItem: RelatedItem) => ItemKey;
+    getRelatedKey: (relatedItem: RelatedItem) => ItemKey;
     createRelatedItem: ((item: Item | null, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>) | null;
     children: React.ReactNode;
   }
@@ -1312,7 +1393,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
     disabled?: boolean;
     checkboxesWidth: null | string | number;
     foreignKeyFieldProps: SingleForeignKeyFieldProps<Item, FieldName, RelatedItem>,
-    getRelatedKey?: (relatedItem: RelatedItem) => ItemKey;
+    getRelatedKey: (relatedItem: RelatedItem) => ItemKey;
     createRelatedItem: ((item: Item | null, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>) | null;
     children: React.ReactNode;
   }
@@ -1325,7 +1406,6 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
 
   const Controls = useControls();
 
-  const getRelatedKey = props.getRelatedKey || relatedDataModel?.keyGenerator || null;
   const fetchPageOfRelatedData = useMemo(() => {
     if (props.foreignKeyFieldProps.fetchPageOfRelatedData) {
       return props.foreignKeyFieldProps.fetchPageOfRelatedData;
@@ -1472,7 +1552,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
     setRelatedCreationFieldStates(newRelatedCreationFieldStates);
   }, [itemSelectionMode, relatedCreationFields]);
 
-  if (!relatedDataModel || !getRelatedKey || !fetchPageOfRelatedData) {
+  if (!relatedDataModel || !fetchPageOfRelatedData) {
     return (
       <span>Waiting for related data model {props.foreignKeyFieldProps.relatedName} to be added to DataModelsContext...</span>
     );
@@ -1496,7 +1576,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
       let rows = props.mode === 'list' ? (
         props.relatedItems
       ) : (props.relatedItem ? [props.relatedItem] : []);
-      let rowKeys = rows.map(row => getRelatedKey(row));
+      let rowKeys = rows.map(row => props.getRelatedKey(row));
 
       // Pin the initial related item to the top of the list
       //
@@ -1505,10 +1585,10 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
       if (props.mode === 'list') {
         if (itemSelectionMode === 'select') {
           rows = relatedData.data;
-          rowKeys = rows.map(row => getRelatedKey(row));
+          rowKeys = rows.map(row => props.getRelatedKey(row));
           if (initialRelatedItems) {
             for (const relatedItem of initialRelatedItems) {
-              const key = getRelatedKey(relatedItem);
+              const key = props.getRelatedKey(relatedItem);
               const index = rowKeys.indexOf(key);
               if (index >= 0) {
                 rows.splice(index, 1);
@@ -1522,9 +1602,9 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
       } else if (props.mode === 'detail') {
         if (itemSelectionMode === 'select') {
           rows = relatedData.data;
-          rowKeys = rows.map(row => getRelatedKey(row));
+          rowKeys = rows.map(row => props.getRelatedKey(row));
           if (initialRelatedItem) {
-            const key = getRelatedKey(initialRelatedItem);
+            const key = props.getRelatedKey(initialRelatedItem);
             const index = rowKeys.indexOf(key);
             if (index >= 0) {
               rows.splice(index, 1);
@@ -1606,10 +1686,10 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
                   </thead>
                   <tbody>
                     {rows.map(relatedItem => {
-                      const key = getRelatedKey(relatedItem);
+                      const key = props.getRelatedKey(relatedItem);
                       const checked = Boolean(props.mode === 'list' ? (
-                        props.relatedItems && props.relatedItems.find(i => getRelatedKey(i) === key)
-                      ) : props.relatedItem && getRelatedKey(props.relatedItem) === key);
+                        props.relatedItems && props.relatedItems.find(i => props.getRelatedKey(i) === key)
+                      ) : props.relatedItem && props.getRelatedKey(props.relatedItem) === key);
 
                       return (
                         <ListTableItem
@@ -1636,7 +1716,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
                                 props.onChangeRelatedItems([...props.relatedItems, relatedItem]);
                               } else {
                                 props.onChangeRelatedItems(
-                                  props.relatedItems.filter(i => getRelatedKey(i) !== key)
+                                  props.relatedItems.filter(i => props.getRelatedKey(i) !== key)
                                 );
                               }
                             }
