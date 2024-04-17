@@ -3,7 +3,6 @@ import { useCallback, useMemo } from 'react';
 import { BattleWithParticipants, BattleParticipant, BattleBeat } from '@/types';
 import {
   Field,
-  Sort,
   InputField,
   DataModels,
   DataModel,
@@ -11,14 +10,16 @@ import {
   MultiForeignKeyField,
   AdminContextProvider,
   StateCache,
-  MultiLineInputField,
   ChoiceField,
+  ForeignKeyFullItem,
 } from '@/admin';
+import JSONField from '@/admin/fields/JSONField';
+import { Filter, Sort } from '@/admin/types';
 
 export function BattleDataModel() {
   const fetchPageOfData = useCallback(async (
     page: number,
-    filters: any,
+    filters: Array<[Filter['name'], Filter['state']]>,
     sort: Sort | null,
     searchText: string,
     signal: AbortSignal
@@ -204,32 +205,52 @@ export function BattleDataModel() {
       {/*   pluralDisplayName="Beats" */}
       {/*   columnWidth="165px" */}
       {/*   nullable */}
-      {/*   getInitialStateFromItem={battle => ({ beatId: battle.beatId, beatKey: 'OLD', beatUrl: 'OLD' })} */}
-      {/*   serializeStateToItem={(initialItem, beat) => ({ ...initialItem, beatId: beat.id })} */}
+      {/*   getInitialStateFromItem={battle => battle.beatId ? ({ type: 'KEY_ONLY', key: battle.beatId }) : null} */}
+      {/*   getInitialStateWhenCreating={() => null} */}
+      {/*   injectAsyncDataIntoInitialStateOnDetailPage={async (state) => { */}
+      {/*     switch (state.type) { */}
+      {/*       case "KEY_ONLY": */}
+      {/*         return { type: 'FULL', item: { id: state.key, beatId: battle.beatId, beatKey: 'OLD', beatUrl: 'OLD' } }; */}
+      {/*       case "FULL": */}
+      {/*         return state; */}
+      {/*     } */}
+      {/*   }} */}
+      {/*   serializeStateToItem={(initialItem, beat) => ({ ...initialItem, beatId: beat ? beat.id : null })} */}
 
       {/*   getRelatedKey={beat => beat.id} */}
       {/*   relatedName="battleBeat" */}
 
-      {/*   generateNewRelatedItem={() => ({ id: '', beatKey: 'NEW', beatUrl: 'NEW' })} */}
       {/*   createRelatedItem={(_item, relatedItem) => Promise.resolve({id: 'aaa', ...relatedItem} as BattleBeat)} */}
       {/*   updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as BattleBeat)} */}
       {/* /> */}
-      <MultiForeignKeyField<BattleWithParticipants, 'beatId', BattleBeat>
-        name="beatId"
-        singularDisplayName="Beat"
-        pluralDisplayName="Beats"
-        columnWidth="165px"
-        // nullable
-        getInitialStateFromItem={battle => battle.beatId ? [{ id: battle.beatId, beatKey: 'OLD', beatUrl: 'OLD' }] : []}
-        serializeStateToItem={(initialItem, beats) => ({ ...initialItem, beatIds: beats.map(beat => beat.id) })}
+      {/* <MultiForeignKeyField<BattleWithParticipants, 'beatId', BattleBeat> */}
+      {/*   name="beatId" */}
+      {/*   singularDisplayName="Beat" */}
+      {/*   pluralDisplayName="Beats" */}
+      {/*   columnWidth="165px" */}
+      {/*   // nullable */}
+      {/*   serializeStateToItem={(initialItem, beats) => ({ ...initialItem, beatIds: beats.map(beat => beat.id) })} */}
 
-        getRelatedKey={beat => beat.id}
-        relatedName="battleBeat"
+      {/*   getInitialStateFromItem={battle => battle.beatId ? [{ type: 'KEY_ONLY', key: battle.beatId }] : []} */}
+      {/*   getInitialStateWhenCreating={() => []} */}
+      {/*   injectAsyncDataIntoInitialStateOnDetailPage={async (state) => { */}
+      {/*     return state.map(n => { */}
+      {/*       if (n.type === "KEY_ONLY") { */}
+      {/*         return { type: 'FULL', item: { id: n.key, beatKey: 'OLD', beatUrl: 'OLD' } }; */}
+      {/*       } else { */}
+      {/*         return n; */}
+      {/*       } */}
+      {/*     }); */}
+      {/*   }} */}
+      {/*   serializeStateToItem={(initialItem, beats) => ({ ...initialItem, beatIds: beats.map(b => b.id) })} */}
 
-        // generateNewRelatedItem={() => ({ id: '', beatKey: 'NEW', beatUrl: 'NEW' })}
-        // createRelatedItem={(_item, relatedItem) => Promise.resolve({id: 'aaa', ...relatedItem} as BattleBeat)}
-        // updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as BattleBeat)}
-      />
+      {/*   getRelatedKey={beat => beat.id} */}
+      {/*   relatedName="battleBeat" */}
+
+      {/*   // generateNewRelatedItem={() => ({ id: '', beatKey: 'NEW', beatUrl: 'NEW' })} */}
+      {/*   // createRelatedItem={(_item, relatedItem) => Promise.resolve({id: 'aaa', ...relatedItem} as BattleBeat)} */}
+      {/*   // updateRelatedItem={(_item, relatedItem) => Promise.resolve({...relatedItem} as BattleBeat)} */}
+      {/* /> */}
       <Field<BattleWithParticipants, 'participants', BattleWithParticipants['participants']>
         name="participants"
         singularDisplayName="Participants"
@@ -503,14 +524,19 @@ export function PostDataModel() {
         // nullable
         pluralDisplayName="Users"
         csvExportColumnName="user_id"
-        getInitialStateFromItem={post => ({ id: post.userId, name: 'OLD', username: 'OLD', email: 'OLD', phone: 'OLD', website: 'OLD' }) as User}
-        injectAsyncDataIntoInitialStateOnDetailPage={async (_state, item, signal) => {
-          const response = await fetch(`http://localhost:3003/users/${item.userId}`, { signal });
-          if (!response.ok) {
-            throw new Error(`Error fetching user with id ${item.id}: received ${response.status} ${await response.text()}`);
-          }
+        getInitialStateFromItem={post => ({ type: 'KEY_ONLY' as const, key: post.userId })}
+        injectAsyncDataIntoInitialStateOnDetailPage={async (state, _item, signal) => {
+          switch (state.type) {
+            case "KEY_ONLY":
+              const response = await fetch(`http://localhost:3003/users/${state.key}`, { signal });
+              if (!response.ok) {
+                throw new Error(`Error fetching user with id ${state.key}: received ${response.status} ${await response.text()}`);
+              }
 
-          return response.json();
+              return { type: 'FULL', item: await response.json() };
+            case "FULL":
+              return state;
+          }
         }}
         serializeStateToItem={(initialItem, user) => ({ ...initialItem, userId: user.id })}
 
@@ -538,16 +564,25 @@ export function PostDataModel() {
         singularDisplayName="Comments"
         pluralDisplayName="Comments"
         csvExportColumnName="comments m2m"
-        getInitialStateFromItem={post => post.commentIds.map(cid => ({ id: cid, body: "OLD" }))}
-        injectAsyncDataIntoInitialStateOnDetailPage={async (_state, item, signal) => {
-          const response = await fetch(`http://localhost:3003/comments`, { signal });
-          if (!response.ok) {
-            throw new Error(`Error fetching user with id ${item.id}: received ${response.status} ${await response.text()}`);
-          }
+        getInitialStateFromItem={post => post.commentIds.map(cid => ({ type: "KEY_ONLY", key: cid }))}
+        injectAsyncDataIntoInitialStateOnDetailPage={async (state, _item, signal) => {
+          if (state.every(n => n.type === "FULL")) {
+            return state as any as Array<ForeignKeyFullItem<Comment>>;
+          } else {
+            return Promise.all(state.map(async n => {
+              switch (n.type) {
+                case "KEY_ONLY":
+                  const response = await fetch(`http://localhost:3003/comments/${n.key}`, { signal });
+                  if (!response.ok) {
+                    throw new Error(`Error fetching comments: received ${response.status} ${await response.text()}`);
+                  }
 
-          return response.json().then((comments: Array<Comment>) => {
-            return item.commentIds.map(cid => comments.find(c => c.id === cid)!);
-          });
+                  return { type: 'FULL', item: await response.json() };
+                case "FULL":
+                  return n;
+              }
+            }));
+          }
         }}
         serializeStateToItem={(initialItem, comments) => ({ ...initialItem, commentIds: comments.map(c => c.id) })}
 
@@ -602,13 +637,13 @@ export function PostDataModel() {
         ]}
       />
       {/* <InputField<Post, 'body'> */}
-      <MultiLineInputField<Post, 'body'>
+      <JSONField<Post, 'body'>
         name="body"
         singularDisplayName="Body"
         pluralDisplayName="Bodies"
         csvExportColumnName="body_text"
         // sortable
-        getInitialStateFromItem={post => post.body}
+        getInitialStateFromItem={post => ({body: post.body})}
         getInitialStateWhenCreating={() => ''}
         serializeStateToItem={(initialItem, state) => ({ ...initialItem, body: state })}
       />
@@ -963,18 +998,49 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
     };
   }, []);
 
+  const controls = useMemo(() => {
+    const Button: React.FunctionComponent<{
+      size?: "small" | "regular";
+      disabled?: boolean;
+      children: React.ReactNode;
+      onClick: () => void;
+    }> = ({ size, disabled, onClick, children }) => (
+      <button disabled={disabled} onClick={onClick} style={{ background: 'red' }}>
+        size:{size} {children}
+      </button>
+    );
+
+    const IconButton: React.FunctionComponent<{
+      size?: "small" | "regular";
+      disabled?: boolean;
+      children: React.ReactNode;
+      onClick: () => void;
+    }> = ({ size, disabled, onClick, children }) => (
+      <button disabled={disabled} onClick={onClick} style={{ background: 'green' }}>
+        size:{size} {children}
+      </button>
+    );
+
+    return {
+      // Button,
+      // IconButton,
+    };
+  }, []);
+
   return (
-    <AdminContextProvider stateCache={stateCache}>
-      <DataModels>
-        <BattleDataModel />
-        <BattleBeatDataModel />
+    <div style={{ fontFamily: 'Roboto Mono, menlo, monospace' }}>
+      <AdminContextProvider stateCache={stateCache} controls={controls}>
+        <DataModels>
+          <BattleDataModel />
+          <BattleBeatDataModel />
 
-        <PostDataModel />
-        <UserDataModel />
-        <CommentDataModel />
+          <PostDataModel />
+          <UserDataModel />
+          <CommentDataModel />
 
-        {children}
-      </DataModels>
-    </AdminContextProvider>
+          {children}
+        </DataModels>
+      </AdminContextProvider>
+    </div>
   );
 }

@@ -842,8 +842,12 @@ export const BooleanField = <I = BaseItem, F = BaseFieldName>(props: BooleanFiel
 };
 
 
-type SingleForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> = Pick<
-  FieldMetadata<I, F, J | null>,
+export type ForeignKeyKeyOnlyItem = { type: "KEY_ONLY", key: ItemKey };
+export type ForeignKeyFullItem<Item> = { type: "FULL", item: Item };
+export type ForeignKeyUnset = { type: "UNSET" };
+
+type SingleForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName, RelatedItem = BaseItem> = Pick<
+  FieldMetadata<Item, FieldName, ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null>,
   | 'name'
   | 'singularDisplayName'
   | 'pluralDisplayName'
@@ -853,18 +857,39 @@ type SingleForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> =
   | 'getInitialStateWhenCreating'
   | 'csvExportData'
 > & {
-  getInitialStateFromItem?: (item: I) => J;
-  injectAsyncDataIntoInitialStateOnDetailPage?: (oldState: J, item: I, signal: AbortSignal) => Promise<J>;
-  getInitialStateWhenCreating?: () => J | null;
-  serializeStateToItem?: (initialItem: Partial<I>, state: J) => Partial<I>;
+  // Determines how one can extract information about a RelatedItem from an Item.
+  //
+  // A few possible things can be returned:
+  // - If the Item purely contains an identifier for a RelatedItem (ie, { id: 'xxx', relatedId:
+  //   'yyy', ...}) then one should return { type: 'KEY_ONLY', key: 'yyy' }.
+  // - If the Item contains an embedded RelatedItem (ie, { id: 'xxx', related: { id: 'yyy', ...},
+  //   ...}) then one should return { type: 'FULL', item: { id: 'yyy', ... } }.
+  // - If the field is nullable and the Item is not associated with the RelatedItem, then
+  //   return null.
+  getInitialStateFromItem: (item: Item) => ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | null;
+
+  // When on the detail page, a full on `RelatedItem` is required and just the key from the
+  // `RelatedItem` isn't enough. This function allows the detail page to map the return value of
+  // `getInitialStateFromItem` (which may not be a FULL RelatedItem) into a FULL RelatedItem. This
+  // likely involves making a network request.
+  injectAsyncDataIntoInitialStateOnDetailPage: (
+    oldState: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem>,
+    item: Item | null,
+    signal: AbortSignal,
+  ) => Promise<ForeignKeyFullItem<RelatedItem>>;
+
+  // When creating a new Item, what should the RelatedItem foreign key be set to initially?
+  getInitialStateWhenCreating: () => ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null;
+
+  serializeStateToItem: (initialItem: Partial<Item>, state: RelatedItem | null) => Partial<Item>;
 
   nullable?: boolean;
   relatedName: string;
-  getRelatedKey?: (relatedItem: J) => ItemKey;
+  getRelatedKey?: (relatedItem: RelatedItem) => ItemKey;
 
-  fetchPageOfRelatedData?: (page: number, item: I, abort: AbortSignal) => Promise<Paginated<J>>;
-  createRelatedItem?: (item: Partial<I>, relatedItem: Partial<J>) => Promise<J>;
-  updateRelatedItem?: (item: Partial<I>, relatedItem: Partial<J>) => Promise<J>;
+  fetchPageOfRelatedData?: (page: number, item: Item | null, abort: AbortSignal) => Promise<Paginated<RelatedItem>>;
+  createRelatedItem?: (item: Partial<Item>, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>;
+  updateRelatedItem?: (item: Partial<Item>, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>;
 
   creationFields?: React.ReactNode;
 
@@ -882,70 +907,90 @@ Example SingleForeignKeyField:
   sortable
 />
 */
-export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseItem>(props: SingleForeignKeyFieldProps<I, F, J>) => {
+export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, RelatedItem = BaseItem>(props: SingleForeignKeyFieldProps<Item, FieldName, RelatedItem>) => {
   const dataModelsContextData = useContext(DataModelsContext);
   if (!dataModelsContextData) {
     throw new Error('Error: <SingleForeignKeyField ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
-  const relatedDataModel = dataModelsContextData[0].get(props.relatedName) as DataModel<J> | undefined;
+  const relatedDataModel = dataModelsContextData[0].get(props.relatedName) as DataModel<RelatedItem> | undefined;
 
   const singularDisplayName = props.singularDisplayName || relatedDataModel?.singularDisplayName || '';
   const pluralDisplayName = props.pluralDisplayName || relatedDataModel?.pluralDisplayName || '';
   const getRelatedKey = props.getRelatedKey || relatedDataModel?.keyGenerator;
 
-  const getInitialStateFromItem = useMemo(() => {
-    return props.getInitialStateFromItem || ((item: I) => (item as FixMe)[props.name as FixMe] as J)
-  }, [props.getInitialStateFromItem, props.name]);
+  const [
+    addInFlightAbortController,
+    removeInFlightAbortController,
+  ] = useInFlightAbortControllers();
 
   const getInitialStateWhenCreating = useMemo(() => {
-    return props.getInitialStateWhenCreating || (() => null);
+    return props.getInitialStateWhenCreating || (() => ({ type: 'UNSET' }));
   }, [props.getInitialStateWhenCreating]);
 
-  const injectAsyncDataIntoInitialStateOnDetailPage = useMemo(() => {
-    return props.injectAsyncDataIntoInitialStateOnDetailPage || ((state: J) => Promise.resolve(state));
-  }, [props.injectAsyncDataIntoInitialStateOnDetailPage]);
-
-  const serializeStateToItem = useMemo(() => {
-    return props.serializeStateToItem || ((initialItem: Partial<I>, state: J) => ({
-      ...initialItem,
-      [props.name as FixMe]: state,
-    }));
-  }, [props.name]);
-
-  const displayMarkup = useCallback((state: J) => {
-    if (state === null) {
-      return <span>null</span>;
+  const getInitialStateAfterMakingNotNull = useCallback(async (item: Item | null) => {
+    const initial = getInitialStateWhenCreating();
+    if (!initial) {
+      // If it defaults to null, then when going back to the "value" option, leave it unselected
+      return { type: 'UNSET' } as ForeignKeyUnset;
+    }
+    if (initial.type === "UNSET") {
+      return { type: 'UNSET' } as ForeignKeyUnset;
     }
 
-    return (
-      <span>{getRelatedKey ? getRelatedKey(state) : (state as FixMe).id}</span>
-    );
+    const abort = new AbortController();
+    addInFlightAbortController(abort)
+    const result = await props.injectAsyncDataIntoInitialStateOnDetailPage(initial, item, abort.signal);
+    removeInFlightAbortController(abort);
+    return result;
+  }, [getInitialStateWhenCreating, addInFlightAbortController, removeInFlightAbortController]);
+
+  const displayMarkup = useCallback((state: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null) => {
+    if (state === null) {
+      return <span>null</span>;
+    } else if (state.type === "KEY_ONLY") {
+      return (
+        <span>{state.key}</span>
+      );
+    } else if (state.type === "UNSET") {
+      return (
+        <span style={{ color: 'silver' }}>unset</span>
+      );
+    } else {
+      return (
+        <span>{getRelatedKey ? getRelatedKey(state.item) : (state as FixMe).id}</span>
+      );
+    }
   }, [getRelatedKey]);
 
   const modifyMarkup = useCallback((
-    state: J | null,
-    setState: (newState: J | null, blurAfterStateSet?: boolean) => void,
-    item: I,
-    onBlur: () => void,
+    state: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null,
+    setState: (newState: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null, blurAfterStateSet?: boolean) => void,
+    item: Item | null,
   ) => {
-    const relatedFields = (
-      <ForeignKeyFieldModifyMarkup
+    if (state && state.type === 'KEY_ONLY') {
+      return (
+        <span>Loading full object representation asyncronously...</span>
+      );
+    }
+
+    const relatedFields = state ? (
+      <ForeignKeyFieldModifyMarkup<Item, FieldName, RelatedItem>
         mode="detail"
         item={item}
-        relatedItem={state}
+        relatedItem={state.type !== "UNSET" ? state.item : null}
         checkboxesWidth={null}
-        onChangeRelatedItem={newRelatedItem => setState(newRelatedItem, true)}
+        onChangeRelatedItem={newRelatedItem => setState({ type: "FULL", item: newRelatedItem }, true)}
         foreignKeyFieldProps={props}
         getRelatedKey={getRelatedKey}
       >
         {props.children}
       </ForeignKeyFieldModifyMarkup>
-    );
+    ) : null;
 
     if (props.nullable) {
       return (
-        <div>
-          <NullableWrapper<J, F>
+        <div style={{ width: '100%' }}>
+          <NullableWrapper<ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset, FieldName>
             nullable={props.nullable as boolean}
             name={props.name}
             state={state}
@@ -954,7 +999,7 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
             // value). The better way to do this probably is to make the
             // `ForeignKeyFieldModifyMarkup` component aware of `nullable` when in
             // SingleForeignKeyField mode and get rid of the `NullableWrapper` stuff in here.
-            getInitialStateWhenCreating={getInitialStateWhenCreating}
+            getInitialStateWhenCreating={() => getInitialStateAfterMakingNotNull(item)}
           >
             Value
           </NullableWrapper>
@@ -967,29 +1012,68 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
     }
   }, [props]);
 
-  const csvExportData = useCallback((state: J | null, item: I) => {
+  const csvExportData = useCallback((state: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null, item: Item) => {
     if (props.csvExportData) {
-      return props.csvExportData;
+      return props.csvExportData(state, item);
     }
 
     if (state === null) {
       return 'null';
     } else if (getRelatedKey) {
-      return getRelatedKey(state);
+      switch (state.type) {
+        case "KEY_ONLY":
+          return state.key;
+        case "FULL":
+          return getRelatedKey(state.item);
+        case "UNSET":
+          return "";
+      }
     } else {
       return `${(item as FixMe).id}`;
     }
   }, [props.csvExportData, getRelatedKey]);
 
+  const injectAsyncDataIntoInitialStateOnDetailPage = useCallback(async (
+    oldState: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null,
+    item: Item,
+    signal: AbortSignal,
+  ): Promise<ForeignKeyFullItem<RelatedItem> | null> => {
+    if (oldState === null) {
+      return null;
+    }
+    if (oldState.type === "UNSET") {
+      return null;
+    }
+    return props.injectAsyncDataIntoInitialStateOnDetailPage(oldState, item, signal);
+  }, [props.injectAsyncDataIntoInitialStateOnDetailPage]);
+
+  const serializeStateToItem = useCallback((
+    initialItem: Partial<Item>,
+    state: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null,
+  ): Partial<Item> => {
+    if (!state) {
+      return props.serializeStateToItem(initialItem, null);
+    }
+    if (state.type === "KEY_ONLY") {
+      console.warn(`SingleForeignKeyField.serializeStateToItem ran with a field state of ${JSON.stringify(state)}, this is not allowed!`);
+      return initialItem;
+    }
+    if (state.type === "UNSET") {
+      console.warn(`SingleForeignKeyField.serializeStateToItem ran with a field state of ${JSON.stringify(state)}, this is not allowed!`);
+      return initialItem;
+    }
+    return props.serializeStateToItem(initialItem, state.item);
+  }, [props.serializeStateToItem]);
+
   return (
-    <Field<I, F, J | null>
+    <Field<Item, FieldName, ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null>
       name={props.name}
       singularDisplayName={singularDisplayName}
       pluralDisplayName={pluralDisplayName}
       csvExportColumnName={props.csvExportColumnName}
       columnWidth={props.columnWidth}
       sortable={props.sortable}
-      getInitialStateFromItem={getInitialStateFromItem}
+      getInitialStateFromItem={props.getInitialStateFromItem}
       injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
       getInitialStateWhenCreating={getInitialStateWhenCreating}
       serializeStateToItem={serializeStateToItem}
@@ -1002,8 +1086,8 @@ export const SingleForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseI
   );
 };
 
-type MultiForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> = Pick<
-  FieldMetadata<I, F, J>,
+type MultiForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName, RelatedItem = BaseItem> = Pick<
+  FieldMetadata<Item, FieldName, Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>>,
   | 'name'
   | 'singularDisplayName'
   | 'pluralDisplayName'
@@ -1013,17 +1097,35 @@ type MultiForeignKeyFieldProps<I = BaseItem, F = BaseFieldName, J = BaseItem> = 
   | 'getInitialStateWhenCreating'
   | 'csvExportData'
 > & {
-  getInitialStateFromItem?: (item: I) => Array<J>;
-  injectAsyncDataIntoInitialStateOnDetailPage?: (oldState: Array<J>, item: I, signal: AbortSignal) => Promise<Array<J>>;
-  getInitialStateWhenCreating?: () => Array<J> | undefined;
-  serializeStateToItem?: (initialItem: Partial<I>, state: Array<J>) => Partial<I>;
+  // Determines how one can extract information about a set of RelatedItems from an Item.
+  //
+  // A few possible things can be returned:
+  // - If the Item purely contains a list of identifiers for RelatedItems (ie, { id: 'xxx', relatedIds:
+  //   ['yyy', 'zzz'], ...}) then one should return
+  //   [{ type: 'KEY_ONLY', key: 'yyy' }, { type: 'KEY_ONLY', key: 'zzz'}].
+  // - If the Item contains a list of embedded RelatedItems (ie, { id: 'xxx', related: [{ id:
+  //   'yyy', ...}, { id: 'zzz', ... }],
+  //   then one should return [{type: 'FULL', item: {id: 'yyy', ... }}, { type: 'FULL', item: {id: 'zzz', ... }}].
+  getInitialStateFromItem: (item: Item) => Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>;
+
+  // When on the detail page, a full on `RelatedItem` is required and just the key from the
+  // `RelatedItem` isn't enough. This function allows the detail page to map the return value of
+  // `getInitialStateFromItem` (which may not be a FULL RelatedItem) into a FULL RelatedItem. This
+  // likely involves making a network request.
+  injectAsyncDataIntoInitialStateOnDetailPage: (
+    oldState: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>,
+    item: Item | null,
+    signal: AbortSignal,
+  ) => Promise<Array<ForeignKeyFullItem<RelatedItem>>>;
+
+  serializeStateToItem: (initialItem: Partial<Item>, state: Array<RelatedItem>) => Partial<Item>;
 
   relatedName: string;
-  getRelatedKey?: (relatedItem: J) => ItemKey;
+  getRelatedKey?: (relatedItem: RelatedItem) => ItemKey;
 
-  fetchPageOfRelatedData?: (page: number, item: I, abort: AbortSignal) => Promise<Paginated<J>>;
-  createRelatedItem?: (item: I, relatedItem: Partial<J>) => Promise<J>;
-  updateRelatedItem?: (item: I, relatedItem: Partial<J>) => Promise<J>;
+  fetchPageOfRelatedData?: (page: number, item: Item | null, abort: AbortSignal) => Promise<Paginated<RelatedItem>>;
+  createRelatedItem?: (item: Item, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>;
+  updateRelatedItem?: (item: Item, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>;
 
   creationFields?: React.ReactNode;
 
@@ -1040,33 +1142,57 @@ Example MultiForeignKeyField:
   sortable
 />
 */
-export const MultiForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseItem>(props: MultiForeignKeyFieldProps<I, F, J>) => {
-  const getInitialStateFromItem = useMemo(() => {
-    return props.getInitialStateFromItem || ((item: I) => (item as FixMe)[props.name as FixMe] as Array<J>);
-  }, [props.getInitialStateFromItem, props.name]);
+export const MultiForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, RelatedItem = BaseItem>(props: MultiForeignKeyFieldProps<Item, FieldName, RelatedItem>) => {
+  const getInitialStateFromItem = useCallback((item: Item) => {
+    return props.getInitialStateFromItem(item);
+  }, [props.getInitialStateFromItem]);
 
   const getInitialStateWhenCreating = useMemo(() => {
     return props.getInitialStateWhenCreating || (() => []);
   }, [props.getInitialStateWhenCreating]);
 
+  const serializeStateToItem = useCallback((
+    initialItem: Partial<Item>,
+    state: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>,
+  ): Partial<Item> => {
+    if (state.length === 0) {
+      return props.serializeStateToItem(initialItem, []);
+    } else if (state.find(n => n.type === "KEY_ONLY")) {
+      console.warn(`MultiForeignKeyField.serializeStateToItem ran with a field state of ${JSON.stringify(state)}, this is not allowed!`);
+      return initialItem;
+    } else {
+      return props.serializeStateToItem(initialItem, ((state as any) as Array<ForeignKeyFullItem<RelatedItem>>).map(n => n.item));
+    }
+  }, [props.serializeStateToItem]);
+
   const injectAsyncDataIntoInitialStateOnDetailPage = useMemo(() => {
-    return props.injectAsyncDataIntoInitialStateOnDetailPage || ((state: Array<J>) => Promise.resolve(state));
+    return props.injectAsyncDataIntoInitialStateOnDetailPage;
   }, [props.injectAsyncDataIntoInitialStateOnDetailPage, props.name]);
 
-  const csvExportData = useCallback((state: Array<J>) => {
+  const computeStateKeyList = useCallback((state: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>) => {
+    return state.map(n => {
+      if (n.type === "FULL") {
+        if (!props.getRelatedKey) {
+          return `${(n.item as FixMe).id}`;
+        } else {
+          return props.getRelatedKey(n.item);
+        }
+      } else {
+        return n.key;
+      }
+    });
+  }, []);
+
+  const csvExportData = useCallback((state: Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>, item: Item) => {
     if (props.csvExportData) {
-      return props.csvExportData;
+      return props.csvExportData(state, item);
     }
 
-    if (props.getRelatedKey) {
-      return state.map(relatedItem => props.getRelatedKey!(relatedItem)).join(', ');
-    } else {
-      return state.map(relatedItem => `${(relatedItem as FixMe).id}`).join(', ');
-    }
-  }, [props.csvExportData, props.getRelatedKey]);
+    return computeStateKeyList(state).join(',');
+  }, [props.csvExportData, props.getRelatedKey, computeStateKeyList]);
 
   return (
-    <Field<I, F, Array<J>>
+    <Field<Item, FieldName, Array<ForeignKeyKeyOnlyItem> | Array<ForeignKeyFullItem<RelatedItem>>>
       name={props.name}
       singularDisplayName={props.singularDisplayName}
       pluralDisplayName={props.pluralDisplayName}
@@ -1076,58 +1202,57 @@ export const MultiForeignKeyField = <I = BaseItem, F = BaseFieldName, J = BaseIt
       getInitialStateFromItem={getInitialStateFromItem}
       injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
       getInitialStateWhenCreating={getInitialStateWhenCreating}
-      serializeStateToItem={props.serializeStateToItem || ((initialItem, state) => ({ ...initialItem, [props.name as FixMe]: state }))}
-      displayMarkup={state => {
-        const keys = state.map(i => {
-          if (props.getRelatedKey) {
-            return props.getRelatedKey(i);
-          } else {
-            return (i as FixMe).id;
-          }
-        });
+      serializeStateToItem={serializeStateToItem}
+      displayMarkup={state => (
+        <span>{computeStateKeyList(state).join(', ')}</span>
+      )}
+      modifyMarkup={(state, setState, item) => {
+        if (state.find(n => n.type === 'KEY_ONLY')) {
+          return (
+            <span>Loading full object representation asyncronously...</span>
+          );
+        }
+
         return (
-          <span>{keys.join(', ')}</span>
+          <ForeignKeyFieldModifyMarkup<Item, FieldName, RelatedItem>
+            mode="list"
+            item={item}
+            relatedItems={((state as any) as Array<ForeignKeyFullItem<RelatedItem>>).map(n => n.item)}
+            checkboxesWidth={null}
+            onChangeRelatedItems={newRelatedItems => setState(newRelatedItems.map(n => ({ type: 'FULL', item: n })), true)}
+            foreignKeyFieldProps={props}
+            getRelatedKey={props.getRelatedKey}
+          >
+            {props.children}
+          </ForeignKeyFieldModifyMarkup>
         );
       }}
-      modifyMarkup={(state, setState, item, _onBlur) => (
-        <ForeignKeyFieldModifyMarkup<I, F, J>
-          mode="list"
-          item={item}
-          relatedItems={state}
-          checkboxesWidth={null}
-          onChangeRelatedItems={newRelatedItems => setState(newRelatedItems, true)}
-          foreignKeyFieldProps={props}
-          getRelatedKey={props.getRelatedKey}
-        >
-          {props.children}
-        </ForeignKeyFieldModifyMarkup>
-      )}
       csvExportData={csvExportData}
     />
   );
 };
 
-const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseItem>(props:
+const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName, RelatedItem = BaseItem>(props:
   | {
     mode: 'list',
-    item: I,
-    relatedItems: Array<J>,
-    onChangeRelatedItems: (newRelatedItems: Array<J>) => void,
+    item: Item | null,
+    relatedItems: Array<RelatedItem>,
+    onChangeRelatedItems: (newRelatedItems: Array<RelatedItem>) => void,
     disabled?: boolean;
     checkboxesWidth: null | string | number;
-    foreignKeyFieldProps: MultiForeignKeyFieldProps<I, F, J>,
-    getRelatedKey?: (relatedItem: J) => ItemKey;
+    foreignKeyFieldProps: MultiForeignKeyFieldProps<Item, FieldName, RelatedItem>,
+    getRelatedKey?: (relatedItem: RelatedItem) => ItemKey;
     children: React.ReactNode;
   }
   | {
     mode: 'detail',
-    item: I,
-    relatedItem: J | null,
-    onChangeRelatedItem: (newRelatedItem: J) => void,
+    item: Item | null,
+    relatedItem: RelatedItem | null,
+    onChangeRelatedItem: (newRelatedItem: RelatedItem) => void,
     disabled?: boolean;
     checkboxesWidth: null | string | number;
-    foreignKeyFieldProps: SingleForeignKeyFieldProps<I, F, J>,
-    getRelatedKey?: (relatedItem: J) => ItemKey;
+    foreignKeyFieldProps: SingleForeignKeyFieldProps<Item, FieldName, RelatedItem>,
+    getRelatedKey?: (relatedItem: RelatedItem) => ItemKey;
     children: React.ReactNode;
   }
 ) => {
@@ -1135,7 +1260,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
   if (!dataModelsContextData) {
     throw new Error('Error: <ForeignKeyFieldModifyMarkup ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
-  const relatedDataModel = dataModelsContextData[0].get(props.foreignKeyFieldProps.relatedName) as DataModel<J> | undefined;
+  const relatedDataModel = dataModelsContextData[0].get(props.foreignKeyFieldProps.relatedName) as DataModel<RelatedItem> | undefined;
 
   const Controls = useControls();
 
@@ -1146,7 +1271,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     }
 
     if (relatedDataModel) {
-      return (page: number, _item: I, signal: AbortSignal) => {
+      return (page: number, _item: Item | null, signal: AbortSignal) => {
         return relatedDataModel.fetchPageOfData(page, [], null, '', signal);
       };
     }
@@ -1169,7 +1294,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     isInitiallyEmpty ? 'select' : 'none'
   );
 
-  const [relatedData, setRelatedData] = useState<ListData<J>>({ status: 'IDLE' });
+  const [relatedData, setRelatedData] = useState<ListData<RelatedItem>>({ status: 'IDLE' });
 
   // When the component initially loads, fetch the first page of data
   useEffect(() => {
@@ -1183,7 +1308,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
       setRelatedData({ status: 'LOADING_INITIAL' });
 
       addInFlightAbortController(abortController);
-      let result: Paginated<J>;
+      let result: Paginated<RelatedItem>;
       try {
         result = await fetchPageOfRelatedData(1, props.item, abortController.signal);
       } catch (error: FixMe) {
@@ -1235,7 +1360,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
       loadingPage: page,
     });
 
-    let result: Paginated<J>;
+    let result: Paginated<RelatedItem>;
     try {
       result = await fetchPageOfRelatedData(page, props.item, abort.signal);
     } catch (error: FixMe) {
@@ -1258,24 +1383,24 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
     });
   }, [relatedData, setRelatedData, props.item, fetchPageOfRelatedData]);
 
-  const [relatedFields, setRelatedFields] = useState<FieldCollection<FieldMetadata<J, F>>>(
-    (EMPTY_FIELD_COLLECTION as any) as FieldCollection<FieldMetadata<J, F>>
+  const [relatedFields, setRelatedFields] = useState<FieldCollection<FieldMetadata<RelatedItem, FieldName>>>(
+    (EMPTY_FIELD_COLLECTION as any) as FieldCollection<FieldMetadata<RelatedItem, FieldName>>
   );
 
   // Allow a custom set of fields to be defined in the creation form. If these fields aren't
   // defined, then use the fields defined for the table for the creation form.
-  const [relatedCreationFields, setRelatedCreationFields] = useState<FieldCollection<FieldMetadata<J, F>>>(
-    (EMPTY_FIELD_COLLECTION as any) as FieldCollection<FieldMetadata<J, F>>
+  const [relatedCreationFields, setRelatedCreationFields] = useState<FieldCollection<FieldMetadata<RelatedItem, FieldName>>>(
+    (EMPTY_FIELD_COLLECTION as any) as FieldCollection<FieldMetadata<RelatedItem, FieldName>>
   );
 
   // When in creation mode, store each state for each field centrally
-  const [relatedCreationFieldStates, setRelatedCreationFieldStates] = useState<Map<F, BaseFieldState>>(new Map());
+  const [relatedCreationFieldStates, setRelatedCreationFieldStates] = useState<Map<FieldName, BaseFieldState>>(new Map());
   useEffect(() => {
     if (itemSelectionMode !== 'create') {
       return;
     }
 
-    const newRelatedCreationFieldStates = new Map<F, BaseFieldState | undefined>();
+    const newRelatedCreationFieldStates = new Map<FieldName, BaseFieldState | undefined>();
     for (const relatedField of relatedCreationFields.metadata) {
       newRelatedCreationFieldStates.set(
         relatedField.name,
@@ -1429,7 +1554,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                         <ListTableItem
                           key={key as string}
                           item={relatedItem}
-                          visibleFieldNames={relatedFields.names as Array<F>}
+                          visibleFieldNames={relatedFields.names as Array<FieldName>}
                           fields={relatedFields}
                           checkable={true}
                           checkType={props.mode === 'list' ? 'checkbox' : 'radio'}
@@ -1514,7 +1639,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                       }
 
                       // Aggregate all the state updates to form the update body
-                      let relatedItem: Partial<J> = {};
+                      let relatedItem: Partial<RelatedItem> = {};
                       for (const field of relatedCreationFields.metadata) {
                         let state = relatedCreationFieldStates.get(field.name);
                         if (typeof state === 'undefined') {
@@ -1525,7 +1650,7 @@ const ForeignKeyFieldModifyMarkup = <I = BaseItem, F = BaseFieldName, J = BaseIt
                       }
 
                       // FIXME: add abort controller
-                      let newlyCreatedRelatedItem: J;
+                      let newlyCreatedRelatedItem: RelatedItem;
                       try {
                         newlyCreatedRelatedItem = await props.foreignKeyFieldProps.createRelatedItem(props.item, relatedItem);
                       } catch (error: FixMe) {
