@@ -770,11 +770,12 @@ export const ChoiceField = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>
 
         let stateRepresentedByValue = false;
         for (const { id, disabled, label } of props.choices) {
-          if (id === stateAsString) {
+          const idAsString = `${id}`;
+          if (idAsString === stateAsString) {
             stateRepresentedByValue = true;
           }
           options.push({
-            value: id as string,
+            value: idAsString,
             disabled,
             label,
           });
@@ -789,8 +790,16 @@ export const ChoiceField = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>
           <Controls.Select
             value={stateAsString}
             onChange={newValue => {
-              const castedNewValue = newValue as S;
-              setState(castedNewValue === 'NULL' ? null : castedNewValue);
+              if (newValue === 'NULL') {
+                setState(null);
+                return;
+              }
+
+              const choice = props.choices.find(c => `${c.id}` === newValue);
+              if (!choice) {
+                return;
+              }
+              setState(choice.id);
             }}
             onBlur={() => onBlur()}
             options={options}
