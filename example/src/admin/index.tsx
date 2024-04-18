@@ -1692,6 +1692,14 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
                           </th>
                         );
                       })}
+                      {/* Add a column for the details button */}
+                      {relatedDataModel?.detailLinkGenerator ? (
+                        <Fragment>
+                          <th />
+                          {/* FIXME: the below 100 should be configured by detailLinkColumnWidth! */}
+                          <th style={{minWidth: 100}} />
+                        </Fragment>
+                      ) : null}
                     </tr>
                   </thead>
                   <tbody>
@@ -1915,7 +1923,10 @@ export const ListTableItem = <I = BaseItem, F = BaseFieldName>({
           onMouseDown={() => { document.body.style.userSelect = 'none'; }}
           onMouseUp={() => { document.body.style.userSelect = ''; }}
         >
-          <div onClick={e => e.stopPropagation()}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
             {checkType === "checkbox" ? (
               <Controls.Checkbox
                 checked={checked}
@@ -2686,7 +2697,10 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
                     }
                   }}
                 >
-                  <div onClick={e => e.stopPropagation()}>
+                  <div
+                    onClick={e => e.stopPropagation()}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
                     <Controls.Checkbox
                       disabled={!childrenContainsItems}
                       checked={allChecked}
