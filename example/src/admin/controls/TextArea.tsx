@@ -22,11 +22,6 @@ const TextAreaWithRef: React.FunctionComponent<TextAreaProps & {
   const wrappedOnChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.currentTarget.value);
   }, [onChange]);
-  const wrappedOnBlur = useCallback(() => {
-    if (onBlur) {
-      onBlur()
-    }
-  }, [onBlur]);
 
   return (
     <textarea
@@ -36,7 +31,7 @@ const TextAreaWithRef: React.FunctionComponent<TextAreaProps & {
       disabled={disabled}
       value={value}
       onChange={wrappedOnChange}
-      onBlur={wrappedOnBlur}
+      onBlur={onBlur}
       style={{
         borderRadius: invalid ? 2 : undefined,
         outline: invalid ? '0px solid transparent' : undefined,

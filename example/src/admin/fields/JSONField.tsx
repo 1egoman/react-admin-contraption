@@ -57,9 +57,9 @@ const JSONField = <
   }, [props.getInitialStateWhenCreating]);
 
   const serializeStateToItem = useMemo(() => {
-    const preexisting = props.serializeStateToItem || ((item: Partial<Item>, state: string) => ({
+    const preexisting = props.serializeStateToItem || ((item: Partial<Item>, state: JSONValue) => ({
       ...item,
-      [props.name as FixMe]: JSON.parse(state),
+      [props.name as FixMe]: state,
     }));
 
     return (item: Partial<Item>, state: [string, boolean]) => {
@@ -67,13 +67,13 @@ const JSONField = <
       if (invalid) {
         return item;
       }
-      return preexisting(item, body);
+      return preexisting(item, JSON.parse(body));
     };
   }, [props.serializeStateToItem, props.name]);
 
   const csvExportData = useCallback((state: [string, boolean], item: Item) => {
     const [text, invalid] = state;
-    if (!invalid) {
+    if (invalid) {
       return '';
     }
 
@@ -125,7 +125,7 @@ const JSONField = <
               setState([text, invalid]);
             }}
             onBlur={() => {
-              if (!invalid) {
+              if (invalid) {
                 return;
               }
 
