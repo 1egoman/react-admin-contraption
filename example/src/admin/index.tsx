@@ -1566,7 +1566,14 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
     case 'IDLE':
     case 'LOADING_INITIAL':
       return (
-        <div>Loading related data...</div>
+        <div className={styles.foreignKeyFieldModifyMarkupWrapper}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 64 }}>
+            <em style={{color: gray.gray9}}>
+              Loading related data...
+            </em>
+          </div>
+          <Controls.AppBar intent="footer" size="small" title={null} />
+        </div>
       );
     case 'ERROR_INITIAL':
       return (
@@ -1620,11 +1627,13 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
       return (
         <div className={styles.foreignKeyFieldModifyMarkupWrapper}>
           {relatedFields.names.length === 0 ? (
-            <em style={{color: gray.gray9}}>
-              No {props.foreignKeyFieldProps.singularDisplayName.toLowerCase()} fields specified
-            </em>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 64 }}>
+              <em style={{color: gray.gray9}}>
+                No {props.foreignKeyFieldProps.singularDisplayName.toLowerCase()} fields specified
+              </em>
+            </div>
           ) : (
-            <div style={{overflowY: 'auto'}}>
+            <div className={styles.foreignKeyFieldTableWrapper}>
               {rows.length > 0 ? (
                 <table>
                   <thead>
@@ -3236,7 +3245,7 @@ export const DetailFieldItem = <I = BaseItem, F = BaseFieldName, S = BaseFieldSt
 
   if (field.modifyMarkup) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', flexDirection: 'row', gap: 8, flexWrap: 'wrap', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <strong>{field.singularDisplayName}:</strong>
         </div>
@@ -3441,27 +3450,47 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
         break;
       case 'COMPLETE':
         const item = detailDataContextData.detailData.data;
-        detailFieldsChildren = (
-          <Fragment>
-            {fields.names.map(fieldName => {
-              const field = fields.metadata.find(field => field.name === fieldName);
-              if (!field) {
-                return null;
-              }
+        switch (fieldStates.status) {
+          case "IDLE":
+          case "LOADING":
+            detailFieldsChildren = (
+              <div className={styles.detailFieldsEmptyState}>
+                Loading {detailDataContextData.singularDisplayName} fields...
+              </div>
+            );
+            break;
+          case "ERROR":
+            detailFieldsChildren = (
+              <div className={styles.detailFieldsEmptyState}>
+                Error loading {detailDataContextData.singularDisplayName} fields!
+              </div>
+            );
+            break;
+          case "COMPLETE":
+            detailFieldsChildren = (
+              <Fragment>
+                {fields.names.map(fieldName => {
+                  const field = fields.metadata.find(field => field.name === fieldName);
+                  if (!field) {
+                    return null;
+                  }
 
-              switch (fieldStates.status) {
-                case "IDLE":
-                case "LOADING":
-                  return (
-                    <div key={field.name as string}>Loading...</div>
-                  );
-                case "COMPLETE":
                   const fieldState = fieldStates.data.get(field.name);
                   if (typeof fieldState === 'undefined') {
                     return null;
                   }
+
                   return (
-                    <Fragment key={field.name as string}>
+                    <div
+                      key={field.name as string}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'row',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        width: '100%',
+                    }}>
                       {renderFieldItem({
                         item,
                         field,
@@ -3477,16 +3506,13 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                           });
                         },
                       })}
-                    </Fragment>
+                    </div>
                   );
-                case "ERROR":
-                  return (
-                    <div key={field.name as string}>Error loading field state!</div>
-                  );
-              }
-            })}
-          </Fragment>
-        );
+                })}
+              </Fragment>
+            );
+            break;
+        }
         break;
     }
   }
