@@ -3358,11 +3358,18 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
     | { status: "COMPLETE", data: Map<F, BaseFieldState> }
     | { status: "ERROR", error: any }
   >({ status: "IDLE" });
+  const fieldStatesRequestInProgress = useRef(false);
   useEffect(() => {
+    if (fieldStatesRequestInProgress.current) {
+      return;
+    }
+
     const abortController = new AbortController();
     addInFlightAbortController(abortController);
 
     setFieldStates({ status: "LOADING" });
+    fieldStatesRequestInProgress.current = true;
+
     Promise.all(fields.metadata.map(async field => {
       if (detailDataContextData.isCreating) {
         if (field.getInitialStateWhenCreating) {
@@ -3394,10 +3401,16 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
       removeInFlightAbortController(abortController);
       const filteredFieldStatesPairs = fieldStatesPairs.filter((n): n is [F, BaseFieldState | undefined] => n !== null);
       setFieldStates({ status: "COMPLETE", data: new Map(filteredFieldStatesPairs) });
+      fieldStatesRequestInProgress.current = false;
     }).catch(error => {
       removeInFlightAbortController(abortController);
       console.error('Error loading field state:', error);
       setFieldStates({ status: "ERROR", error });
+
+      console.error('Waiting 3000ms before retrying...');
+      setTimeout(() => {
+        fieldStatesRequestInProgress.current = false;
+      }, 3000);
     });
 
     return () => {
