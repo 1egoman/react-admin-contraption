@@ -344,13 +344,20 @@
   cursor: pointer;
 }
 
-
 .foreignKeyFieldTableWrapper table thead th.sortable {
   cursor: pointer;
 }
 
 .foreignKeyFieldTableWrapper table thead th .tableWrapperSortIndicator {
   margin-left: 8px;
+}
+
+.foreignKeyFieldCreationWrapper {
+  padding: 16px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* ------------------

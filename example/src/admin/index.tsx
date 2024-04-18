@@ -1755,22 +1755,26 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
           )}
           {itemSelectionMode === 'create' ? (
             <Fragment>
-              <span>Create new {relatedDataModel.singularDisplayName}</span>
+              <Controls.AppBar
+                intent="header"
+                size="small"
+                title={<strong>Create new {relatedDataModel.singularDisplayName}:</strong>}
+              />
+              <div className={styles.foreignKeyFieldCreationWrapper}>
+                {relatedCreationFields.names.map(relatedFieldName => {
+                  const relatedField = relatedCreationFields.metadata.find(f => f.name === relatedFieldName);
+                  if (!relatedField) {
+                    return null;
+                  }
 
-              {relatedCreationFields.names.map(relatedFieldName => {
-                const relatedField = relatedCreationFields.metadata.find(f => f.name === relatedFieldName);
-                if (!relatedField) {
-                  return null;
-                }
+                  const relatedFieldState = relatedCreationFieldStates.get(relatedField.name);
+                  if (typeof relatedFieldState === 'undefined') {
+                    return null;
+                  }
 
-                const relatedFieldState = relatedCreationFieldStates.get(relatedField.name);
-                if (typeof relatedFieldState === 'undefined') {
-                  return null;
-                }
-
-                return (
-                  <div key={relatedField.name as string} style={{marginLeft: 24}}>
+                  return (
                     <DetailFieldItem
+                      key={relatedField.name as string}
                       item={null}
                       field={relatedField}
                       fieldState={relatedFieldState}
@@ -1782,9 +1786,9 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
                         });
                       }}
                     />
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
 
               <Controls.AppBar
                 intent="footer"
@@ -1792,7 +1796,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
                 title={
                   <Fragment>
                     <Controls.Button size="small" onClick={() => setItemSelectionMode('none')}>Cancel</Controls.Button>
-                    <Controls.Button size="small" onClick={async () => {
+                    <Controls.Button size="small" variant="primary" onClick={async () => {
                       if (!props.createRelatedItem) {
                         return;
                       }
