@@ -863,7 +863,6 @@ type SingleForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName, Rela
   | 'csvExportColumnName'
   | 'columnWidth'
   | 'sortable'
-  | 'getInitialStateWhenCreating'
   | 'csvExportData'
 > & {
   // Determines how one can extract information about a RelatedItem from an Item.
@@ -888,7 +887,7 @@ type SingleForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName, Rela
   ) => Promise<ForeignKeyFullItem<RelatedItem>>;
 
   // When creating a new Item, what should the RelatedItem foreign key be set to initially?
-  getInitialStateWhenCreating: () => ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null;
+  getInitialStateWhenCreating?: () => ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null;
 
   serializeStateToItem?: (initialItem: Partial<Item>, state: RelatedItem | null) => Partial<Item>;
 
