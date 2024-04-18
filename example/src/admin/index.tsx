@@ -1636,7 +1636,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
             <div className={styles.foreignKeyFieldTableWrapper}>
               {rows.length > 0 ? (
                 <table>
-                  <thead>
+                  <ManuallyStickyTHead>
                     <tr>
                       {/* Add a column for the checkboxes */}
                       <th style={{width: props.checkboxesWidth === null ? undefined : props.checkboxesWidth}}>
@@ -1701,7 +1701,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
                         </Fragment>
                       ) : null}
                     </tr>
-                  </thead>
+                  </ManuallyStickyTHead>
                   <tbody>
                     {rows.map(relatedItem => {
                       const key = props.getRelatedKey(relatedItem);
