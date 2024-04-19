@@ -29,6 +29,7 @@ export type InputFieldProps<
 
   type?: HTMLInputElement['type'];
   nullable?: Nullable;
+  displayMarkup?: FieldMetadata<Item, Field, State>['displayMarkup'];
   inputMarkup?: FieldMetadata<Item, Field, State>['modifyMarkup'];
 };
 
@@ -83,7 +84,7 @@ const InputField = <
       injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
       getInitialStateWhenCreating={props.getInitialStateWhenCreating || (() => '')}
       serializeStateToItem={props.serializeStateToItem || ((initialItem, state) => ({ ...initialItem, [props.name as FixMe]: state }))}
-      displayMarkup={state => state === null ? <em style={{color: 'silver'}}>null</em> : <span>{state}</span>}
+      displayMarkup={props.displayMarkup || (state => state === null ? <em style={{color: 'silver'}}>null</em> : <span>{state}</span>)}
       modifyMarkup={(state, setState, item, onBlur) => {
         const input = props.inputMarkup ? props.inputMarkup(state, setState, item, onBlur) : (
           <Controls.TextInput
