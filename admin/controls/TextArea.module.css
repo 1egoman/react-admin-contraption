@@ -1,0 +1,15 @@
+.textAreaSmall {
+  font-family: 'Roboto Mono', 'menlo', 'monospace';
+  font-size: 14px;
+  min-height: 72px;
+  min-width: 128px;
+  padding: 4px;
+}
+
+.textAreaRegular {
+  font-family: 'Roboto Mono', 'menlo', 'monospace';
+  font-size: 16px;
+  min-height: 128px;
+  min-width: 320px;
+  padding: 8px;
+}

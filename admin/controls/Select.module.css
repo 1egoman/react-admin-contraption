@@ -1,0 +1,17 @@
+.selectSmall {
+  font-family: 'Roboto Mono', 'menlo', 'monospace';
+  font-size: 12px;
+  height: 24px;
+  padding-left: 4px;
+  padding-right: 4px;
+  min-width: 96px;
+}
+
+.selectRegular {
+  font-family: 'Roboto Mono', 'menlo', 'monospace';
+  font-size: 16px;
+  height: 32px;
+  padding-left: 8px;
+  padding-right: 8px;
+  min-width: 96px;
+}

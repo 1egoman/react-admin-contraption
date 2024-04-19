@@ -1,0 +1,17 @@
+.buttonRegular {
+  font-family: 'Roboto Mono', 'menlo', 'monospace';
+  font-size: 14px;
+  height: 32px;
+  padding-left: 8px;
+  padding-right: 8px;
+  cursor: pointer;
+}
+
+.buttonSmall {
+  font-family: 'Roboto Mono', 'menlo', 'monospace';
+  font-size: 14px;
+  height: 24px;
+  padding-left: 8px;
+  padding-right: 8px;
+  cursor: pointer;
+}
