@@ -3237,6 +3237,8 @@ type DetailData<T> =
 type DetailProps<I = BaseItem> = {
   name: string;
   itemKey?: ItemKey | null;
+  title?: (item: I) => React.ReactNode;
+  actions?: (item: I) => React.ReactNode;
   children?: React.ReactNode;
 } & Partial<Pick<
   DataModel<I>,
@@ -3258,6 +3260,8 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
       <DetailFields />
     ),
   } = props;
+
+  const Controls = useControls();
 
   // First, get the data model that the list component uses:
   const dataModelsContextData = useContext(DataModelsContext);
@@ -3369,6 +3373,34 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
   return (
     <DataContext.Provider value={dataContextData as DataContextDetail}>
       <div className={styles.detail}>
+        <Controls.AppBar
+          intent="header"
+          title={
+            <Fragment>
+              <Controls.NavigationButton navigatable={dataContextData.listLink}>&larr; Back</Controls.NavigationButton>
+              {dataContextData.isCreating ? (
+                <strong>
+                  Create {dataContextData.singularDisplayName[0].toUpperCase()}{dataContextData.singularDisplayName.slice(1)}
+                </strong>
+              ) : (
+                <strong>
+                  {props.title ? (
+                    <strong>
+                      {dataContextData.detailData.status === 'COMPLETE' ? props.title(dataContextData.detailData.data) : null}
+                    </strong>
+                  ) : (
+                    <strong>
+                      {dataContextData.singularDisplayName[0].toUpperCase()}{dataContextData.singularDisplayName.slice(1)}{' '}
+                      {dataContextData.itemKey}
+                    </strong>
+                  )}
+                </strong>
+              )}
+            </Fragment>
+          }
+          actions={detailData.status === "COMPLETE" && props.actions ? props.actions(detailData.data) : null}
+        />
+
         {children}
       </div>
     </DataContext.Provider>
@@ -3682,25 +3714,6 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
 
   return (
     <FieldsProvider dataModel={dataModel} onChangeFields={setFields}>
-      <Controls.AppBar
-        intent="header"
-        title={
-          <Fragment>
-            <Controls.NavigationButton navigatable={detailDataContextData.listLink}>&larr; Back</Controls.NavigationButton>
-            {detailDataContextData.isCreating ? (
-              <strong>
-                Create {detailDataContextData.singularDisplayName[0].toUpperCase()}{detailDataContextData.singularDisplayName.slice(1)}
-              </strong>
-            ) : (
-              <strong>
-                {detailDataContextData.singularDisplayName[0].toUpperCase()}{detailDataContextData.singularDisplayName.slice(1)}{' '}
-                {detailDataContextData.itemKey}
-              </strong>
-            )}
-          </Fragment>
-        }
-      />
-
       {renderFieldsWrapper({
         detailDataContextData,
         children: detailFieldsChildren,
