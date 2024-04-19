@@ -141,7 +141,6 @@ type DataContextList<I = BaseItem, F = BaseFieldName> = {
   name: string;
   singularDisplayName: string;
   pluralDisplayName: string;
-  csvExportColumnName?: string;
 
   listData: ListData<I>;
   onLoadNextPage: () => Promise<void>;
@@ -194,7 +193,6 @@ type ListProps<I = BaseItem> = {
   DataModel<I>,
   | "singularDisplayName"
   | "pluralDisplayName"
-  | "csvExportColumnName"
   | "fetchPageOfData"
   | "keyGenerator"
   | "detailLinkGenerator"
@@ -216,7 +214,6 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
   const dataModel = dataModelsContextData[0].get(name) as DataModel<I> | undefined;
   const singularDisplayName = props.singularDisplayName || dataModel?.singularDisplayName || '';
   const pluralDisplayName = props.pluralDisplayName || dataModel?.pluralDisplayName || '';
-  const csvExportColumnName = props.csvExportColumnName || dataModel?.csvExportColumnName || '';
   const fetchPageOfData = props.fetchPageOfData || dataModel?.fetchPageOfData || null;
   const keyGenerator = props.keyGenerator || dataModel?.keyGenerator || null;
   const detailLinkGenerator = props.detailLinkGenerator || dataModel?.detailLinkGenerator || null;
@@ -493,7 +490,6 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
       name,
       singularDisplayName,
       pluralDisplayName,
-      csvExportColumnName,
 
       listData,
       onLoadNextPage,
@@ -523,7 +519,6 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
     name,
     singularDisplayName,
     pluralDisplayName,
-    csvExportColumnName,
     listData,
     onLoadNextPage,
     fetchAllListData,
@@ -3074,7 +3069,6 @@ type DataContextDetail<I = BaseItem> = {
   name: string;
   singularDisplayName: string;
   pluralDisplayName: string;
-  csvExportColumnName?: string;
 
   detailData: DetailData<I>;
 
@@ -3106,7 +3100,6 @@ type DetailProps<I = BaseItem> = {
   DataModel<I>,
   | "singularDisplayName"
   | "pluralDisplayName"
-  | "csvExportColumnName"
   | "fetchItem"
   | "createItem"
   | "updateItem"
@@ -3132,7 +3125,6 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
   const dataModel = dataModelsContextData[0].get(name) as DataModel<I> | undefined;
   const singularDisplayName = props.singularDisplayName || dataModel?.singularDisplayName || '';
   const pluralDisplayName = props.pluralDisplayName || dataModel?.pluralDisplayName || '';
-  const csvExportColumnName = props.csvExportColumnName || dataModel?.csvExportColumnName || '';
   const fetchItem = props.fetchItem || dataModel?.fetchItem || null;
   const createItem = props.createItem || dataModel?.createItem || null;
   const updateItem = props.updateItem || dataModel?.updateItem || null;
@@ -3206,7 +3198,6 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
       name,
       singularDisplayName,
       pluralDisplayName,
-      csvExportColumnName,
       detailData,
       createItem,
       updateItem,
@@ -3219,7 +3210,6 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
     name,
     singularDisplayName,
     pluralDisplayName,
-    csvExportColumnName,
     detailData,
     createItem,
     updateItem,
