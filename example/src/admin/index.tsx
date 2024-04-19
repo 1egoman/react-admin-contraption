@@ -3213,6 +3213,7 @@ type DataContextDetail<I = BaseItem> = {
   pluralDisplayName: string;
 
   detailData: DetailData<I>;
+  resetDetailDataAfterCreate: (item: I) => void;
 
   createItem: ((createData: Partial<I>, abort: AbortSignal) => Promise<I>) | null;
   updateItem: ((itemKey: ItemKey, updateData: Partial<I>, abort: AbortSignal) => Promise<void>) | null;
@@ -3345,6 +3346,7 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
       singularDisplayName,
       pluralDisplayName,
       detailData,
+      resetDetailDataAfterCreate: (item: I) => setDetailData({ status: 'COMPLETE', data: item }),
       createItem,
       updateItem,
       deleteItem,
@@ -3357,6 +3359,7 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
     singularDisplayName,
     pluralDisplayName,
     detailData,
+    setDetailData,
     createItem,
     updateItem,
     deleteItem,
@@ -3501,7 +3504,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
   if (!dataModelsContextData) {
     throw new Error('Error: <DetailFields ... /> was not rendered inside of a container component! Try rendering this inside of a <Detail> ... </Detail> component.');
   }
-  const dataModel = dataModelsContextData[0].get(detailDataContextData.name) as DataModel<I, BaseFieldName> | undefined;
+  const dataModel = dataModelsContextData[0].get(detailDataContextData.name) as DataModel<I> | undefined;
   if (!dataModel) {
     throw new Error(`Error: <DetailFields ... /> cannot find data model with name ${detailDataContextData.name}!`);
   }
@@ -3512,6 +3515,8 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
   ] = useInFlightAbortControllers();
 
   const [updateKeepEditing, setUpdateKeepEditing] = useState(false);
+  const [updateInProgress, setUpdateInProgress] = useState(false);
+  const [createInProgress, setCreateInProgress] = useState(false);
 
   const [fields, setFields] = useState<FieldCollection<FieldMetadata<I, F>>>(EMPTY_FIELD_COLLECTION);
 
@@ -3727,7 +3732,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
           intent="footer"
           actions={
             <Controls.Button
-              disabled={!detailDataContextData.createItem}
+              disabled={createInProgress || !detailDataContextData.createItem}
               variant="primary"
               onClick={async () => {
                 if (!detailDataContextData.createItem) {
@@ -3736,6 +3741,8 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                 if (fieldStates.status !== 'COMPLETE') {
                   return;
                 }
+
+                setCreateInProgress(true);
 
                 const abortController = new AbortController();
                 addInFlightAbortController(abortController);
@@ -3770,6 +3777,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                 try {
                   createResult = await detailDataContextData.createItem(item, abortController.signal);
                 } catch (error: FixMe) {
+                  setCreateInProgress(false);
                   if (error.name === 'AbortError') {
                     // The component unmounted, and the request was terminated
                     return;
@@ -3781,8 +3789,12 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                 }
 
                 removeInFlightAbortController(abortController);
+                setCreateInProgress(false);
 
-                // After creating, navigate to the newly created item's detail page
+                // After creating, update the view to show the created item...
+                detailDataContextData.resetDetailDataAfterCreate(createResult);
+
+                // ... and then navigate to the newly created item's detail page
                 if (detailDataContextData.detailLinkGenerator) {
                   imperativelyNavigateToNavigatable(adminContextData, detailDataContextData.detailLinkGenerator(createResult));
                 }
@@ -3796,7 +3808,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
           title={
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <Controls.Button
-                disabled={detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.updateItem}
+                disabled={updateInProgress || detailDataContextData.detailData.status !== 'COMPLETE' || !detailDataContextData.updateItem}
                 variant="primary"
                 onClick={async () => {
                   if (!detailDataContextData.updateItem) {
@@ -3811,6 +3823,8 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                   if (detailDataContextData.detailData.status !== 'COMPLETE') {
                     return;
                   }
+
+                  setUpdateInProgress(true);
 
                   const abortController = new AbortController();
                   addInFlightAbortController(abortController);
@@ -3844,6 +3858,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                   try {
                     await detailDataContextData.updateItem(detailDataContextData.itemKey, item, abortController.signal);
                   } catch (error: FixMe) {
+                    setUpdateInProgress(true);
                     if (error.name === 'AbortError') {
                       // The component unmounted, and the request was terminated
                       return;
@@ -3855,6 +3870,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                   }
 
                   removeInFlightAbortController(abortController);
+                  setUpdateInProgress(false);
                   alert('Update successful!');
 
                   // After updating, go back to the list page
