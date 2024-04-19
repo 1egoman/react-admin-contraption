@@ -131,6 +131,21 @@ const DataContext = React.createContext<
   | null
 >(null);
 
+export const useListDataContext = <Item = BaseItem>() => {
+  const value = useContext(DataContext);
+  if (value && value.type !== "list") {
+    throw new Error(`Admin DataContext has type of '${value.type}', expected 'list'!`)
+  }
+  return value as any as DataContextList<Item>;
+};
+export const useDetailDataContext = <Item = BaseItem>() => {
+  const value = useContext(DataContext);
+  if (value && value.type !== "detail") {
+    throw new Error(`Admin DataContext has type of '${value.type}', expected 'detail'!`)
+  }
+  return value as any as DataContextDetail<Item>;
+};
+
 
 
 
