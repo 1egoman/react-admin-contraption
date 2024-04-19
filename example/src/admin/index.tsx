@@ -2911,7 +2911,11 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
                 <th style={{ minWidth: detailLinkWidth || undefined }}></th>
               ) : null}
               <th className={styles.listTableHeaderActionsWrapper}>
-                {columnSets && renderColumnSetSelector ? (
+                {(
+                  columnSets &&
+                  Object.keys(columnSets).filter(k => k !== 'all').length > 0 && // Make sure more than just "all" is visible
+                  renderColumnSetSelector
+                ) ? (
                   renderColumnSetSelector({
                     fields,
                     columnSets,
@@ -2970,7 +2974,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
 
   // Convert the column set into the columns to render in the table
   let visibleFieldNames: Array<F> = [];
-  if (listDataContextData.columnSet === 'all') {
+  if (listDataContextData.columnSet === 'all' && columnSets && !columnSets.all) {
     visibleFieldNames = fields.names as Array<F>;
   } else if (Array.isArray(listDataContextData.columnSet)) {
     // A manual list of fields
