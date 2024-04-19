@@ -2407,6 +2407,7 @@ export const ListFilterBar = <I = BaseItem>({
     return (
       <Controls.Button
         key={name}
+        size="small"
         onClick={() => listDataContextData.onChangeFilters(filterPresetCallback(listDataContextData.filters))}
       >{name}</Controls.Button>
     );
