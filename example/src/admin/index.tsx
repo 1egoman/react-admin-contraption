@@ -959,8 +959,17 @@ export type ForeignKeyKeyOnlyItem<Key = ItemKey> = { type: "KEY_ONLY", key: Key 
 export type ForeignKeyFullItem<Item> = { type: "FULL", item: Item };
 export type ForeignKeyUnset = { type: "UNSET" };
 
-type SingleForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName, RelatedItem = BaseItem> = Pick<
-  FieldMetadata<Item, FieldName, ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null>,
+type SingleForeignKeyFieldProps<
+  Item = BaseItem,
+  FieldName = BaseFieldName,
+  RelatedItem = BaseItem,
+  Nullable = false,
+> = Pick<
+  FieldMetadata<
+    Item,
+    FieldName,
+    ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | (Nullable extends true ? ForeignKeyUnset | null : ForeignKeyUnset)
+  >,
   | 'name'
   | 'singularDisplayName'
   | 'pluralDisplayName'
@@ -978,20 +987,20 @@ type SingleForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName, Rela
   //   ...}) then one should return { type: 'FULL', item: { id: 'yyy', ... } }.
   // - If the field is nullable and the Item is not associated with the RelatedItem, then
   //   return null.
-  getInitialStateFromItem: (item: Item) => ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | null;
+  getInitialStateFromItem: (item: Item) => (Nullable extends true ? ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | null : ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem>);
 
   // When on the detail page, a full on `RelatedItem` is required and just the key from the
   // `RelatedItem` isn't enough. This function allows the detail page to map the return value of
   // `getInitialStateFromItem` (which may not be a FULL RelatedItem) into a FULL RelatedItem. This
   // likely involves making a network request.
   injectAsyncDataIntoInitialStateOnDetailPage?: (
-    oldState: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem>,
+    oldState: Nullable extends true ? ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | null : ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem>,
     item: Item | null,
     signal: AbortSignal,
   ) => Promise<ForeignKeyFullItem<RelatedItem>>;
 
   // When creating a new Item, what should the RelatedItem foreign key be set to initially?
-  getInitialStateWhenCreating?: () => ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null;
+  getInitialStateWhenCreating?: () => ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | (Nullable extends true ? ForeignKeyUnset | null : ForeignKeyUnset);
 
   serializeStateToItem?: (initialItem: Partial<Item>, state: RelatedItem | null) => Partial<Item>;
 
@@ -1018,7 +1027,7 @@ Example SingleForeignKeyField:
   sortable
 />
 */
-export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, RelatedItem = BaseItem>(props: SingleForeignKeyFieldProps<Item, FieldName, RelatedItem>) => {
+export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, RelatedItem = BaseItem, Nullable = false>(props: SingleForeignKeyFieldProps<Item, FieldName, RelatedItem, Nullable>) => {
   const dataModelsContextData = useContext(DataModelsContext);
   if (!dataModelsContextData) {
     throw new Error('Error: <SingleForeignKeyField ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
