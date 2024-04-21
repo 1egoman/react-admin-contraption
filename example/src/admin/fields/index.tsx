@@ -214,9 +214,16 @@ type NullableWrapperProps<State = BaseFieldState, FieldName = BaseFieldName> = {
   setState: (newState: State | null, blurAfterStateSet?: boolean) => void;
   getInitialStateWhenCreating: () => State;
   inputRef?: React.MutableRefObject<{ focus: () => void } | null>;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 };
 
+// The NullableWrapper is a compone that a field can use within its `modifyMarkup` to easily handle
+// nullable fields in a standardized way.
+//
+// When enabled, This component renders its children next to the "set" radiobutton and adds a
+// second radiobutton for "null" - when the "null" one is selected, the field state is set to null.
+// And, when the "set" radiobutton is selected, the initial control value is stored into the field
+// state (`getInitialStateWhenCreating`) and the field is focused if a ref is passed in as `inputRef`.
 export const NullableWrapper = <
   State = BaseFieldState,
   FieldName = BaseFieldName
@@ -275,7 +282,7 @@ export const NullableWrapper = <
           {props.state === null ? (
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} />
           ) : null}
-          {props.children}
+          {props.children || "Value"} {/* If unset, use the generic "value" */}
         </div>
       </div>
       <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>

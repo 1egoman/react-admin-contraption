@@ -1176,9 +1176,7 @@ export const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName
             // `ForeignKeyFieldModifyMarkup` component aware of `nullable` when in
             // SingleForeignKeyField mode and get rid of the `NullableWrapper` stuff in here.
             getInitialStateWhenCreating={() => getInitialStateAfterMakingNotNull(item)}
-          >
-            Value
-          </NullableWrapper>
+          />
 
           {state !== null ? relatedFields : null}
         </div>
