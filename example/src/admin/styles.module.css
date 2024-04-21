@@ -428,7 +428,6 @@
 
   display: flex;
   align-items: center;
-  gap: 4px;
 }
 .csvExportPreviewTableColumnData:last-child {
   border-bottom: 0px;
@@ -440,11 +439,13 @@
   overflow: visible;
   flex-direction: column;
   max-width: none;
+  border-bottom: 0px;
 }
 .csvExportPreviewTableColumnHeaderHandle {
   font-size: 32px;
   color: var(--gray-9);
-  transform: translateY(-2px);
+  transform: translateY(-9px);
+  height: 20px;
 }
 .csvExportPreviewTableColumnHeaderSelect {
   width: 100%;
@@ -455,10 +456,11 @@
   flex-grow: 0;
   flex-shrink: 0;
 }
+.csvExportPreviewTableAddButtonWrapper {
+  composes: csvExportPreviewTableColumnHeader; /* FIXME: maybe it isn't the best idea to use this since it is css modules specific ... */
+  border-top: 1px solid transparent;
+  margin-right: 8px;
+}
 .csvExportPreviewTableAddButton {
-  composes: csvExportPreviewTableColumnData; /* FIXME: maybe it isn't the best idea to use this since it is css modules specific ... */
-  justify-content: center;
-  padding: 0px;
-  padding-left: 8px;
-  padding-right: 16px;
+  margin-right: 8px;
 }

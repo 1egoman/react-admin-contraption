@@ -34,11 +34,17 @@
 .title {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  width: 100%;
+  flex-grow: 1;
+  flex-shrink: 1;
 }

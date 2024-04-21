@@ -16,12 +16,16 @@ const AppBar: React.FunctionComponent<AppBarProps> = ({ size='regular', title, a
       borderTop: intent === 'footer' ? '1px solid var(--gray-8)' : undefined,
     }}
   >
-    <div className={styles.title}>
-      {title}
-    </div>
-    <div className={styles.actions}>
-      {actions}
-    </div>
+    {title ? (
+      <div className={styles.title}>
+        {title}
+      </div>
+    ) : null}
+    {actions ? (
+      <div className={styles.actions}>
+        {actions}
+      </div>
+    ) : null}
   </div>
 );
 

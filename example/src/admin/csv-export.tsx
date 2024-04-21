@@ -129,6 +129,10 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
                               title={
                                 <Fragment>
                                   <div className={styles.csvExportPreviewTableColumnHeaderHandle}>&#8801;</div>
+                                </Fragment>
+                              }
+                              actions={
+                                <Fragment>
                                   <div className={styles.csvExportPreviewTableColumnHeaderSelect}>
                                     <Controls.Select
                                       size="small"
@@ -146,20 +150,18 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
                                       }}
                                     />
                                   </div>
+                                  <div className={styles.csvExportPreviewTableColumnHeaderRemove}>
+                                    <Controls.IconButton
+                                      disabled={props.columnNamesInOrder.length < 2}
+                                      onClick={() => {
+                                        const copy = props.columnNamesInOrder.slice();
+                                        copy.splice(props.columnNamesInOrder.indexOf(name), 1);
+                                        props.onChangeColumnNamesInOrder(copy);
+                                      }}
+                                      size="small"
+                                    >&times;</Controls.IconButton>
+                                  </div>
                                 </Fragment>
-                              }
-                              actions={
-                                <div className={styles.csvExportPreviewTableColumnHeaderRemove}>
-                                  <Controls.IconButton
-                                    disabled={props.columnNamesInOrder.length < 2}
-                                    onClick={() => {
-                                      const copy = props.columnNamesInOrder.slice();
-                                      copy.splice(props.columnNamesInOrder.indexOf(name), 1);
-                                      props.onChangeColumnNamesInOrder(copy);
-                                    }}
-                                    size="small"
-                                  >&times;</Controls.IconButton>
-                                </div>
                               }
                             />
                           </div>
@@ -171,22 +173,30 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
                 })}
                 {provided.placeholder}
               </div>
-              <div className={styles.csvExportPreviewTableAddButton}>
-                <Controls.IconButton
-                  disabled={props.fields.names.length === props.columnNamesInOrder.length}
-                  onClick={() => {
-                    const nextUnSpecifiedColumnName = props.fields.names.find(n => !props.columnNamesInOrder.includes(n));
-                    if (!nextUnSpecifiedColumnName) {
-                      return;
-                    }
-
-                    props.onChangeColumnNamesInOrder(columnNames => [
-                      ...columnNames,
-                      nextUnSpecifiedColumnName,
-                    ]);
-                  }}
+              <div className={styles.csvExportPreviewTableAddButtonWrapper}>
+                <Controls.AppBar
+                  intent="header"
                   size="small"
-                >+</Controls.IconButton>
+                  actions={
+                    <div className={styles.csvExportPreviewTableAddButton}>
+                      <Controls.IconButton
+                        disabled={props.fields.names.length === props.columnNamesInOrder.length}
+                        onClick={() => {
+                          const nextUnSpecifiedColumnName = props.fields.names.find(n => !props.columnNamesInOrder.includes(n));
+                          if (!nextUnSpecifiedColumnName) {
+                            return;
+                          }
+
+                          props.onChangeColumnNamesInOrder(columnNames => [
+                            ...columnNames,
+                            nextUnSpecifiedColumnName,
+                          ]);
+                        }}
+                        size="small"
+                      >+</Controls.IconButton>
+                    </div>
+                  }
+                />
               </div>
             </div>
           </div>
