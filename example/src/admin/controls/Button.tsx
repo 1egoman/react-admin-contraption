@@ -8,7 +8,7 @@ const Button: React.FunctionComponent<{
   variant?: 'primary' | 'default';
   disabled?: boolean;
   children: React.ReactNode;
-  onClick: () => void;
+  onClick?: () => void;
 }> = ({ size = 'regular', variant = 'default', disabled, onClick, children }) => {
   return (
     <button

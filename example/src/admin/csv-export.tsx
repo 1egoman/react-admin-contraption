@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { stringify } from "csv-stringify";
 
@@ -30,6 +30,7 @@ type CSVExportPreviewTableProps<Item = BaseItem, FieldName = BaseFieldName> = Pi
   shouldIncludeRowInPreview: (item: Item) => boolean;
   columnNamesInOrder: Array<FieldName>;
   onChangeColumnNamesInOrder: (newNamesInOrder: Array<FieldName>) => void;
+  disabled?: boolean;
 };
 
 const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props: CSVExportPreviewTableProps<Item, FieldName>) => {
@@ -139,6 +140,7 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
                                       value={name as string}
                                       options={fieldOptions}
                                       width="100%"
+                                      disabled={props.disabled}
                                       onChange={newName => {
                                         const newNameAsFieldName = newName as FieldName;
                                         const copy = props.columnNamesInOrder.slice();
@@ -152,7 +154,7 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
                                   </div>
                                   <div className={styles.csvExportPreviewTableColumnHeaderRemove}>
                                     <Controls.IconButton
-                                      disabled={props.columnNamesInOrder.length < 2}
+                                      disabled={props.disabled || props.columnNamesInOrder.length < 2}
                                       onClick={() => {
                                         const copy = props.columnNamesInOrder.slice();
                                         copy.splice(props.columnNamesInOrder.indexOf(name), 1);
@@ -211,7 +213,8 @@ type ListCSVExportProps<Item = BaseItem, FieldName = BaseFieldName> = {
   fields: FieldCollection<FieldMetadata<Item>>;
 
   listData: ListData<Item>;
-  fetchAllListData: (signal: AbortSignal) => Promise<Array<Item>>;
+  fetchListDataFromServer: (signal: AbortSignal) => Promise<Array<Item>>;
+  filtersHaveBeenAppliedToListData: boolean;
 
   columnSets?: { [name: string]: Array<FieldName> };
 
@@ -243,6 +246,7 @@ const ListCSVExport = <Item = BaseItem, FieldName = BaseFieldName>(props: ListCS
   }, [props.checkedItemKeys, props.keyGenerator]);
 
   const [exportInProgress, setExportInProgress] = useState(false);
+  const exportAbortController = useRef<AbortController | null>(null);
   const onClickExport = useCallback(async (closeModal: () => void) => {
     if (props.listData.status !== 'COMPLETE') {
       return;
@@ -254,10 +258,13 @@ const ListCSVExport = <Item = BaseItem, FieldName = BaseFieldName>(props: ListCS
       sourceData = props.listData.data.filter(shouldIncludeRowInPreview);
     } else {
       // If there isn't any data explicitly selected, then get the full dataset from the server
-      const abort = new AbortController();
-      addInFlightAbortController(abort);
-      sourceData = await props.fetchAllListData(abort.signal);
-      removeInFlightAbortController(abort);
+      exportAbortController.current = new AbortController();
+      addInFlightAbortController(exportAbortController.current);
+      sourceData = await props.fetchListDataFromServer(exportAbortController.current.signal);
+      if (exportAbortController.current.signal.aborted) {
+        return;
+      }
+      removeInFlightAbortController(exportAbortController.current);
     }
 
     const rows = sourceData.map(item => {
@@ -312,7 +319,8 @@ const ListCSVExport = <Item = BaseItem, FieldName = BaseFieldName>(props: ListCS
     });
   }, [
     props.fields,
-    props.fetchAllListData,
+    props.listData,
+    props.fetchListDataFromServer,
     columnNamesInOrder,
     props.pluralDisplayName,
     shouldIncludeRowInPreview,
@@ -368,6 +376,7 @@ const ListCSVExport = <Item = BaseItem, FieldName = BaseFieldName>(props: ListCS
                 shouldIncludeRowInPreview={shouldIncludeRowInPreview}
                 columnNamesInOrder={columnNamesInOrder}
                 onChangeColumnNamesInOrder={setColumnNamesInOrder}
+                disabled={exportInProgress}
               />
             </div>
           </div>
@@ -375,12 +384,27 @@ const ListCSVExport = <Item = BaseItem, FieldName = BaseFieldName>(props: ListCS
           <Controls.AppBar
             size="regular"
             intent="footer"
-            actions={
+            actions={exportInProgress ? (
+              <Fragment>
+                <em style={{ color: "var(--gray-10)" }}>Exporting...</em>
+                <Controls.Button
+                  onClick={() => {
+                    if (exportAbortController.current) {
+                      exportAbortController.current.abort();
+                      setExportInProgress(false);
+                    }
+                  }}
+                >Cancel</Controls.Button>
+              </Fragment>
+            ) : (
               <Controls.Button
                 onClick={() => onClickExport(close)}
                 disabled={exportInProgress}
-              >{exportInProgress ? 'Exporting...' : 'Export'}</Controls.Button>
-            }
+                variant="primary"
+              >
+                {props.filtersHaveBeenAppliedToListData ? 'Export Filtered Data' : 'Export Data'}
+              </Controls.Button>
+            )}
           />
         </div>
       )}

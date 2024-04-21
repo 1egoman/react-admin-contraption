@@ -159,7 +159,7 @@ type DataContextList<I = BaseItem, F = BaseFieldName> = {
 
   listData: ListData<I>;
   onLoadNextPage: () => Promise<void>;
-  fetchAllListData: () => Promise<Array<I>>;
+  fetchListDataFromServer: () => Promise<Array<I>>;
 
   checkable: boolean;
   checkedItemKeys: CheckedItemKeys;
@@ -470,7 +470,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
     [filterMetadata, setFilterMetadata]
   );
 
-  const fetchAllListData = useMemo(() => {
+  const fetchListDataFromServer = useMemo(() => {
     if (!fetchPageOfData) {
       return null;
     }
@@ -496,7 +496,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
     if (!keyGenerator) {
       return null;
     }
-    if (!fetchAllListData) {
+    if (!fetchListDataFromServer) {
       return null;
     }
 
@@ -508,7 +508,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
 
       listData,
       onLoadNextPage,
-      fetchAllListData,
+      fetchListDataFromServer,
 
       checkable,
       checkedItemKeys,
@@ -536,7 +536,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
     pluralDisplayName,
     listData,
     onLoadNextPage,
-    fetchAllListData,
+    fetchListDataFromServer,
     filtersThatAreFullyCompleted,
     checkable,
     checkedItemKeys,
@@ -2942,8 +2942,9 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
                 <ListCSVExport<I, F>
                   pluralDisplayName={listDataContextData.pluralDisplayName}
                   fields={fields}
-                  fetchAllListData={listDataContextData.fetchAllListData}
+                  fetchListDataFromServer={listDataContextData.fetchListDataFromServer}
                   listData={listDataContextData.listData}
+                  filtersHaveBeenAppliedToListData={listDataContextData.filters.length > 0}
                   columnSets={columnSets}
                   keyGenerator={listDataContextData.keyGenerator}
                   checkedItemKeys={listDataContextData.checkedItemKeys}
