@@ -12,7 +12,7 @@ import {
   BaseItem,
   BaseFieldName,
   BaseFieldState, 
-} from './types';
+} from '../types';
 import Radiobutton from '../controls/Radiobutton';
 import { DataModel } from '..';
 
