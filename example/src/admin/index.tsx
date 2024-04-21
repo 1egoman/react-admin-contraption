@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { NextRouter } from 'next/router';
 import {
   Fragment,
   useMemo,
@@ -19,7 +18,7 @@ import {
   JSONValue,
   BaseItem,
   BaseFieldName,
-  BaseFieldState, 
+  BaseFieldState,
   ItemKey,
   ALL_ITEMS,
   CheckedItemKeys,
@@ -30,7 +29,7 @@ import {
 } from './types';
 
 import Navigatable, { imperativelyNavigateToNavigatable } from "./navigatable";
-import { Controls, useControls } from './controls';
+import { useControls } from './controls';
 import { SelectOption } from './controls/Select';
 
 import { DataModel, DataModels, DataModelsContext } from './datamodel';
@@ -44,6 +43,13 @@ export { InputField };
 
 import Launcher from './launcher';
 export { Launcher };
+
+import {
+  DataContextProvider,
+  useListDataContext,
+  useDetailDataContext,
+} from './data-context';
+export { useListDataContext, useDetailDataContext };
 
 import ListCSVExport from './csv-export';
 
@@ -90,68 +96,19 @@ const SearchInput: React.FunctionComponent<{
   );
 }
 
-export type StateCache = {
-  store: (
-    filters: Array<[Filter['name'], string]>,
-    sort: Sort | null,
-    searchText: string,
-    columnSet: 'all' | string | Array<string>,
-  ) => Promise<void>;
-  read: () => Promise<[
-    Array<[Filter['name'], string]>,
-    Sort | null,
-    string,
-    'all' | string | Array<string>,
-  ]>;
-};
-
-// NOTE: only the methods that are used are defined below so that if somebody wanted to implement
-// their own router (ie, another framework, overriding things, etc) it wouldn't be such a PITA
-type AbstractNextRouter = Pick<NextRouter, 'push' | 'replace'>;
-
-export type AdminContextData = {
-  stateCache?: StateCache;
-  nextRouter?: AbstractNextRouter;
-
-  controls?: Controls,
-};
-export const AdminContext = React.createContext<AdminContextData | null>(null);
-export const AdminContextProvider: React.FunctionComponent<AdminContextData & { children: React.ReactNode }> = ({ children, ...rest }) => (
-  <AdminContext.Provider value={rest}>
-    {children}
-  </AdminContext.Provider>
-);
-
-
-
-
-const DataContext = React.createContext<
-  | DataContextList
-  | DataContextDetail
-  | null
->(null);
-
-export const useListDataContext = <Item = BaseItem>() => {
-  const value = useContext(DataContext);
-  if (value && value.type !== "list") {
-    throw new Error(`Admin DataContext has type of '${value.type}', expected 'list'!`)
-  }
-  return value as any as DataContextList<Item>;
-};
-export const useDetailDataContext = <Item = BaseItem>() => {
-  const value = useContext(DataContext);
-  if (value && value.type !== "detail") {
-    throw new Error(`Admin DataContext has type of '${value.type}', expected 'detail'!`)
-  }
-  return value as any as DataContextDetail<Item>;
-};
+import { AdminContextProvider, useAdminContext } from './admin-context';
+export { AdminContextProvider };
 
 
 
 
 
 
-type DataContextList<I = BaseItem, F = BaseFieldName> = {
+
+
+
+
+export type DataContextList<I = BaseItem, F = BaseFieldName> = {
   type: 'list';
   name: string;
   singularDisplayName: string;
@@ -235,7 +192,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
   const createLink = props.createLink || dataModel?.createLink || null;
 
 
-  const adminContextData = useContext(AdminContext);
+  const adminContextData = useAdminContext();
   const stateCache = adminContextData?.stateCache;
 
   const [listData, setListData] = useState<ListData<I>>({ status: 'IDLE' });
@@ -561,13 +518,13 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
   }
 
   return (
-    <DataContext.Provider value={(dataContextData as any) as DataContextList<BaseItem, BaseFieldName>}>
+    <DataContextProvider<I> value={dataContextData}>
       <FilterMetadataContext.Provider value={filterMetadataContextData}>
         <div className={styles.list}>
           {children}
         </div>
       </FilterMetadataContext.Provider>
-    </DataContext.Provider>
+    </DataContextProvider>
   );
 };
 
@@ -2135,11 +2092,7 @@ export const ListActionBar = <I = BaseItem>({
   canSelectAllAcrossPages = false,
   children,
 }: ListActionBarProps<I>) => {
-  const dataContext = useContext(DataContext);
-  if (!dataContext || dataContext.type !== 'list') {
-    throw new Error('Error: <ListActionBar ... /> was not rendered inside of a <List> ... </List> component!');
-  }
-  const listDataContextData = dataContext as DataContextList<I>;
+  const listDataContextData = useListDataContext<I>('ListActionBar');
 
   const Controls = useControls();
 
@@ -2361,11 +2314,7 @@ export const ListFilterBar = <I = BaseItem>({
   filterPresets = {},
   children,
 }: ListFilterBarProps) => {
-  const dataContext = useContext(DataContext);
-  if (!dataContext || dataContext.type !== 'list') {
-    throw new Error('Error: <ListFilterBar ... /> was not rendered inside of a <List> ... </List> component!');
-  }
-  const listDataContextData = dataContext as DataContextList<I>;
+  const listDataContextData = useListDataContext<I>('ListFilterBar');
 
   const Controls = useControls();
 
@@ -2968,11 +2917,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
   children,
 }: ListTableProps<I, F>) => {
   // First, get the list context data
-  const dataContext = useContext(DataContext);
-  if (!dataContext || dataContext.type !== 'list') {
-    throw new Error('Error: <ListTable ... /> was not rendered inside of a <List> ... </List> component!');
-  }
-  const listDataContextData = (dataContext as any) as DataContextList<I, F>;
+  const listDataContextData = useListDataContext<I>('ListTable');
 
   // Then get the data model context data
   const dataModelsContextData = useContext(DataModelsContext);
@@ -3218,7 +3163,7 @@ export const ListColumnSetSelector = <I = BaseItem, F = BaseFieldName>(props: {
 
 
 
-type DataContextDetail<I = BaseItem> = {
+export type DataContextDetail<I = BaseItem> = {
   type: 'detail';
   itemKey: ItemKey | null;
 
@@ -3390,7 +3335,7 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
   }
 
   return (
-    <DataContext.Provider value={dataContextData as DataContextDetail}>
+    <DataContextProvider<I> value={dataContextData}>
       <div className={styles.detail}>
         <Controls.AppBar
           intent="header"
@@ -3422,7 +3367,7 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
 
         {children}
       </div>
-    </DataContext.Provider>
+    </DataContextProvider>
   );
 };
 
@@ -3503,17 +3448,10 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
   children,
 }: DetailFieldsProps<I, F>) => {
   // First, get the list context data
-  const dataContext = useContext(DataContext);
-  if (!dataContext || dataContext.type !== 'detail') {
-    throw new Error('Error: <DetailFields ... /> was not rendered inside of a <Detail> ... </Detail> component!');
-  }
-  const detailDataContextData = dataContext as DataContextDetail<I>;
+  const detailDataContextData = useDetailDataContext<I>('DetailFields');
 
   const Controls = useControls();
-  const adminContextData = useContext(AdminContext);
-  if (!adminContextData) {
-    throw new Error('Error: <DetailFields ... /> was not rendered inside of a <AdminContextProvider> ...</AdminContextProvider> component!');
-  }
+  const adminContextData = useAdminContext();
 
   // Then get the data model context data
   const dataModelsContextData = useContext(DataModelsContext);

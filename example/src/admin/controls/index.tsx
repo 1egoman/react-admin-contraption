@@ -1,5 +1,5 @@
-import { useContext, useMemo } from 'react';
-import { AdminContext } from '..';
+import { useMemo } from 'react';
+import { useAdminContext } from '../admin-context';
 
 import AppBar from './AppBar';
 import Button, { IconButton, NavigationButton } from './Button';
@@ -31,7 +31,7 @@ export type Controls = Partial<typeof baseControls>;
 
 
 export const useControls = () => {
-  const adminContext = useContext(AdminContext);
+  const adminContext = useAdminContext();
 
   return useMemo(() => {
     if (!adminContext || !adminContext.controls) {
