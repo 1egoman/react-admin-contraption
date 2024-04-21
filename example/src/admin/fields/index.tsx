@@ -75,6 +75,9 @@ export type FieldMetadata<Item = BaseItem, FieldName = BaseFieldName, State = Ba
   name: FieldName;
   singularDisplayName: string;
   pluralDisplayName: string;
+
+  // When set, defines the column name to use for the header of a csv export containing this field.
+  // Note that if unset, the csv export process defaults to `singularDisplayName`.
   csvExportColumnName?: string;
 
   sortable?: boolean;
