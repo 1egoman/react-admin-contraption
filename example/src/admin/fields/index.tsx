@@ -96,6 +96,8 @@ export type FieldMetadata<Item = BaseItem, FieldName = BaseFieldName, State = Ba
   // Note that to do the opposite (ie, inject data in the list view), make whatever request you
   // need in the `fetchPageOfData` function on the data model and then in `getInitialStateFromItem`,
   // make sure to include whatever data you need in the field state.
+  //
+  // FIXME: this probably should be made optional!!
   injectAsyncDataIntoInitialStateOnDetailPage: (oldState: State, item: Item, signal: AbortSignal) => Promise<State>;
 
   /**
@@ -116,9 +118,18 @@ export type FieldMetadata<Item = BaseItem, FieldName = BaseFieldName, State = Ba
   updateSideEffect?: (item: Partial<Item>, state: State, signal: AbortSignal) => Promise<State>;
 
   // The presentation of the field when in a read only context
+  //
+  // Note that the `item` parameter is null when creating (ie, there's no pre-existing item known)
   displayMarkup: (state: State, item: Item | null) => React.ReactNode;
 
-  // The presentation of the component in a read-write context
+  // The presentation of the component in a read-write context. `state` and `setState` act just like
+  // the parameters that are returned from a `useState` hook and allow the field to update its local
+  // state.
+  //
+  // Note that the `item` parameter is null when creating (ie, there's no pre-existing item known)
+  //
+  // Note that if not set, this field is read only, and only the `displayMarkup` is shown in both
+  // read and read/write contexts.
   modifyMarkup?: (
     state: State,
     setState: (newState: State, blurAfterStateSet?: boolean) => void,
