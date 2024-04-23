@@ -521,12 +521,15 @@ export function PostDataModel() {
       <SingleForeignKeyField<Post, 'userId', User>
         name="userId"
         singularDisplayName="User"
-        // nullable
         pluralDisplayName="Users"
         csvExportColumnName="user_id"
 
+        // nullable
+        // sortable
+        // searchable
+
         relatedName="user"
-        getInitialStateFromItem={post => ({ type: 'KEY_ONLY' as const, key: post.userId })}
+        getInitialStateFromItem={post => ({ type: 'KEY_ONLY' as const, key: `${post.userId}` })}
       />
       <MultiForeignKeyField<Post, 'commentIds', Comment>
         name="commentIds"

@@ -76,9 +76,10 @@ export const useInFlightAbortControllers = () => {
 
 const SearchInput: React.FunctionComponent<{
   pluralDisplayName: string;
+  size: 'regular' | 'small';
   value: string;
   onChange: (text: string) => void;
-}> = ({ pluralDisplayName, value, onChange }) => {
+}> = ({ pluralDisplayName, size, value, onChange }) => {
   const Controls = useControls();
 
   const [text, setText] = useState('');
@@ -88,7 +89,8 @@ const SearchInput: React.FunctionComponent<{
 
   return (
     <Controls.TextInput
-      placeholder={`Search ${pluralDisplayName}...`}
+      size={size}
+      placeholder={`Search ${pluralDisplayName.toLowerCase()}...`}
       value={text}
       onChange={setText}
       onBlur={() => onChange(text)}
@@ -1008,8 +1010,17 @@ type SingleForeignKeyFieldProps<
   relatedName: string;
   getRelatedKey?: (relatedItem: RelatedItem) => ItemKey;
 
-  fetchPageOfRelatedData?: (page: number, item: Item | null, abort: AbortSignal) => Promise<Paginated<RelatedItem>>;
+  fetchPageOfRelatedData?: (
+    page: number,
+    item: Item | null,
+    filters: Array<[Filter["name"], Filter["state"]]>,
+    sort: Sort | null,
+    searchText: string,
+    abort: AbortSignal,
+  ) => Promise<Paginated<RelatedItem>>;
   createRelatedItem?: (item: Item | null, relatedItem: Partial<RelatedItem>, signal: AbortSignal) => Promise<RelatedItem>;
+
+  searchable?: boolean;
 
   creationFields?: React.ReactNode;
 
@@ -1302,8 +1313,17 @@ type MultiForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName, Relat
   relatedName: string;
   getRelatedKey?: (relatedItem: RelatedItem) => ItemKey;
 
-  fetchPageOfRelatedData?: (page: number, item: Item | null, abort: AbortSignal) => Promise<Paginated<RelatedItem>>;
+  fetchPageOfRelatedData?: (
+    page: number,
+    item: Item | null,
+    filters: Array<[Filter["name"], Filter["state"]]>,
+    sort: Sort | null,
+    searchText: string,
+    abort: AbortSignal,
+  ) => Promise<Paginated<RelatedItem>>;
   createRelatedItem?: (item: Item | null, relatedItem: Partial<RelatedItem>, signal: AbortSignal) => Promise<RelatedItem>;
+
+  searchable?: boolean;
 
   creationFields?: React.ReactNode;
 
@@ -1524,8 +1544,15 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
     }
 
     if (relatedDataModel) {
-      return (page: number, _item: Item | null, signal: AbortSignal) => {
-        return relatedDataModel.fetchPageOfData(page, [], null, '', signal);
+      return (
+        page: number,
+        _item: Item | null,
+        filters: Array<[Filter["name"], Filter["state"]]>,
+        sort: Sort | null,
+        searchText: string,
+        signal: AbortSignal,
+      ) => {
+        return relatedDataModel.fetchPageOfData(page, filters, sort, searchText, signal);
       };
     }
 
@@ -1548,6 +1575,8 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
   );
 
   const [relatedData, setRelatedData] = useState<ListData<RelatedItem>>({ status: 'IDLE' });
+  const [relatedDataSort, setRelatedDataSort] = useState<Sort | null>(null);
+  const [relatedDataSearchText, setRelatedDataSearchText] = useState<string>('');
 
   // When the component initially loads, fetch the first page of data
   useEffect(() => {
@@ -1563,7 +1592,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
       addInFlightAbortController(abortController);
       let result: Paginated<RelatedItem>;
       try {
-        result = await fetchPageOfRelatedData(1, props.item, abortController.signal);
+        result = await fetchPageOfRelatedData(1, props.item, [], relatedDataSort, relatedDataSearchText, abortController.signal);
       } catch (error: FixMe) {
         if (error.name === 'AbortError') {
           // The effect unmounted, and the request was terminated
@@ -1594,7 +1623,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
       abortController.abort();
       removeInFlightAbortController(abortController);
     };
-  }, [setRelatedData, props.item, fetchPageOfRelatedData]);
+  }, [setRelatedData, props.item, relatedDataSort, relatedDataSearchText, fetchPageOfRelatedData]);
 
   const onLoadNextPage = useCallback(async () => {
     if (!fetchPageOfRelatedData) {
@@ -1737,6 +1766,21 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
 
       return (
         <div className={styles.foreignKeyFieldModifyMarkupWrapper}>
+          {props.foreignKeyFieldProps.searchable ? (
+            <Controls.AppBar
+              intent="header"
+              size="small"
+              actions={
+                <SearchInput
+                  pluralDisplayName={props.foreignKeyFieldProps.pluralDisplayName}
+                  size="small"
+                  value={relatedDataSearchText}
+                  onChange={setRelatedDataSearchText}
+                />
+              }
+            />
+          ) : null}
+
           {relatedFields.names.length === 0 ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 64 }}>
               <em style={{color: gray.gray9}}>
@@ -1762,44 +1806,42 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
                           <th
                             key={relatedFieldMetadata.name as string}
                             className={relatedFieldMetadata.sortable ? styles.sortable : undefined}
-                            style={{width: relatedFieldMetadata.columnWidth}}
-                            // onClick={relatedFieldMetadata.sortable ? () => {
-                            //   if (!listDataContextData.sort) {
-                            //     // Initially set the sort
-                            //     listDataContextData.onChangeSort({
-                            //       fieldName: relatedFieldMetadata.name,
-                            //       direction: 'desc'
-                            //     } as Sort);
-                            //   } else if (listDataContextData.sort.fieldName !== relatedFieldMetadata.name) {
-                            //     // A different column was selected, so initially set the sort for this new column
-                            //     listDataContextData.onChangeSort({
-                            //       fieldName: relatedFieldMetadata.name,
-                            //       direction: 'desc'
-                            //     } as Sort);
-                            //   } else {
-                            //     // Cycle the sort to the next value
-                            //     switch (listDataContextData.sort.direction) {
-                            //       case 'desc':
-                            //         listDataContextData.onChangeSort({
-                            //           fieldName: relatedFieldMetadata.name,
-                            //           direction: 'asc',
-                            //         } as Sort);
-                            //         return;
-                            //       case 'asc':
-                            //         listDataContextData.onChangeSort(null);
-                            //         return;
-                            //     }
-                            //   }
-                            // } : undefined}
+                            style={{ width: relatedFieldMetadata.columnWidth }}
+                            onClick={relatedFieldMetadata.sortable ? () => {
+                              if (!relatedDataSort) {
+                                // Initially set the sort
+                                setRelatedDataSort({
+                                  fieldName: relatedFieldMetadata.name,
+                                  direction: 'desc'
+                                } as Sort);
+                              } else if (relatedDataSort.fieldName !== relatedFieldMetadata.name) {
+                                // A different column was selected, so initially set the sort for this new column
+                                setRelatedDataSort({
+                                  fieldName: relatedFieldMetadata.name,
+                                  direction: 'desc'
+                                } as Sort);
+                              } else {
+                                // Cycle the sort to the next value
+                                switch (relatedDataSort.direction) {
+                                  case 'desc':
+                                    setRelatedDataSort({
+                                      fieldName: relatedFieldMetadata.name,
+                                      direction: 'asc',
+                                    } as Sort);
+                                    return;
+                                  case 'asc':
+                                    setRelatedDataSort(null);
+                                    return;
+                                }
+                              }
+                            } : undefined}
                           >
                             {relatedFieldMetadata.singularDisplayName}
-                            {/*
-                            {listDataContextData.sort && listDataContextData.sort.fieldName === relatedFieldMetadata.name ? (
+                            {relatedDataSort && relatedDataSort.fieldName === relatedFieldMetadata.name ? (
                               <span className={styles.tableWrapperSortIndicator}>
-                                {listDataContextData.sort.direction === 'desc' ? <Fragment>&darr;</Fragment> : <Fragment>&uarr;</Fragment>}
+                                {relatedDataSort.direction === 'desc' ? <Fragment>&darr;</Fragment> : <Fragment>&uarr;</Fragment>}
                               </span>
                             ) : null}
-                            */}
                           </th>
                         );
                       })}
@@ -2603,6 +2645,7 @@ export const ListFilterBar = <I = BaseItem>({
                 <SearchInput
                   pluralDisplayName={listDataContextData.pluralDisplayName}
                   value={listDataContextData.searchText}
+                  size="regular"
                   onChange={text => listDataContextData.onChangeSearchText(text)}
                 />
               </div>
