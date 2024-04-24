@@ -2468,7 +2468,7 @@ export const ListFilterBar = <I = BaseItem>({
                     />
 
                     <div className={styles.filterPopupBody}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 200 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 128 }}>
                         {listDataContextData.filters.map((filter, filterIndex) => {
                           const getPeerOptionsForFilterPath = (path: Array<string>) => {
                             let pointer: typeof filterMetadataNameHierarchy | true = filterMetadataNameHierarchy;
@@ -2627,6 +2627,8 @@ export const ListFilterBar = <I = BaseItem>({
                           <div style={{
                             borderLeft: `1.5px solid var(--gray-12)`,
                             paddingLeft: 8,
+                            display: 'flex',
+                            gap: 8,
                           }}>
                             {filterPresetButtons.length === 0 ? (
                               <small style={{color: 'var(--gray-10)', marginTop: 3}}>No presets</small>
