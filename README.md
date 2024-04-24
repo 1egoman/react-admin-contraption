@@ -78,7 +78,7 @@ export type Vehicle = {
 
     // There are other lifecycle methods one can tap into as well - the goal here is to provide as
     // many extension points as possible to allow this tool to scale better than a django admin /
-    active admin kind of thing.
+    // active admin kind of thing.
   />
 
   {/* A few more simple abstract fields: */}
