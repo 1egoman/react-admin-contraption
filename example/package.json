@@ -1,6 +1,6 @@
 {
-  "name": "visualizer",
-  "version": "0.1.0",
+  "name": "admin-example-app",
+  "version": "0.0.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -11,13 +11,10 @@
   "dependencies": {
     "@hello-pangea/dnd": "^16.6.0",
     "@radix-ui/colors": "^3.0.0",
-    "@types/color-rgba": "^2.1.2",
-    "color-alpha": "^1.1.3",
-    "color-rgba": "^3.0.0",
     "csv-stringify": "^6.4.6",
+    "lodash.debounce": "^4.0.8",
     "next": "14.1.0",
     "react": "^18",
-    "react-datepicker": "^6.3.0",
     "react-dom": "^18"
   },
   "devDependencies": {
