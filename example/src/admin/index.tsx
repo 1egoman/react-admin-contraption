@@ -110,15 +110,15 @@ export { AdminContextProvider, StateCache };
 
 
 
-export type DataContextList<I = BaseItem, F = BaseFieldName> = {
+export type DataContextList<Item = BaseItem, FieldName = BaseFieldName> = {
   type: 'list';
   name: string;
   singularDisplayName: string;
   pluralDisplayName: string;
 
-  listData: ListData<I>;
+  listData: ListData<Item>;
   onLoadNextPage: () => Promise<void>;
-  fetchListDataFromServer: () => Promise<Array<I>>;
+  fetchListDataFromServer: () => Promise<Array<Item>>;
 
   checkable: boolean;
   checkedItemKeys: CheckedItemKeys;
@@ -133,11 +133,11 @@ export type DataContextList<I = BaseItem, F = BaseFieldName> = {
   searchText: string;
   onChangeSearchText: (newSearchText: string) => void;
 
-  columnSet: 'all' | string | Array<F>;
-  onChangeColumnSet: (newColumnSet: 'all' | string | Array<F>) => void;
+  columnSet: 'all' | string | Array<FieldName>;
+  onChangeColumnSet: (newColumnSet: 'all' | string | Array<FieldName>) => void;
 
-  keyGenerator: (item: I) => ItemKey;
-  detailLinkGenerator: null | ((item: I) => Navigatable);
+  keyGenerator: (item: Item) => ItemKey;
+  detailLinkGenerator: null | ((item: Item) => Navigatable);
 
   createLink: null | Navigatable;
 };
@@ -158,13 +158,13 @@ export type ListData<T> =
   }
   | { status: 'LOADING_NEXT_PAGE', data: Array<T>, loadingPage: number }
 
-type ListProps<I = BaseItem> = {
+type ListProps<Item = BaseItem> = {
   name: string;
 
   checkable?: boolean;
   children?: React.ReactNode;
 } & Partial<Pick<
-  DataModel<I>,
+  DataModel<Item>,
   | "singularDisplayName"
   | "pluralDisplayName"
   | "fetchPageOfData"
@@ -173,7 +173,7 @@ type ListProps<I = BaseItem> = {
   | "createLink"
 >>;
 
-export const List = <I = BaseItem>(props: ListProps<I>) => {
+export const List = <Item = BaseItem>(props: ListProps<Item>) => {
   const {
     name,
     checkable = false,
@@ -185,7 +185,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
   if (!dataModelsContextData) {
     throw new Error('Error: <List ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
-  const dataModel = dataModelsContextData[0].get(name) as DataModel<I> | undefined;
+  const dataModel = dataModelsContextData[0].get(name) as DataModel<Item> | undefined;
   const singularDisplayName = props.singularDisplayName || dataModel?.singularDisplayName || '';
   const pluralDisplayName = props.pluralDisplayName || dataModel?.pluralDisplayName || '';
   const fetchPageOfData = props.fetchPageOfData || dataModel?.fetchPageOfData || null;
@@ -197,7 +197,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
   const adminContextData = useAdminContext();
   const stateCache = adminContextData?.stateCache;
 
-  const [listData, setListData] = useState<ListData<I>>({ status: 'IDLE' });
+  const [listData, setListData] = useState<ListData<Item>>({ status: 'IDLE' });
 
   // When the component unmounts, terminate all in flight requests
   const [
@@ -347,7 +347,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
       setListData({ status: 'LOADING_INITIAL' });
 
       addInFlightAbortController(abortController);
-      let result: Paginated<I>;
+      let result: Paginated<Item>;
       try {
         result = await fetchPageOfData(1, filtersThatAreFullyCompleted, sort, searchText, abortController.signal);
       } catch (error: FixMe) {
@@ -398,7 +398,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
       loadingPage: page,
     });
 
-    let result: Paginated<I>;
+    let result: Paginated<Item>;
     try {
       result = await fetchPageOfData(page, filtersThatAreFullyCompleted, sort, searchText, abort.signal);
     } catch (error: FixMe) {
@@ -435,7 +435,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
     }
 
     return (signal: AbortSignal) => {
-      const recurse = (page: number): Promise<Array<I>> => {
+      const recurse = (page: number): Promise<Array<Item>> => {
         return fetchPageOfData(page, filtersThatAreFullyCompleted, sort, searchText, signal).then(pageOfResults => {
           if (!pageOfResults.nextPageAvailable) {
             return pageOfResults.data;
@@ -451,7 +451,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
     };
   }, [fetchPageOfData, filtersThatAreFullyCompleted, sort, searchText]);
 
-  const dataContextData: DataContextList<I, BaseFieldName> | null = useMemo(() => {
+  const dataContextData: DataContextList<Item, BaseFieldName> | null = useMemo(() => {
     if (!keyGenerator) {
       return null;
     }
@@ -520,7 +520,7 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
   }
 
   return (
-    <DataContextProvider<I> value={dataContextData}>
+    <DataContextProvider<Item> value={dataContextData}>
       <FilterMetadataContext.Provider value={filterMetadataContextData}>
         <div className={styles.list}>
           {children}
@@ -544,10 +544,10 @@ export const List = <I = BaseItem>(props: ListProps<I>) => {
 
 type MultiLineInputFieldProps<
   Item = BaseItem,
-  Field = BaseFieldName,
+  FieldName = BaseFieldName,
   Nullable = false,
   State = Nullable extends true ? (string | null) : string,
-> = Omit<InputFieldProps<Item, Field, Nullable, State>, 'type'>;
+> = Omit<InputFieldProps<Item, FieldName, Nullable, State>, 'type'>;
 
 /*
 Example MultiLineInputField:
@@ -561,9 +561,9 @@ Example MultiLineInputField:
 */
 export const MultiLineInputField = <
   Item = BaseItem,
-  Field = BaseFieldName,
+  FieldName = BaseFieldName,
   Nullable = false,
->(props: MultiLineInputFieldProps<Item, Field, Nullable>) => {
+>(props: MultiLineInputFieldProps<Item, FieldName, Nullable>) => {
   const Controls = useControls();
 
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -577,7 +577,7 @@ export const MultiLineInputField = <
   }, []);
 
   return (
-    <Field<Item, Field, Nullable extends true ? (string | null) : string>
+    <Field<Item, FieldName, Nullable extends true ? (string | null) : string>
       name={props.name}
       singularDisplayName={props.singularDisplayName}
       pluralDisplayName={props.pluralDisplayName}
@@ -668,8 +668,8 @@ export const MultiLineInputField = <
 };
 
 
-type ChoiceFieldProps<I = BaseItem, F = BaseFieldName, S = BaseFieldState> = Pick<
-  FieldMetadata<I, F, S>,
+type ChoiceFieldProps<Item = BaseItem, FieldName = BaseFieldName, State = BaseFieldState> = Pick<
+  FieldMetadata<Item, FieldName, State>,
   | 'name'
   | 'singularDisplayName'
   | 'pluralDisplayName'
@@ -677,15 +677,15 @@ type ChoiceFieldProps<I = BaseItem, F = BaseFieldName, S = BaseFieldState> = Pic
   | 'columnWidth'
   | 'sortable'
 > & {
-  getInitialStateFromItem?: (item: I) => S;
-  getInitialStateWhenCreating: () => S | undefined;
-  serializeStateToItem?: (initialItem: Partial<I>, state: S) => Partial<I>;
-  choices: Array<{id: S; disabled?: boolean; label: React.ReactNode }>;
+  getInitialStateFromItem?: (item: Item) => State;
+  getInitialStateWhenCreating: () => State | undefined;
+  serializeStateToItem?: (initialItem: Partial<Item>, state: State) => Partial<Item>;
+  choices: Array<{id: State; disabled?: boolean; label: React.ReactNode }>;
 
   nullable?: boolean;
-  displayMarkup?: FieldMetadata<I, F, S>['displayMarkup'];
-  inputMarkup?: FieldMetadata<I, F, S>['modifyMarkup'];
-  csvExportData?: FieldMetadata<I, F, S>['csvExportData'];
+  displayMarkup?: FieldMetadata<Item, FieldName, State>['displayMarkup'];
+  inputMarkup?: FieldMetadata<Item, FieldName, State>['modifyMarkup'];
+  csvExportData?: FieldMetadata<Item, FieldName, State>['csvExportData'];
 };
 
 /*
@@ -702,17 +702,17 @@ Example ChoiceField:
   ]}
 />
 */
-export const ChoiceField = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props: ChoiceFieldProps<I, F, S>) => {
+export const ChoiceField = <Item = BaseItem, FieldName = BaseFieldName, State = BaseFieldState>(props: ChoiceFieldProps<Item, FieldName, State>) => {
   const Controls = useControls();
 
   const getInitialStateFromItem = useMemo(() => {
-    return props.getInitialStateFromItem || ((item: I) => `${(item as FixMe)[props.name as FixMe]}` as S);
+    return props.getInitialStateFromItem || ((item: Item) => `${(item as FixMe)[props.name as FixMe]}` as State);
   }, [props.getInitialStateFromItem, props.name]);
 
-  const injectAsyncDataIntoInitialStateOnDetailPage = useCallback((state: S) => Promise.resolve(state), []);
+  const injectAsyncDataIntoInitialStateOnDetailPage = useCallback((state: State) => Promise.resolve(state), []);
 
   return (
-    <Field<I, F, S>
+    <Field<Item, FieldName, State>
       name={props.name}
       singularDisplayName={props.singularDisplayName}
       pluralDisplayName={props.pluralDisplayName}
@@ -918,8 +918,8 @@ export const NumberField = <Item = BaseItem, FieldName = BaseFieldName>(props: N
 };
 
 
-type BooleanFieldProps<I = BaseItem, F = BaseFieldName> = Omit<
-  ChoiceFieldProps<I, F, boolean | null>,
+type BooleanFieldProps<Item = BaseItem, FieldName = BaseFieldName> = Omit<
+  ChoiceFieldProps<Item, FieldName, boolean | null>,
   | 'choices'
 >;
 
@@ -933,9 +933,9 @@ Example BooleanField:
   sortable
 />
 */
-export const BooleanField = <I = BaseItem, F = BaseFieldName>(props: BooleanFieldProps<I, F>) => {
+export const BooleanField = <Item = BaseItem, FieldName = BaseFieldName>(props: BooleanFieldProps<Item, FieldName>) => {
   return (
-    <ChoiceField<I, F, boolean | null>
+    <ChoiceField<Item, FieldName, boolean | null>
       name={props.name}
       singularDisplayName={props.singularDisplayName}
       pluralDisplayName={props.pluralDisplayName}
@@ -2056,7 +2056,7 @@ const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName,
 
 
 
-export const ListTableItem = <I = BaseItem, F = BaseFieldName>({
+export const ListTableItem = <Item = BaseItem, FieldName = BaseFieldName>({
   item,
   visibleFieldNames,
   fields,
@@ -2065,7 +2065,7 @@ export const ListTableItem = <I = BaseItem, F = BaseFieldName>({
   checkType,
   checked,
   onChangeChecked,
-}: Parameters<ListTableProps<I, F>['renderTableItem']>[0]) => {
+}: Parameters<ListTableProps<Item, FieldName>['renderTableItem']>[0]) => {
   const Controls = useControls();
   return (
     <tr>
@@ -2130,18 +2130,18 @@ export const ListTableItem = <I = BaseItem, F = BaseFieldName>({
 
 
 
-type ListActionBarProps<I = BaseItem> = {
+type ListActionBarProps<Item = BaseItem> = {
   canSelectAllAcrossPages?: boolean;
   children: (
-    items: Array<I> | typeof ALL_ITEMS,
+    items: Array<Item> | typeof ALL_ITEMS,
   ) => React.ReactNode;
 };
 
-export const ListActionBar = <I = BaseItem>({
+export const ListActionBar = <Item = BaseItem>({
   canSelectAllAcrossPages = false,
   children,
-}: ListActionBarProps<I>) => {
-  const listDataContextData = useListDataContext<I>('ListActionBar');
+}: ListActionBarProps<Item>) => {
+  const listDataContextData = useListDataContext<Item>('ListActionBar');
 
   const Controls = useControls();
 
@@ -2179,7 +2179,7 @@ export const ListActionBar = <I = BaseItem>({
             </Controls.Button>
             |
             {/* FIXME: get `fields` in here so I can add this! */}
-            {/* <ListCSVExport<I, F> */}
+            {/* <ListCSVExport<Item, FieldName> */}
             {/*   pluralDisplayName={listDataContextData.pluralDisplayName} */}
             {/*   fields={dataContext.f} */}
             {/*   // fetchPageOfData={listDataContextData.fe} */}
@@ -2264,7 +2264,7 @@ type FilterMetadata<FilterState extends JSONValue = JSONValue> = {
   ) => React.ReactNode;
 };
 
-export const FilterDefinition = <S extends JSONValue = JSONValue>(props: FilterMetadata<S>) => {
+export const FilterDefinition = <State extends JSONValue = JSONValue>(props: FilterMetadata<State>) => {
   const filterMetadataContextData = useContext(FilterMetadataContext);
   if (!filterMetadataContextData) {
     throw new Error('Error: <Filter ... /> was not rendered inside of a container component! Try rendering this inside of a <ListFilterBar> ... </ListFilterBar>.');
@@ -2273,7 +2273,7 @@ export const FilterDefinition = <S extends JSONValue = JSONValue>(props: FilterM
   const [_filterMetadata, setFilterMetadata] = filterMetadataContextData;
 
   useEffect(() => {
-    const filterMetadata: FilterMetadata<S> = {
+    const filterMetadata: FilterMetadata<State> = {
       name: props.name,
       getInitialState: props.getInitialState,
       onIsComplete: props.onIsComplete,
@@ -2357,13 +2357,13 @@ type ListFilterBarProps = {
   children: React.ReactNode;
 };
 
-export const ListFilterBar = <I = BaseItem>({
+export const ListFilterBar = <Item = BaseItem>({
   addable = true,
   searchable,
   filterPresets = {},
   children,
 }: ListFilterBarProps) => {
-  const listDataContextData = useListDataContext<I>('ListFilterBar');
+  const listDataContextData = useListDataContext<Item>('ListFilterBar');
 
   const Controls = useControls();
 
@@ -2726,15 +2726,15 @@ const ManuallyStickyTHead: React.FunctionComponent<{children: React.ReactNode}> 
 
 
 
-type ListTableProps<I, F> = {
+type ListTableProps<Item, FieldName> = {
   detailLinkColumnWidth?: null | string | number;
   checkboxesColumnWidth?: null | string | number;
-  columnSets?: { [name: string]: Array<F> };
+  columnSets?: { [name: string]: Array<FieldName> };
   renderColumnSetSelector?: (params: {
-    fields: FieldCollection<FieldMetadata<I, F>>;
-    columnSets: { [name: string]: Array<F> };
-    columnSet: 'all' | string | Array<F>;
-    onChangeColumnSet: (newColumnSet: 'all' | string | Array<F>) => void;
+    fields: FieldCollection<FieldMetadata<Item, FieldName>>;
+    columnSets: { [name: string]: Array<FieldName> };
+    columnSet: 'all' | string | Array<FieldName>;
+    onChangeColumnSet: (newColumnSet: 'all' | string | Array<FieldName>) => void;
   }) => React.ReactNode;
 
   renderNextPageIndicator?: (params: {
@@ -2743,26 +2743,26 @@ type ListTableProps<I, F> = {
     onLoadNextPage: () => Promise<void>;
   }) => React.ReactNode;
   renderTableWrapper?: (params: {
-    listDataContextData: DataContextList<I, F>;
-    fields: FieldCollection<FieldMetadata<I, F>>;
+    listDataContextData: DataContextList<Item, FieldName>;
+    fields: FieldCollection<FieldMetadata<Item, FieldName>>;
     detailLinkEnabled: boolean;
     detailLinkWidth: null | string | number;
     checkboxesWidth: null | string | number;
-    visibleFieldNames: Array<F>;
-    columnSets?: { [name: string]: Array<F> };
+    visibleFieldNames: Array<FieldName>;
+    columnSets?: { [name: string]: Array<FieldName> };
     renderColumnSetSelector?: (params: {
-      fields: FieldCollection<FieldMetadata<I, F>>;
-      columnSets: { [name: string]: Array<F> };
-      columnSet: 'all' | string | Array<F>;
-      onChangeColumnSet: (newColumnSet: 'all' | string | Array<F>) => void;
+      fields: FieldCollection<FieldMetadata<Item, FieldName>>;
+      columnSets: { [name: string]: Array<FieldName> };
+      columnSet: 'all' | string | Array<FieldName>;
+      onChangeColumnSet: (newColumnSet: 'all' | string | Array<FieldName>) => void;
     }) => React.ReactNode;
     childrenContainsItems: boolean;
     children: React.ReactNode;
   }) => React.ReactNode;
   renderTableItem?: (params: {
-    item: I,
-    visibleFieldNames: Array<F>;
-    fields: FieldCollection<FieldMetadata<I, F>>,
+    item: Item,
+    visibleFieldNames: Array<FieldName>;
+    fields: FieldCollection<FieldMetadata<Item, FieldName>>,
 
     detailLink?: Navigatable,
 
@@ -2775,12 +2775,12 @@ type ListTableProps<I, F> = {
   children?: React.ReactNode;
 };
 
-export const ListTable = <I = BaseItem, F = BaseFieldName>({
+export const ListTable = <Item = BaseItem, FieldName = BaseFieldName>({
   detailLinkColumnWidth = null,
   checkboxesColumnWidth = 32 /* px */,
   columnSets,
   renderColumnSetSelector = ({fields, columnSets, columnSet, onChangeColumnSet}) => (
-    <ListColumnSetSelector<I, F>
+    <ListColumnSetSelector<Item, FieldName>
       fields={fields}
       columnSets={columnSets}
       columnSet={columnSet}
@@ -2940,7 +2940,7 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
                   })
                 ) : null}
 
-                <ListCSVExport<I, F>
+                <ListCSVExport<Item, FieldName>
                   pluralDisplayName={listDataContextData.pluralDisplayName}
                   fields={fields}
                   fetchListDataFromServer={listDataContextData.fetchListDataFromServer}
@@ -2967,31 +2967,31 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
     <ListTableItem {...props} />
   ),
   children,
-}: ListTableProps<I, F>) => {
+}: ListTableProps<Item, FieldName>) => {
   // First, get the list context data
-  const listDataContextData = useListDataContext<I>('ListTable');
+  const listDataContextData = useListDataContext<Item>('ListTable');
 
   // Then get the data model context data
   const dataModelsContextData = useContext(DataModelsContext);
   if (!dataModelsContextData) {
     throw new Error('Error: <ListTable ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
-  const dataModel = dataModelsContextData[0].get(listDataContextData.name) as DataModel<I> | undefined;
+  const dataModel = dataModelsContextData[0].get(listDataContextData.name) as DataModel<Item> | undefined;
   if (!dataModel) {
     throw new Error(`Error: <ListTable ... /> cannot find data model with name ${listDataContextData.name}!`);
   }
 
-  const [fields, setFields] = useState<FieldCollection<FieldMetadata<I, F>>>(
-    (EMPTY_FIELD_COLLECTION as any) as FieldCollection<FieldMetadata<I, F>>
+  const [fields, setFields] = useState<FieldCollection<FieldMetadata<Item, FieldName>>>(
+    (EMPTY_FIELD_COLLECTION as any) as FieldCollection<FieldMetadata<Item, FieldName>>
   );
 
   // Convert the column set into the columns to render in the table
-  let visibleFieldNames: Array<F> = [];
+  let visibleFieldNames: Array<FieldName> = [];
   if (listDataContextData.columnSet === 'all' && columnSets && !columnSets.all) {
-    visibleFieldNames = fields.names as Array<F>;
+    visibleFieldNames = fields.names as Array<FieldName>;
   } else if (Array.isArray(listDataContextData.columnSet)) {
     // A manual list of fields
-    visibleFieldNames = listDataContextData.columnSet as Array<F>;
+    visibleFieldNames = listDataContextData.columnSet as Array<FieldName>;
   } else {
     const columns = columnSets ? columnSets[listDataContextData.columnSet] : null;
     if (columns) {
@@ -3141,11 +3141,11 @@ export const ListTable = <I = BaseItem, F = BaseFieldName>({
 
 
 
-export const ListColumnSetSelector = <I = BaseItem, F = BaseFieldName>(props: {
-  fields: FieldCollection<FieldMetadata<I, F>>;
-  columnSets: { [name: string]: Array<F> }
-  columnSet: 'all' | string | Array<F>;
-  onChangeColumnSet: (newColumnSet: 'all' | string | Array<F>) => void;
+export const ListColumnSetSelector = <Item = BaseItem, FieldName = BaseFieldName>(props: {
+  fields: FieldCollection<FieldMetadata<Item, FieldName>>;
+  columnSets: { [name: string]: Array<FieldName> }
+  columnSet: 'all' | string | Array<FieldName>;
+  onChangeColumnSet: (newColumnSet: 'all' | string | Array<FieldName>) => void;
 }) => {
   const Controls = useControls();
   return (
@@ -3215,7 +3215,7 @@ export const ListColumnSetSelector = <I = BaseItem, F = BaseFieldName>(props: {
 
 
 
-export type DataContextDetail<I = BaseItem> = {
+export type DataContextDetail<Item = BaseItem> = {
   type: 'detail';
   itemKey: ItemKey | null;
 
@@ -3225,14 +3225,14 @@ export type DataContextDetail<I = BaseItem> = {
   singularDisplayName: string;
   pluralDisplayName: string;
 
-  detailData: DetailData<I>;
-  resetDetailDataAfterCreate: (item: I) => void;
+  detailData: DetailData<Item>;
+  resetDetailDataAfterCreate: (item: Item) => void;
 
-  createItem: ((createData: Partial<I>, abort: AbortSignal) => Promise<I>) | null;
-  updateItem: ((itemKey: ItemKey, updateData: Partial<I>, abort: AbortSignal) => Promise<void>) | null;
+  createItem: ((createData: Partial<Item>, abort: AbortSignal) => Promise<Item>) | null;
+  updateItem: ((itemKey: ItemKey, updateData: Partial<Item>, abort: AbortSignal) => Promise<void>) | null;
   deleteItem: ((itemKey: ItemKey, abort: AbortSignal) => Promise<void>) | null;
 
-  detailLinkGenerator: null | ((item: I) => Navigatable);
+  detailLinkGenerator: null | ((item: Item) => Navigatable);
   listLink: null | Navigatable;
 };
 
@@ -3248,14 +3248,14 @@ type DetailData<T> =
     error: Error;
   };
 
-type DetailProps<I = BaseItem> = {
+type DetailProps<Item = BaseItem> = {
   name: string;
   itemKey?: ItemKey | null;
-  title?: (item: I) => React.ReactNode;
-  actions?: (item: I) => React.ReactNode;
+  title?: (item: Item) => React.ReactNode;
+  actions?: (item: Item) => React.ReactNode;
   children?: React.ReactNode;
 } & Partial<Pick<
-  DataModel<I>,
+  DataModel<Item>,
   | "singularDisplayName"
   | "pluralDisplayName"
   | "fetchItem"
@@ -3266,7 +3266,7 @@ type DetailProps<I = BaseItem> = {
   | "listLink"
 >>;
 
-export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
+export const Detail = <Item = BaseItem>(props: DetailProps<Item>) => {
   const {
     name,
     itemKey = null,
@@ -3282,7 +3282,7 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
   if (!dataModelsContextData) {
     throw new Error('Error: <Detail ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
   }
-  const dataModel = dataModelsContextData[0].get(name) as DataModel<I> | undefined;
+  const dataModel = dataModelsContextData[0].get(name) as DataModel<Item> | undefined;
   const singularDisplayName = props.singularDisplayName || dataModel?.singularDisplayName || '';
   const pluralDisplayName = props.pluralDisplayName || dataModel?.pluralDisplayName || '';
   const fetchItem = props.fetchItem || dataModel?.fetchItem || null;
@@ -3292,7 +3292,7 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
   const detailLinkGenerator = props.detailLinkGenerator || dataModel?.detailLinkGenerator || null;
   const listLink = props.listLink || dataModel?.listLink || null;
 
-  const [detailData, setDetailData] = useState<DetailData<I>>({ status: 'IDLE' });
+  const [detailData, setDetailData] = useState<DetailData<Item>>({ status: 'IDLE' });
 
   const [
     addInFlightAbortController,
@@ -3315,7 +3315,7 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
       setDetailData({ status: 'LOADING' });
 
       addInFlightAbortController(abortController);
-      let result: I;
+      let result: Item;
       try {
         result = await fetchItem(itemKey, abortController.signal);
       } catch (error: FixMe) {
@@ -3347,7 +3347,7 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
     };
   }, [setDetailData, fetchItem]);
 
-  const dataContextData: DataContextDetail<I> | null = useMemo(() => {
+  const dataContextData: DataContextDetail<Item> | null = useMemo(() => {
     if (!fetchItem) {
       return null;
     }
@@ -3359,7 +3359,7 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
       singularDisplayName,
       pluralDisplayName,
       detailData,
-      resetDetailDataAfterCreate: (item: I) => setDetailData({ status: 'COMPLETE', data: item }),
+      resetDetailDataAfterCreate: (item: Item) => setDetailData({ status: 'COMPLETE', data: item }),
       createItem,
       updateItem,
       deleteItem,
@@ -3387,7 +3387,7 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
   }
 
   return (
-    <DataContextProvider<I> value={dataContextData}>
+    <DataContextProvider<Item> value={dataContextData}>
       <div className={styles.detail}>
         <Controls.AppBar
           intent="header"
@@ -3430,13 +3430,13 @@ export const Detail = <I = BaseItem>(props: DetailProps<I>) => {
 
 
 
-export const DetailFieldItem = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>({
+export const DetailFieldItem = <Item = BaseItem, FieldName = BaseFieldName, State = BaseFieldState>({
   item,
   field,
   fieldState,
   onUpdateFieldState,
-}: Parameters<DetailFieldsProps<I, F>['renderFieldItem']>[0]) => {
-  const [state, setState] = useState<S>(fieldState);
+}: Parameters<DetailFieldsProps<Item, FieldName>['renderFieldItem']>[0]) => {
+  const [state, setState] = useState<State>(fieldState);
   useEffect(() => {
     setState(fieldState);
   }, [fieldState]);
@@ -3449,7 +3449,7 @@ export const DetailFieldItem = <I = BaseItem, F = BaseFieldName, S = BaseFieldSt
         </div>
         {field.modifyMarkup(
           state,
-          (s: S, blurAfterStateSet?: boolean) => {
+          (s: State, blurAfterStateSet?: boolean) => {
             setState(s);
             if (blurAfterStateSet) {
               onUpdateFieldState(s);
@@ -3474,21 +3474,21 @@ export const DetailFieldItem = <I = BaseItem, F = BaseFieldName, S = BaseFieldSt
 
 
 
-type DetailFieldsProps<I = BaseItem, F = BaseFieldName, S = BaseFieldState> = {
+type DetailFieldsProps<Item = BaseItem, FieldName = BaseFieldName, State = BaseFieldState> = {
   renderFieldsWrapper?: (params: {
-    detailDataContextData: DataContextDetail<I>;
+    detailDataContextData: DataContextDetail<Item>;
     children: React.ReactNode;
   }) => React.ReactNode;
   renderFieldItem?: (params: {
-    item: I | null,
-    field: FieldMetadata<I, F, S>,
-    fieldState: S,
-    onUpdateFieldState: (newState: S) => void,
+    item: Item | null,
+    field: FieldMetadata<Item, FieldName, State>,
+    fieldState: State,
+    onUpdateFieldState: (newState: State) => void,
   }) => React.ReactNode;
   children?: React.ReactNode;
 };
 
-export const DetailFields = <I = BaseItem, F = BaseFieldName>({
+export const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
   renderFieldsWrapper = ({ children }) => (
     <div className={styles.detailFields}>
       {children}
@@ -3498,9 +3498,9 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
     <DetailFieldItem {...props} />
   ),
   children,
-}: DetailFieldsProps<I, F>) => {
+}: DetailFieldsProps<Item, FieldName>) => {
   // First, get the list context data
-  const detailDataContextData = useDetailDataContext<I>('DetailFields');
+  const detailDataContextData = useDetailDataContext<Item>('DetailFields');
 
   const Controls = useControls();
   const adminContextData = useAdminContext();
@@ -3510,7 +3510,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
   if (!dataModelsContextData) {
     throw new Error('Error: <DetailFields ... /> was not rendered inside of a container component! Try rendering this inside of a <Detail> ... </Detail> component.');
   }
-  const dataModel = dataModelsContextData[0].get(detailDataContextData.name) as DataModel<I> | undefined;
+  const dataModel = dataModelsContextData[0].get(detailDataContextData.name) as DataModel<Item> | undefined;
   if (!dataModel) {
     throw new Error(`Error: <DetailFields ... /> cannot find data model with name ${detailDataContextData.name}!`);
   }
@@ -3524,13 +3524,13 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
   const [updateInProgress, setUpdateInProgress] = useState(false);
   const [createInProgress, setCreateInProgress] = useState(false);
 
-  const [fields, setFields] = useState<FieldCollection<FieldMetadata<I, F>>>(EMPTY_FIELD_COLLECTION);
+  const [fields, setFields] = useState<FieldCollection<FieldMetadata<Item, FieldName>>>(EMPTY_FIELD_COLLECTION);
 
   // Store each state for each field centrally
   const [fieldStates, setFieldStates] = useState<
     | { status: "IDLE" }
     | { status: "LOADING" }
-    | { status: "COMPLETE", data: Map<F, BaseFieldState> }
+    | { status: "COMPLETE", data: Map<FieldName, BaseFieldState> }
     | { status: "ERROR", error: any }
   >({ status: "IDLE" });
   const fieldStatesRequestInProgress = useRef(false);
@@ -3551,9 +3551,9 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
           return [
             field.name,
             field.getInitialStateWhenCreating(),
-          ] as [F, BaseFieldState | undefined];
+          ] as [FieldName, BaseFieldState | undefined];
         } else {
-          return [field.name, undefined] as [F, BaseFieldState | undefined];
+          return [field.name, undefined] as [FieldName, BaseFieldState | undefined];
         }
       } else {
         if (detailDataContextData.detailData.status !== 'COMPLETE') {
@@ -3569,12 +3569,12 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
           detailDataContextData.detailData.data,
           abortController.signal,
         ).then(updatedState => {
-          return [field.name, updatedState] as [F, BaseFieldState | undefined];
+          return [field.name, updatedState] as [FieldName, BaseFieldState | undefined];
         });
       }
     })).then(fieldStatesPairs => {
       removeInFlightAbortController(abortController);
-      const filteredFieldStatesPairs = fieldStatesPairs.filter((n): n is [F, BaseFieldState | undefined] => n !== null);
+      const filteredFieldStatesPairs = fieldStatesPairs.filter((n): n is [FieldName, BaseFieldState | undefined] => n !== null);
       setFieldStates({ status: "COMPLETE", data: new Map(filteredFieldStatesPairs) });
       fieldStatesRequestInProgress.current = false;
     }).catch(error => {
@@ -3754,7 +3754,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                 addInFlightAbortController(abortController);
 
                 // Aggregate all the state updates to form the update body
-                let item: Partial<I> = {};
+                let item: Partial<Item> = {};
                 for (const field of fields.metadata) {
                   let state = fieldStates.data.get(field.name);
                   if (typeof state === 'undefined') {
@@ -3779,7 +3779,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                   item = field.serializeStateToItem(item, state);
                 }
 
-                let createResult: I;
+                let createResult: Item;
                 try {
                   createResult = await detailDataContextData.createItem(item, abortController.signal);
                 } catch (error: FixMe) {
@@ -3836,7 +3836,7 @@ export const DetailFields = <I = BaseItem, F = BaseFieldName>({
                   addInFlightAbortController(abortController);
 
                   // Aggregate all the state updates to form the update body
-                  let item: Partial<I> = detailDataContextData.detailData.data;
+                  let item: Partial<Item> = detailDataContextData.detailData.data;
                   for (const field of fields.metadata) {
                     let state = fieldStates.data.get(field.name);
                     if (typeof state === 'undefined') {
