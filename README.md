@@ -53,7 +53,7 @@ export type Vehicle = {
 >
   {/* A field tells the tool how to render an subattribute of the data model */}
   {/* Note that this is a raw field implementation, there are more abstract fields */}
-  {/* that in practice you'd use most of the time.*/}
+  {/* that in practice you'd use most of the time. */}
   <Field<Vehicle, 'id', string>
     name="id"
     singularDisplayName="Id"
@@ -137,7 +137,7 @@ export type Vehicle = {
     getInitialStateFromItem={vehicle => ({ type: 'KEY_ONLY' as const, key: vehicle.driverId })}
 
     // There are quite a few lifecycle props one can use to tap into how this field works - the
-    // above ar ethe only required ones though.
+    // above are the only required ones though.
   />
   {/*
   // The MultiForeignKeyField is very similar - the only difference is `getInitialStateFromItem`
@@ -254,7 +254,7 @@ the below from a component defined as that file's default export:
 ```typescript
 <CustomWrapperComponentToBringInDataModels>
   <List<Vehicle>
-    name="vehicle" // Points to a data model, see the next section
+    name="vehicle" // Points to a data model, see the earlier section
     checkable
   >
     <ListFilterBar searchable>
@@ -300,7 +300,7 @@ the below from a component defined as that file's default export:
               value={start}
               onChange={e => setState([e.currentTarget.value, state[1]])}
               onBlur={onBlur}
-              invalid={!filter.isValid}
+              style={{ border: !filter.isValid ? '1px solid red' : undefined }}
             />
             <input
               type="text"
@@ -308,7 +308,7 @@ the below from a component defined as that file's default export:
               value={end}
               onChange={e => setState([state[0], e.currentTarget.value])}
               onBlur={onBlur}
-              invalid={!filter.isValid}
+              style={{ border: !filter.isValid ? '1px solid red' : undefined }}
             />
           </div>
         )}
@@ -355,7 +355,7 @@ the below from a component defined as that file's default export:
 ```typescript
 <CustomWrapperComponentToBringInDataModels>
   <Detail<Vehicle>
-    name="vehicle" // Points to a data model, see the next section
+    name="vehicle" // Points to a data model, see the earlier shction
     itemKey={id === 'new' ? undefined : id} // `id` should be the id from the url. If unset, this renders a creation form.
     title={vehicle => vehicle.name}
     actions={vehicle => (
