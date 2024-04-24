@@ -2434,8 +2434,8 @@ export const ListFilterBar = <I = BaseItem>({
         size="regular"
         title={
           <span className={styles.listFilterBarTitle}>
-            {dataContext.pluralDisplayName.slice(0, 1).toUpperCase()}
-            {dataContext.pluralDisplayName.slice(1)}
+            {listDataContextData.pluralDisplayName.slice(0, 1).toUpperCase()}
+            {listDataContextData.pluralDisplayName.slice(1)}
           </span>
         }
         actions={
