@@ -1,4 +1,4 @@
-import AllDataModels, { Comment } from '@/datamodels';
+import AllDataModels, { Comment } from '@/datamodels/rest-example';
 import {
   List,
   ListTable,

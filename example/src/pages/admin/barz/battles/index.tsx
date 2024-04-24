@@ -1,7 +1,6 @@
 import { Fragment } from 'react';
 
-import { BattleWithParticipants } from '@/types';
-import AllDataModels from '@/datamodels';
+import AllDataModels, { BattleWithParticipants } from '@/datamodels/barz';
 import {
   List,
   ListTable,
@@ -10,8 +9,6 @@ import {
   StringFilterDefinition,
   FilterDefinition,
 } from '@/admin';
-
-// import { BattleParticipantFields } from '../battle-participants';
 
 const PRISMA_BASE_OPERATIONS = [
   'equals',
@@ -39,6 +36,7 @@ export default function Page() {
             'turnLengthSeconds',
             'warmupLengthSeconds',
             'twilioRoomName',
+            'beatId',
           ].map(field => (
             <Fragment key={field}>
               {PRISMA_BASE_OPERATIONS.flatMap(o => [[o], ['not', o]]).map((keys, index) => (
@@ -135,6 +133,7 @@ export default function Page() {
           </FilterDefinition>
           */}
         </ListFilterBar>
+
         <ListActionBar<BattleWithParticipants>
           // canSelectAllAcrossPages
         >
@@ -144,9 +143,8 @@ export default function Page() {
             </div>
           )}
         </ListActionBar>
-        <ListTable
-          detailLinkColumnWidth={100}
-        />
+
+        <ListTable />
       </List>
     </AllDataModels>
   );

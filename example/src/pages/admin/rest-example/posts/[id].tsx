@@ -1,6 +1,6 @@
 import { useRouter } from 'next/router';
 
-import AllDataModels, { Post } from '@/datamodels';
+import AllDataModels, { Post } from '@/datamodels/rest-example';
 
 import { Detail } from '@/admin';
 

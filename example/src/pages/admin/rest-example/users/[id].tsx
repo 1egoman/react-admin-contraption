@@ -1,6 +1,6 @@
 import { useRouter } from 'next/router';
 
-import AllDataModels, { Comment } from '@/datamodels';
+import AllDataModels, { User } from '@/datamodels/rest-example';
 
 import { Detail } from '@/admin';
 
@@ -13,8 +13,8 @@ export default function Page() {
 
   return (
     <AllDataModels>
-      <Detail<Comment>
-        name="comment"
+      <Detail<User>
+        name="user"
         itemKey={id === 'new' ? undefined : id}
       />
     </AllDataModels>

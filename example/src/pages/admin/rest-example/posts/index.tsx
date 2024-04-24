@@ -1,4 +1,4 @@
-import AllDataModels, { User } from '@/datamodels';
+import AllDataModels, { Post } from '@/datamodels/rest-example';
 import {
   List,
   ListTable,
@@ -10,7 +10,7 @@ import {
 export default function Page() {
   return (
     <AllDataModels>
-      <List<User> name="user" checkable>
+      <List<Post> name="post" checkable>
         <ListFilterBar searchable>
           {[
             'id',
@@ -24,8 +24,8 @@ export default function Page() {
             />
           ))}
         </ListFilterBar>
-        <ListActionBar<User>
-          // canSelectAllAcrossPages
+        <ListActionBar<Post>
+          canSelectAllAcrossPages
         >
           {checkedItems => (
             <div style={{ display: 'flex', gap: 8}}>
@@ -33,9 +33,7 @@ export default function Page() {
             </div>
           )}
         </ListActionBar>
-        <ListTable
-          detailLinkColumnWidth={100}
-        />
+        <ListTable detailLinkColumnWidth={100} />
       </List>
     </AllDataModels>
   );

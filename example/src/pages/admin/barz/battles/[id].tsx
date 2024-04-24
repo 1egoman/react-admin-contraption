@@ -1,9 +1,7 @@
 import { useRouter } from 'next/router';
 
-import AllDataModels from '@/datamodels';
-
-import { BattleWithParticipants } from '@/types';
-import { Detail } from '@/admin';
+import AllDataModels, { BattleWithParticipants } from '@/datamodels/barz';
+import { Detail, DetailFields } from '@/admin';
 
 export default function Page() {
   const router = useRouter();
@@ -17,7 +15,9 @@ export default function Page() {
       <Detail<BattleWithParticipants>
         name="battle"
         itemKey={id === 'new' ? undefined : id}
-      />
+      >
+        <DetailFields />
+      </Detail>
     </AllDataModels>
   );
 }
