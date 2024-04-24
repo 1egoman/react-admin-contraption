@@ -18,6 +18,8 @@ mechanism needs to be thought through here) to add this to a project.
 The most important concept in this project is a "data model" - this is how you tell the tool how
 data should be represented.
 
+<img src="./readme-assets/Screenshot 2024-04-24 at 11.36.22 AM.png" />
+
 ## Code example
 ```typescript
 // Example type data to give an idea of this demo schema:
@@ -238,6 +240,14 @@ In a next.js app, there's probably a more elegant way to do this. If so, do that
 The list page shows a read only list of all datamodels that are fetched from a server and allows a user to
 filter, sort, and perform actions on them.
 
+<img src="./readme-assets/Screenshot 2024-04-24 at 11.08.46 AM.png" />
+
+<div align="center">
+  <img width="30%" src="./readme-assets/Screenshot 2024-04-24 at 11.10.34 AM.png">
+  <img width="30%" src="./readme-assets/Screenshot 2024-04-24 at 11.10.12 AM.png">
+  <img width="30%" src="./readme-assets/Screenshot 2024-04-24 at 11.11.01 AM.png">
+</div>
+
 ### Code example
 If in a next.js app, create a `src/pages/admin/vehicles/index.tsx` file, and return something like
 the below from a component defined as that file's default export:
@@ -289,6 +299,13 @@ the below from a component defined as that file's default export:
 ## Detail Page
 The detail page shows a writable version of a given datamodel allowing one to create and update
 instances on ones data.
+
+<img src="./readme-assets/Screenshot 2024-04-24 at 11.11.56 AM.png" />
+
+<div align="center">
+  <img width="45%" src="./readme-assets/Screenshot 2024-04-24 at 11.12.04 AM.png">
+  <img width="45%" src="./readme-assets/Screenshot 2024-04-24 at 11.11.42 AM.png">
+</div>
 
 ### Code example
 If in a next.js app, create a `src/pages/admin/vehicles/[id].tsx` file, and return something like
