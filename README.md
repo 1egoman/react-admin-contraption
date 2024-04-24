@@ -1,6 +1,10 @@
 # Admin Contraption Thing
 A tool that allows one to create django admin / active admin like interfaces in react.
 
+<video controls>
+  <source src="./readme-assets/Screen Recording 2024-04-24 at 10.48.35 AM.mov" />
+</video>
+
 # Getting started
 There is a next.js app in `example`. Run `npm install && npm run dev`, then go to the root web page
 it serves for some example admin implementations.
