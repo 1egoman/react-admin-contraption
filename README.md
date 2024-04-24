@@ -1,0 +1,311 @@
+# Admin Contraption Thing
+A tool that allows one to create django admin / active admin like interfaces in react.
+
+# Getting started
+There is a next.js app in `example`. Run `npm install && npm run dev`, then go to the root web page
+it serves for some example admin implementations.
+
+Note that you may need to also start a fake backend server locally - `cd jsonserver && npx json-server -p 3003 db.json` should do that.
+
+# Example
+The core code currently lives in `admin/` (a symlink to `example/src/admin`). Right now, copy this
+code into a project's `src` directory (TBD process for now, some sort of package distribution
+mechanism needs to be thought through here) to add this to a project.
+
+### Data Models
+The most important concept in this project is a "data model" - this is how you tell the tool how
+data should be represented.
+
+## Code example
+```typescript
+// Example type data to give an idea of this demo schema:
+type Person = { id: string, /* ... */ };
+export type Vehicle = {
+  id: string,
+  name: string,
+  hasBrakes: boolean,
+  type: 'car' | 'truck',
+  numberOfWheels: number | null,
+  metadata: any, /* some sort of json... */
+  driverId: Person['id'],
+};
+
+// Then, in a component somewhere:
+<DataModel<Vehicle>
+  name="vehicle"
+  singularDisplayName="vehicle"
+  pluralDisplayName="vehicles"
+
+  fetchPageOfData={/* see below for an implementation of this */ }
+  fetchItem={/* see below for an implementation of this */ }
+  // createItem
+  // updateItem
+  // deleteItem
+
+  keyGenerator={vehicle => post.id}
+  detailLinkGenerator={post => ({ type: 'href' as const, href: `/admin/vehicles/${vehicle.id}` })}
+  listLink={{ type: 'href' as const, href: `/admin/vehicles` }}
+  createLink={{ type: 'href', href: `/admin/vehicles/new` }}
+>
+  {/* A field tells the tool how to render an subattribute of the data model */}
+  {/* Note that this is a raw field implementation, there are more abstract fields */}
+  {/* that in practice you'd use most of the time.*/}
+  <Field<Vehicle, 'id', string>
+    name="id"
+    singularDisplayName="Id"
+    pluralDisplayName="Ids"
+    csvExportColumnName="id"
+    columnWidth={100}
+
+    // Each field has a backing state data structure. For this field, it's `string` (third generic)
+    // The below props control mapping back and forth between the raw item (`vehicle`) and the state (`state`)
+    // This field is read only though, so it's not that interesting.
+    getInitialStateFromItem={vehicle => vehicle.id}
+    injectAsyncDataIntoInitialStateOnDetailPage={async state => state}
+    serializeStateToItem={(state, _vehicle) => state}
+
+    sortable // When set, this field can be clicked on to sort in list views
+
+    // This prop (along with `modifyMarkup`) control how a field presents itself in different
+    // contexts. `displayMarkup` is rendered in read only contexts (ie, list views) and
+    // `modifyMarkup` is shown in read/write contexts. Note that `modifyMarkup` also has the ability
+    // to update the field state (its render prop function signature has more parameters)
+    displayMarkup={state => <span>{state}</span>}
+
+    // There are other lifecycle methods one can tap into as well - the goal here is to provide as
+    // many extension points as possible to allow this tool to scale better than a django admin /
+    active admin kind of thing.
+  />
+
+  {/* A few more simple abstract fields: */}
+  <BooleanField<Post, 'hasBrakes'>
+    name="hasBrakes"
+    singularDisplayName="Has Brakes"
+    pluralDisplayName="Has Brakes"
+    // ^- Sometimes the plural and singular names are the same...  just do whatever makes gramatical sense in the interface :)
+  />
+  <ChoiceField<Post, 'type'>
+    name="type"
+    singularDisplayName="Car Type"
+    pluralDisplayName="Car Types"
+
+    getInitialStateWhenCreating={() => 'unset'}
+    // ^- What is the default value when in the creation form?
+
+    choices={[
+      {id: 'Unset', disabled: true, label: 'Unset'},
+      {id: 'car', label: 'Car'},
+      {id: 'truck', label: 'Truck'},
+    ]}
+  />
+  <NumberField<Post, 'numberOfWheels', true>
+    name="numberOfWheels"
+    singularDisplayName="Number of Wheels"
+    pluralDisplayName="Number of Wheels"
+
+    // Most of the abstract fields can be made nullable, and when enabled (plus the last generic
+    // parameter being set to true), the control will show radio buttons allowing one to pick "null"
+    // instead of typing a value
+    nullable
+
+    getInitialStateWhenCreating={() => null}
+  />
+  <JSONField<Post, 'metadata'>
+    name="metadata"
+    singularDisplayName="Metadata"
+    pluralDisplayName="Metadata"
+    getInitialStateWhenCreating={() => ({})}
+  />
+
+  {/* This tool also supports foreign keys by using SingleForeignKeyField / MultiForeignKeyField: */}
+  <SingleForeignKeyField<Post, 'driverId', Person>
+    name="driverId"
+    singularDisplayName="Driver"
+    pluralDisplayName="Drivers"
+
+    // The "name" of another data model that represents the other side of the relation
+    relatedName="person"
+
+    // There's a lot of different ways that data can be represented in api responses - to try to
+    // give as much flexibility as possible, this field can either accept just an id of the related
+    // model ("KEY_ONLY") or a full on embedded object ("FULL"). If `KEY_ONLY` is set, then the
+    // field will automatically look up the related item using its associated `fetchItem` function.
+    getInitialStateFromItem={vehicle => ({ type: 'KEY_ONLY' as const, key: vehicle.driverId })}
+
+    // There are quite a few lifecycle props one can use to tap into how this field works - the
+    // above ar ethe only required ones though.
+  />
+  {/*
+  // The MultiForeignKeyField is very similar - the only difference is `getInitialStateFromItem`
+  // returns an array of ids or an array of embedded objects:
+  <MultiForeignKeyField<Post, 'passengerIds', Person>
+    name="passengerIds"
+    singularDisplayName="Passenger"
+    pluralDisplayName="Passengers"
+
+    relatedName="person"
+    getInitialStateFromItem={vehicle => ({ type: "KEY_ONLY", key: post.passengerIds })}
+  />
+</DataModel>
+```
+
+#### `fetchPageOfData` / `fetchItem` / etc
+These functions must be implemented for each data model and tell it how it can get data from a
+server somewhere. Each is a very generic interface that can be implemented no matter the underlying
+technology the project uses - as of april 2023, I've experimented with REST and TRPC, but any data
+async source should work fine.
+
+I wouldn't be surprised if a set of standardized, bread specific components that use trpc/react
+server actions/etc were developed that would be largely drop in to standardize the api interface.
+But, that is for the future!
+
+```typescript
+const fetchPageOfData = useCallback(async (
+  page: number,
+  filters: Array<[Array<string>, any]>,
+  sort: Sort | null,
+  searchText: string,
+  // NOTE: optionally, this `AbortSignal` can be passed into whatever request making mechanism you
+  // are using to auto cancel old requests when a user changes things while the app is loading.
+  signal: AbortSignal
+) => {
+  const qs = new URLSearchParams();
+
+  if (filters || searchText.length > 0) {
+    for (const [[name, ..._rest], value] of filters) {
+      qs.set(name, value);
+    }
+  }
+  if (searchText.length > 0) {
+    qs.set('title', searchText);
+  }
+
+  const response = await fetch(`http://localhost:3003/vehicles?${qs.toString()}`, { signal });
+  if (!response.ok) {
+    throw new Error(`Error fetching vehicles: received ${response.status} ${await response.text()}`)
+  }
+
+  const body = await response.json();
+
+  return {
+    // This api endpoint isn't paginated, but in the real world, you probably would want it to be
+    // (which would mean setting `nextPageAvailable` / `totalCount` accordingly)
+    nextPageAvailable: false,
+    totalCount: body.length,
+    data: body,
+  };
+}, []);
+
+const fetchItem = useCallback(async (itemKey: string, signal: AbortSignal) => {
+  const response = await fetch(`http://localhost:3003/vehicles/${itemKey}`, { signal });
+  if (!response.ok) {
+    throw new Error(`Error fetching vehicle with id ${itemKey}: received ${response.status} ${await response.text()}`)
+  }
+
+  return response.json();
+}, []);
+
+// createItem, updateItem, and deleteItem are similar, but handle their respective CRUD actions
+// Look at the code / typescript types if you want to understand the exact parameters here, but
+// they are relatively straightforward
+```
+
+#### Including data models in other pages
+Data models must be placed in a `<DataModels>...</DataModels>` component. Here's what I've done to
+date:
+```typescript
+export default function CustomWrapperComponentToBringInDataModels({ children  }) {
+  return (
+    // Must wrap all the admin stuff - allows configuration of global parameters
+    <AdminContextProvider>
+      <DataModels>
+        {/* Add data model definitions here */}
+
+        {children}
+      </DataModels>
+    </AdminContextProvider>
+  );
+}
+```
+
+Then, wrap all subsequent pages in this component.
+
+In a next.js app, there's probably a more elegant way to do this. If so, do that instead.
+
+## List Page
+The list page shows a read only list of all datamodels that are fetched from a server and allows a user to
+filter, sort, and perform actions on them.
+
+### Code example
+If in a next.js app, create a `src/pages/admin/vehicles/index.tsx` file, and return something like
+the below from a component defined as that file's default export:
+```typescript
+<CustomWrapperComponentToBringInDataModels>
+  <List<Vehicle>
+    name="vehicle" // Points to a data model, see the next section
+    checkable
+  >
+    <ListFilterBar searchable>
+      {/* Filter definitions handle rendering filters. `StringFilterDefinition` is a more abstract */}
+      {/* filter but fully customizable filter rendering is possible by using the more abstract */}
+      {/* `FilterDefinition` implementation. */}
+      <StringFilterDefinition name={["id", "equals"]} />
+
+      {/* `name` can be used to define an arbitrary filter path, allowing for some very nuanced and */}
+      {/* complicated filtering behavior not available in most tools. Some examples: */}
+      <StringFilterDefinition name={["name", "equals"]} />
+      <StringFilterDefinition name={["name", "contains"]} />
+      <StringFilterDefinition name={["numberOfWheels", "less than"]} />
+      <StringFilterDefinition name={["numberOfWheels", "greater than"]} />
+      
+      {/* In a real app, you'd probably auto generate these somehow and then maybe add a few */}
+      {/* custom app specific ones. This is also something that some bread specific api */}
+      {/* integration stuff on top could help facilutate long term. */}
+    </ListFilterBar>
+    <ListActionBar<User>>
+      {checkedItems => (
+        <Fragment>
+          {/* Expose bulk actions that a user can select when a set of items are checked */}
+          <button
+            onClick={() => alert(checkedItems.map(i => i.id).join(','))}
+          >Export</button>
+        </Fragment>
+      )}
+    </ListActionBar>
+
+    {/* Because this is react, you can just put whatever you want intermixed with these */}
+    {/* admin-related components and it will render like you expect: */}
+    <div>My cool markup</div>
+
+    <ListTable
+      detailLinkColumnWidth={100}
+    />
+  </List>
+<CustomWrapperComponentToBringInDataModels>
+```
+
+## Detail Page
+The detail page shows a writable version of a given datamodel allowing one to create and update
+instances on ones data.
+
+### Code example
+If in a next.js app, create a `src/pages/admin/vehicles/[id].tsx` file, and return something like
+the below from a component defined as that file's default export:
+```typescript
+<CustomWrapperComponentToBringInDataModels>
+  <Detail<Vehicle>
+    name="vehicle" // Points to a data model, see the next section
+    itemKey={id === 'new' ? undefined : id} // `id` should be the id from the url. If unset, this renders a creation form.
+    title={vehicle => vehicle.name}
+    actions={vehicle => (
+      // Single-control specific actions can be put here.
+      <Fragment>
+        <button onClick={() => alert(`Click ${vehicle.id}!`)}>Blink headlights</button>
+      </Fragment>
+    )}
+  >
+    <DetailFields />
+  </Detail>
+</CustomWrapperComponentToBringInDataModels>
+}
+```
