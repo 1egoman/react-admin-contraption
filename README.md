@@ -261,18 +261,62 @@ the below from a component defined as that file's default export:
       {/* Filter definitions handle rendering filters. `StringFilterDefinition` is a more abstract */}
       {/* filter but fully customizable filter rendering is possible by using the more abstract */}
       {/* `FilterDefinition` implementation. */}
-      <StringFilterDefinition name={["id", "equals"]} />
+
+      {/* Simple one parameter filter: */}
+      <StringFilterDefinition name={["id"]} />
 
       {/* `name` can be used to define an arbitrary filter path, allowing for some very nuanced and */}
-      {/* complicated filtering behavior not available in most tools. Some examples: */}
+      {/* complicated filtering behavior not available in many tools. Some examples: */}
       <StringFilterDefinition name={["name", "equals"]} />
       <StringFilterDefinition name={["name", "contains"]} />
       <StringFilterDefinition name={["numberOfWheels", "less than"]} />
       <StringFilterDefinition name={["numberOfWheels", "greater than"]} />
+
+      {/* Here is an example of a more abstract filter to give an idea of the kind of stuff that */}
+      {/* is pretty easily possible: */}
+      <FilterDefinition<[string, string]>
+        name={["numberOfWheels", "is in range"]}
+        getInitialState={() => ['', '']}
+
+        // If a filter is not yet valid, it will be highlighted as invalid (often like a red border
+        // on an input box or something like that). See this component's `children` for an example.
+        onIsValid={([start, end]) => !isNaN(parseInt(start)) && !isNaN(parseInt(end))}
+
+        // If a filter is valid, then it may also be complete. A complete filter is included in the
+        // request to get a list of data to show in the list view.
+        //
+        // In _most_ cases, this function is the same as `onIsValid`.
+        onIsComplete={([start, end]) => !isNaN(parseInt(start)) && !isNaN(parseInt(end))}
+
+        // Serializing and deserializing the filter allows it to be represented in the query string
+        serialize={state => JSON.stringify(state)}
+        deserialize={raw => JSON.parse(raw)}
+      >
+        {(state, setState, filter, onBlur) => (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              placeholder="Start"
+              value={start}
+              onChange={e => setState([e.currentTarget.value, state[1]])}
+              onBlur={onBlur}
+              invalid={!filter.isValid}
+            />
+            <input
+              type="text"
+              placeholder="End"
+              value={end}
+              onChange={e => setState([state[0], e.currentTarget.value])}
+              onBlur={onBlur}
+              invalid={!filter.isValid}
+            />
+          </div>
+        )}
+      </FilterDefinition>
       
-      {/* In a real app, you'd probably auto generate these somehow and then maybe add a few */}
-      {/* custom app specific ones. This is also something that some bread specific api */}
-      {/* integration stuff on top could help facilutate long term. */}
+      {/* In a real app, you'd probably auto generate filter definitions somehow and then maybe */}
+      {/* add a few custom app specific ones. This is also something that some bread specific */}
+      {/* api integration stuff on top could help facilutate long term. */}
     </ListFilterBar>
     <ListActionBar<User>>
       {checkedItems => (
@@ -289,9 +333,7 @@ the below from a component defined as that file's default export:
     {/* admin-related components and it will render like you expect: */}
     <div>My cool markup</div>
 
-    <ListTable
-      detailLinkColumnWidth={100}
-    />
+    <ListTable />
   </List>
 <CustomWrapperComponentToBringInDataModels>
 ```
