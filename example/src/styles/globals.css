@@ -107,3 +107,5 @@ a {
 /*     color-scheme: dark; */
 /*   } */
 /* } */
+
+@import '@/admin/global.css';
