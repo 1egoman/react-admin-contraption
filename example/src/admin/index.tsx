@@ -98,8 +98,8 @@ const SearchInput: React.FunctionComponent<{
   );
 }
 
-import { AdminContextProvider, useAdminContext } from './admin-context';
-export { AdminContextProvider };
+import { AdminContextProvider, useAdminContext, StateCache } from './admin-context';
+export { AdminContextProvider, StateCache };
 
 
 
