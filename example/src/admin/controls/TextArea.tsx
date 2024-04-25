@@ -7,6 +7,7 @@ type TextAreaProps = {
   placeholder?: string;
   disabled?: boolean;
   invalid?: boolean;
+  monospace?: boolean;
   value: string;
   onChange: (newText: string) => void;
   onBlur?: () => void;

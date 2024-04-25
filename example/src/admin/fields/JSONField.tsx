@@ -111,6 +111,7 @@ const JSONField = <
       modifyMarkup={([text, invalid], setState, item, onBlur) => {
         const input = props.inputMarkup ? props.inputMarkup([text, invalid], setState, item, onBlur) : (
           <Controls.TextArea
+            monospace
             value={text}
             invalid={invalid}
             onChange={text => {
