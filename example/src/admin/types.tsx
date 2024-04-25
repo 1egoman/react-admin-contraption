@@ -62,3 +62,9 @@ export type Sort<FieldName = BaseFieldName> = {
   fieldName: FieldName;
   direction: 'asc' | 'desc';
 };
+
+// Used by foreign key fields to indicate different ways a model can be configured to be attached
+// to a related model
+export type ForeignKeyKeyOnlyItem<Key = ItemKey> = { type: "KEY_ONLY", key: Key };
+export type ForeignKeyFullItem<Item> = { type: "FULL", item: Item };
+export type ForeignKeyUnset = { type: "UNSET" };

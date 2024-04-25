@@ -1,38 +1,21 @@
-import { useRef, useMemo } from "react";
+import * as React from 'react';
+import { useMemo, useRef } from 'react';
 
-import { FixMe, BaseItem, BaseFieldName } from "../types";
-import Field, { FieldMetadata, NullableWrapper } from ".";
-import { useControls } from "../controls";
+import { FixMe, BaseItem, BaseFieldName } from '../types';
 
+import { useControls } from '../controls';
+import Field, { NullableWrapper } from '../fields';
+import { InputFieldProps } from '../fields/InputField';
 
-export type InputFieldProps<
+type MultiLineInputFieldProps<
   Item = BaseItem,
-  Field = BaseFieldName,
+  FieldName = BaseFieldName,
   Nullable = false,
-> = Pick<
-  FieldMetadata<Item, Field, Nullable extends true ? (string | null) : string>,
-  | 'name'
-  | 'singularDisplayName'
-  | 'pluralDisplayName'
-  | 'csvExportColumnName'
-  | 'columnWidth'
-  | 'sortable'
-  | 'getInitialStateWhenCreating'
-  | 'csvExportData'
-> & {
-  getInitialStateFromItem?: (item: Item) => (Nullable extends true ? (string | null) : string);
-  getInitialStateWhenCreating?: () => (Nullable extends true ? (string | null) : string) | undefined;
-  serializeStateToItem?: (initialItem: Partial<Item>, state: Nullable extends true ? (string | null) : string) => Partial<Item>;
-
-  type?: HTMLInputElement['type'];
-  nullable?: Nullable;
-  displayMarkup?: FieldMetadata<Item, Field, Nullable extends true ? (string | null) : string>['displayMarkup'];
-  inputMarkup?: FieldMetadata<Item, Field, Nullable extends true ? (string | null) : string>['modifyMarkup'];
-};
+> = Omit<InputFieldProps<Item, FieldName, Nullable>, 'type'>;
 
 /*
-Example InputField:
-<InputField<BattleWithParticipants, 'startedAt'>
+Example MultiLineInputField:
+<MultiLineInputField<BattleWithParticipants, 'startedAt'>
   name="startedAt"
   singularDisplayName="Started At"
   pluralDisplayName="Started Ats"
@@ -40,30 +23,18 @@ Example InputField:
   sortable
 />
 */
-const InputField = <
+const MultiLineInputField = <
   Item = BaseItem,
   FieldName = BaseFieldName,
   Nullable = false,
->(props: InputFieldProps<Item, FieldName, Nullable>) => {
+>(props: MultiLineInputFieldProps<Item, FieldName, Nullable>) => {
   const Controls = useControls();
 
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const getInitialStateFromItem = useMemo(() => {
-    if (props.getInitialStateFromItem) {
-      return props.getInitialStateFromItem;
-    } else {
-      return ((item: Item) => {
-        const value = (item as FixMe)[props.name as FixMe];
-
-        if (props.nullable && value === null) {
-          return value;
-        } else {
-          return `${value}`;
-        }
-      });
-    }
-  }, [props.getInitialStateFromItem, props.name, props.nullable]);
+    return props.getInitialStateFromItem || ((item: Item) => `${(item as FixMe)[props.name as FixMe]}`);
+  }, [props.getInitialStateFromItem, props.name]);
 
   const injectAsyncDataIntoInitialStateOnDetailPage = useMemo(() => {
     return (state: Nullable extends true ? (string | null) : string) => Promise.resolve(state)
@@ -81,12 +52,24 @@ const InputField = <
       injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
       getInitialStateWhenCreating={props.getInitialStateWhenCreating || (() => '')}
       serializeStateToItem={props.serializeStateToItem || ((initialItem, state) => ({ ...initialItem, [props.name as FixMe]: state }))}
-      displayMarkup={props.displayMarkup || (state => state === null ? <em style={{color: 'silver'}}>null</em> : <span>{state}</span>)}
+      displayMarkup={state => {
+        if (state === null) {
+          return (
+            <em style={{color: 'silver'}}>null</em>
+          );
+        } else if (state.length > 30) {
+          return (
+            <span>{state.slice(0, 30)}...</span>
+          );
+        } else {
+          return (
+            <span>{state}</span>
+          );
+        }
+      }}
       modifyMarkup={(state, setState, item, onBlur) => {
         const input = props.inputMarkup ? props.inputMarkup(state, setState, item, onBlur) : (
-          <Controls.TextInput
-            ref={inputRef}
-            type={props.type || "text"}
+          <Controls.TextArea
             value={state === null ? '' : `${state}`}
             disabled={state === null}
             onChange={setState}
@@ -112,4 +95,4 @@ const InputField = <
   );
 };
 
-export default InputField;
+export default MultiLineInputField;

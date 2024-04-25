@@ -14,13 +14,14 @@ import Navigatable from "../navigatable";
 import { useControls } from '../controls';
 import { DataModel, DataModelsContext } from '../datamodel';
 import { FieldMetadata, FieldCollection, FieldsProvider, EMPTY_FIELD_COLLECTION } from '../fields';
+import { DataContextList } from '.';
 import { useListDataContext } from '../data-context';
 import ListCSVExport from '../csv-export';
 import ListColumnSetSelector from './column-sets';
 import ManuallyStickyTHead from '../utils/ManuallyStickyTHead';
 
 
-const ListTableItem = <Item = BaseItem, FieldName = BaseFieldName>({
+export const ListTableItem = <Item = BaseItem, FieldName = BaseFieldName>({
   item,
   visibleFieldNames,
   fields,

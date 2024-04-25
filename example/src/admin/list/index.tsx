@@ -14,7 +14,8 @@ import { DataModel, DataModelsContext } from '../datamodel';
 import { DataContextProvider } from '../data-context';
 import { useAdminContext } from '../admin-context';
 import useInFlightAbortControllers from "../utils/use-in-flight-abort-controllers";
-import { FilterMetadataContext } from '../filter-definitions';
+import { FilterMetadataContext, FilterMetadata } from '../filter-definitions';
+import Navigatable from '../navigatable';
 
 import styles from '../styles.module.css';
 

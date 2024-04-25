@@ -23,7 +23,7 @@ import {
 import useInFlightAbortControllers from '../utils/use-in-flight-abort-controllers';
 
 import { useAdminContext } from '../admin-context';
-import { DataContextDetail } from '..';
+import { DataContextDetail } from '.';
 
 
 export const DetailFieldItem = <Item = BaseItem, FieldName = BaseFieldName, State = BaseFieldState>({
