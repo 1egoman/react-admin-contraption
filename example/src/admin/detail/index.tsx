@@ -202,7 +202,7 @@ const Detail = <Item = BaseItem>(props: DetailProps<Item>) => {
                   Create {dataContextData.singularDisplayName[0].toUpperCase()}{dataContextData.singularDisplayName.slice(1)}
                 </strong>
               ) : (
-                <strong>
+                <Fragment>
                   {props.title ? (
                     <strong>
                       {dataContextData.detailData.status === 'COMPLETE' ? props.title(dataContextData.detailData.data) : null}
@@ -213,7 +213,7 @@ const Detail = <Item = BaseItem>(props: DetailProps<Item>) => {
                       {dataContextData.itemKey}
                     </strong>
                   )}
-                </strong>
+                </Fragment>
               )}
             </Fragment>
           }
