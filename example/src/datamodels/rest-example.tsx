@@ -66,7 +66,7 @@ export function PostDataModel() {
     const body = await response.json();
 
     return {
-      nextPageAvailable: totalCount > (page+1)*pageSize,
+      nextPageAvailable: totalCount > page*pageSize,
       totalCount,
       data: body,
     };
@@ -275,7 +275,7 @@ export function UserDataModel() {
     const body = await response.json();
 
     return {
-      nextPageAvailable: totalCount > (page+1)*pageSize,
+      nextPageAvailable: totalCount > page*pageSize,
       totalCount,
       data: body,
     };
@@ -454,7 +454,7 @@ export function CommentDataModel() {
     const body = await response.json();
 
     return {
-      nextPageAvailable: totalCount > (page+1)*pageSize,
+      nextPageAvailable: totalCount > page*pageSize,
       totalCount,
       data: body,
     };
