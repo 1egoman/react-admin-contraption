@@ -286,10 +286,6 @@ const ListTable = <Item = BaseItem, FieldName = BaseFieldName>({
                   </th>
                 );
               })}
-              {/* Add a column for the detail link */}
-              {detailLinkEnabled ? (
-                <th style={{ minWidth: detailLinkWidth || undefined }}></th>
-              ) : null}
               <th className={styles.listTableHeaderActionsWrapper}>
                 {(
                   columnSets &&
