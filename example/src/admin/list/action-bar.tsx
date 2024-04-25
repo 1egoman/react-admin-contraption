@@ -5,17 +5,17 @@ import { useListDataContext } from "..";
 
 import styles from '../styles.module.css';
 
-type ListActionBarProps<Item = BaseItem> = {
-  canSelectAllAcrossPages?: boolean;
+type ListActionBarProps<Item = BaseItem, CanSelectAllAcrossPages = false> = {
+  canSelectAllAcrossPages?: CanSelectAllAcrossPages;
   children: (
-    items: Array<Item> | typeof ALL_ITEMS,
+    items: CanSelectAllAcrossPages extends true ? (Array<Item> | typeof ALL_ITEMS) : Array<Item>,
   ) => React.ReactNode;
 };
 
-const ListActionBar = <Item = BaseItem>({
+const ListActionBar = <Item = BaseItem, CanSelectAllAcrossPages = false>({
   canSelectAllAcrossPages = false,
   children,
-}: ListActionBarProps<Item>) => {
+}: ListActionBarProps<Item, CanSelectAllAcrossPages>) => {
   const listDataContextData = useListDataContext<Item>('ListActionBar');
 
   const Controls = useControls();

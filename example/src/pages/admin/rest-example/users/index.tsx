@@ -31,7 +31,8 @@ export default function Page() {
         >
           {checkedItems => (
             <div style={{ display: 'flex', gap: 8}}>
-              <button onClick={() => alert(checkedItems === 'all' ? 'all' : checkedItems.map(i => i.id).join(','))}>Bulk action a</button>
+              <button onClick={() => alert(checkedItems.map(i => i.id).join(','))}>Bulk action a</button>
+              {/* <button onClick={() => alert(checkedItems === 'all' ? 'all' : checkedItems.map(i => i.id).join(','))}>Bulk action a</button> */}
             </div>
           )}
         </ListActionBar>
