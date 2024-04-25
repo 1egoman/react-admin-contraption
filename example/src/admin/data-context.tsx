@@ -2,7 +2,8 @@ import * as React from "react";
 import { useContext } from "react";
 
 import { BaseItem } from "./types";
-import { DataContextList, DataContextDetail } from ".";
+import { DataContextList } from "./list";
+import { DataContextDetail } from "./detail";
 
 
 const DataContext = React.createContext<

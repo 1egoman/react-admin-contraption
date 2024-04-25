@@ -1,6 +1,6 @@
 import { LinkProps } from "next/link";
 
-import { AdminContextData } from ".";
+import { AdminContextData } from "./admin-context";
 
 
 type Navigatable =

@@ -6,7 +6,8 @@ import { BaseFieldName, BaseItem, CheckedItemKeys, FixMe, ItemKey } from "./type
 
 import styles from "./styles.module.css";
 import { FieldCollection, FieldMetadata } from "./fields";
-import { ListData, useInFlightAbortControllers } from ".";
+import { ListData } from "./list";
+import useInFlightAbortControllers from "./utils/use-in-flight-abort-controllers";
 import { useControls } from "./controls";
 
 // a little function to help us with reordering the result

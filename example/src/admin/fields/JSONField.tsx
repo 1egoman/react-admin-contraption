@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 import { FixMe, BaseItem, BaseFieldName, JSONValue } from "../types";
 import Field, { FieldMetadata } from ".";
-import { MultiLineInputField } from "..";
 import { useControls } from "../controls";
 
 
