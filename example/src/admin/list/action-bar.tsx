@@ -76,7 +76,7 @@ const ListActionBar = <Item = BaseItem>({
       />
 
       {/* If enabled, give the user the ability to be able to select all pages of data that match the query */}
-      {canSelectAllAcrossPages && areAllInMemoryItemsChecked ? (
+      {canSelectAllAcrossPages && (areAllInMemoryItemsChecked || listDataContextData.checkedItemKeys === ALL_ITEMS) ? (
         <Fragment>
           {listDataContextData.checkedItemKeys !== ALL_ITEMS ? (
             <div

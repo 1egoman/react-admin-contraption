@@ -200,7 +200,7 @@
 // ------------------ */
 .listActionBarSelectAllBanner {
   height: 36px;
-  background-color: wheat;
+  background-color: var(--blue-5);
   display: flex;
   align-items: center;
   justify-content: center;
