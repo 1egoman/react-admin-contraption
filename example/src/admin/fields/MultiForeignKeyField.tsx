@@ -70,6 +70,8 @@ export type MultiForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName
 
   creationFields?: React.ReactNode;
 
+  displayMarkup?: FieldMetadata<Item, FieldName, ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>>['displayMarkup'];
+
   children?: React.ReactNode;
 };
 
@@ -197,9 +199,15 @@ const MultiForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, Relate
     return null;
   }, [props.createRelatedItem, relatedDataModel, addInFlightAbortController, removeInFlightAbortController]);
 
-  const displayMarkup = useCallback((state: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>) => (
-    <span>{computeStateKeyList(state).join(', ')}</span>
-  ), [computeStateKeyList]);
+  const displayMarkup = useCallback((state: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>, item: Item | null) => {
+    if (props.displayMarkup) {
+      return props.displayMarkup(state, item);
+    } else {
+      return (
+        <span>{computeStateKeyList(state).join(', ')}</span>
+      );
+    }
+  }, [computeStateKeyList]);
 
   const modifyMarkup = useCallback((
     state: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>,
