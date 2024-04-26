@@ -11,6 +11,9 @@ import {
   StateCache,
   ChoiceField,
   ForeignKeyFullItem,
+  NumberField,
+  BooleanField,
+  JSONField,
 } from '@/admin';
 import { Filter, Sort } from '@/admin/types';
 
@@ -281,34 +284,74 @@ export function BattleDataModel() {
         getInitialStateWhenCreating={() => null}
         serializeStateToItem={(initialItem, beat) => ({ ...initialItem, beatId: beat ? beat.id : null })}
       />
-      <Field<BattleWithParticipants, 'participants', BattleWithParticipants['participants']>
+      {/* <Field<BattleWithParticipants, 'participants', BattleWithParticipants['participants']> */}
+      {/*   name="participants" */}
+      {/*   singularDisplayName="Participants" */}
+      {/*   pluralDisplayName="Participants" */}
+      {/*   columnWidth="165px" */}
+      {/*   getInitialStateFromItem={battle => battle.participants} */}
+      {/*   injectAsyncDataIntoInitialStateOnDetailPage={async state => state} */}
+      {/*   serializeStateToItem={(initialItem) => initialItem} */}
+      {/*   csvExportData={state => state.map(p => p.id).join(', ')} */}
+      {/*   displayMarkup={state => <div style={{display: 'flex', flexDirection: 'column', gap: 4}}> */}
+      {/*     {state.map((participant) => ( */}
+      {/*       <div key={participant.id} style={{display: 'flex', alignItems: 'center', gap: 4}}> */}
+      {/*         <div style={{display: 'flex', gap: 4}}> */}
+      {/*           {participant.user.profileImageUrl ? ( */}
+      {/*             <img src={participant.user.profileImageUrl} style={{width: 20, height: 20, borderRadius: 4}} /> */}
+      {/*           ) : ( */}
+      {/*             <div style={{width: 20, height: 20, backgroundColor: '#ddd', borderRadius: 4}} /> */}
+      {/*           )} */}
+      {/*           {participant.user.handle ? ( */}
+      {/*             <small>{participant.user.handle}</small> */}
+      {/*           ) : ( */}
+      {/*             <small><small>{participant.user.id}</small></small> */}
+      {/*           )} */}
+      {/*         </div> */}
+      {/*       </div> */}
+      {/*     ))} */}
+      {/*   </div>} */}
+      {/*   // Note: No custom `modifyMarkup`, so `displayMarkup` is used on the detail page too! */}
+      {/* /> */}
+
+      <MultiForeignKeyField<BattleWithParticipants, 'participants', BattleParticipant>
         name="participants"
         singularDisplayName="Participants"
         pluralDisplayName="Participants"
         columnWidth="165px"
-        getInitialStateFromItem={battle => battle.participants}
-        injectAsyncDataIntoInitialStateOnDetailPage={async state => state}
-        serializeStateToItem={(initialItem) => initialItem}
-        csvExportData={state => state.map(p => p.id).join(', ')}
-        displayMarkup={state => <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
-          {state.map((participant) => (
-            <div key={participant.id} style={{display: 'flex', alignItems: 'center', gap: 4}}>
-              <div style={{display: 'flex', gap: 4}}>
-                {participant.user.profileImageUrl ? (
-                  <img src={participant.user.profileImageUrl} style={{width: 20, height: 20, borderRadius: 4}} />
-                ) : (
-                  <div style={{width: 20, height: 20, backgroundColor: '#ddd', borderRadius: 4}} />
-                )}
-                {participant.user.handle ? (
-                  <small>{participant.user.handle}</small>
-                ) : (
-                  <small><small>{participant.user.id}</small></small>
-                )}
-              </div>
+
+        relatedName="battleParticipant"
+
+        getInitialStateFromItem={battle => ({
+          type: 'FULL',
+          item: battle.participants.map(p => ({ ...p, battleId: battle.id })),
+        })}
+        displayMarkup={state => {
+          if (state.type !== 'FULL') {
+            return null;
+          }
+
+          return (
+            <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
+              {state.item.map((participant) => (
+                <div key={participant.id} style={{display: 'flex', alignItems: 'center', gap: 4}}>
+                  <div style={{display: 'flex', gap: 4}}>
+                    {participant.user.profileImageUrl ? (
+                      <img src={participant.user.profileImageUrl} style={{width: 20, height: 20, borderRadius: 4}} />
+                    ) : (
+                        <div style={{width: 20, height: 20, backgroundColor: '#ddd', borderRadius: 4}} />
+                      )}
+                    {participant.user.handle ? (
+                      <small>{participant.user.handle}</small>
+                    ) : (
+                        <small><small>{participant.user.id}</small></small>
+                      )}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>}
-        // Note: No custom `modifyMarkup`, so `displayMarkup` is used on the detail page too!
+          );
+        }}
       />
     </DataModel>
   );
@@ -396,6 +439,398 @@ export function BattleBeatDataModel() {
   );
 }
 
+export function BattleParticipantDataModel() {
+  const fetchPageOfData = useCallback(async (
+    page: number,
+    filters: Array<[Filter['name'], Filter['state']]>,
+    sort: Sort | null,
+    searchText: string,
+    signal: AbortSignal
+  ) => {
+    // console.log('REQUEST:', page, filters, sort, searchText);
+    const qs = new URLSearchParams();
+    qs.set('page', `${page}`);
+
+    if (sort) {
+      qs.set('sortField', sort.fieldName);
+      qs.set('sortDirection', sort.direction);
+    }
+
+    if (filters || searchText.length > 0) {
+      let filtersParam: any = {};
+      if (searchText.length > 0) {
+        filtersParam.id = { contains: searchText };
+      }
+
+      for (const [name, value] of filters) {
+        let cursor = filtersParam;
+        let lastCursor = filtersParam;
+        for (const part of name) {
+          if (!cursor[part]) {
+            cursor[part] = {};
+          }
+          lastCursor = cursor;
+          cursor = cursor[part];
+        }
+        let parsedValue: any;
+        try {
+          parsedValue = JSON.parse(value)
+        } catch {
+          parsedValue = value;
+        }
+        lastCursor[name.at(-1)] = parsedValue;
+      }
+      qs.set('filters', JSON.stringify(filtersParam));
+    }
+
+    const response = await fetch(`https://api-staging.rapbattleapp.com/v1/participants?${qs.toString()}`, {
+      signal,
+      headers: {
+        // 'Authorization': `Bearer ${await getToken()}`,
+      },
+    });
+    // const response = await fetch(`http://localhost:8000/v1/participants?${qs.toString()}`, { signal });
+    if (!response.ok) {
+      throw new Error(`Error fetching battle participants: received ${response.status} ${await response.text()}`)
+    }
+
+    const body = await response.json();
+
+    return {
+      nextPageAvailable: Boolean(body.next),
+      totalCount: body.total,
+      data: body.results,
+    };
+  }, []);
+
+  const fetchItem = useCallback(async (itemKey: string, signal: AbortSignal) => {
+    // const response = await fetch(`https://api-staging.rapbattleapp.com/v1/participants/${itemKey}`, { signal });
+    // if (!response.ok) {
+    //   throw new Error(`Error fetching battle participant with id ${itemKey}: received ${response.status} ${await response.text()}`)
+    // }
+
+    // return response.json();
+
+    const qs = new URLSearchParams();
+    qs.set('pageSize', '1');
+    qs.set('filters', JSON.stringify({ id: itemKey }));
+
+    const response = await fetch(`https://api-staging.rapbattleapp.com/v1/participants?${qs.toString()}`, {
+      signal,
+      headers: {
+        // 'Authorization': `Bearer ${await getToken()}`,
+      },
+    });
+    // const response = await fetch(`http://localhost:8000/v1/participants?${qs.toString()}`, { signal });
+    if (!response.ok) {
+      throw new Error(`Error fetching battle participant ${itemKey}: received ${response.status} ${await response.text()}`)
+    }
+
+    const body = await response.json();
+    return body.results[0];
+  }, []);
+
+  const updateItem = useCallback(async (itemKey: string, updateData: Partial<BattleParticipant>, signal: AbortSignal) => {
+    const response = await fetch(`https://api-staging.rapbattleapp.com/v1/participants/${itemKey}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updateData),
+      signal,
+    });
+    if (!response.ok) {
+      throw new Error(`Error updating battle participant ${itemKey}: received ${response.status} ${await response.text()}`)
+    }
+
+    return response.json();
+  }, []);
+
+  return (
+    <DataModel<BattleParticipant>
+      name="battleParticipant"
+      singularDisplayName="Battle Participant"
+      pluralDisplayName="Battle Participants"
+
+      fetchPageOfData={fetchPageOfData}
+      fetchItem={fetchItem}
+      updateItem={updateItem}
+
+      keyGenerator={participant => participant.id}
+      detailLinkGenerator={participant => ({ type: 'href' as const, href: `/admin/barz/battle-participants/${participant.id}` })}
+      // listLink={{ type: 'href', href: `/admin/barz/battles` }}
+    >
+      <Field<BattleParticipant, 'id', string>
+        name="id"
+        singularDisplayName="Id"
+        pluralDisplayName="Ids"
+        columnWidth="250px"
+        getInitialStateFromItem={participant => participant.id}
+        injectAsyncDataIntoInitialStateOnDetailPage={async state => state}
+        serializeStateToItem={(item) => item}
+        displayMarkup={state => <span>{state}</span>}
+      />
+      <InputField<BattleParticipant, 'createdAt'>
+        name="createdAt"
+        singularDisplayName="Created At"
+        pluralDisplayName="Created Ats"
+        sortable
+        getInitialStateWhenCreating={() => new Date().toISOString()}
+      />
+      <InputField<BattleParticipant, 'updatedAt'>
+        name="updatedAt"
+        singularDisplayName="Updated At"
+        pluralDisplayName="Updated Ats"
+        sortable
+        getInitialStateWhenCreating={() => new Date().toISOString()}
+      />
+      <InputField<BattleParticipant, 'userId'>
+        name="userId"
+        singularDisplayName="User ID"
+        pluralDisplayName="User IDs"
+        sortable
+      />
+      <NumberField<BattleParticipant, 'userComputedScoreAtBattleCreatedAt'>
+        name="userComputedScoreAtBattleCreatedAt"
+        singularDisplayName="User Computed Score (at created)"
+        pluralDisplayName="User Computed Score (at created)"
+        sortable
+      />
+      <InputField<BattleParticipant, 'appState', true>
+        name="appState"
+        singularDisplayName="App State"
+        pluralDisplayName="App States"
+        sortable
+        nullable
+      />
+      <InputField<BattleParticipant, 'appStateLastChangedAt', true>
+        name="appStateLastChangedAt"
+        singularDisplayName="App State Last Changed At"
+        pluralDisplayName="App State Last Changed Ats"
+        sortable
+        nullable
+      />
+
+      <InputField<BattleParticipant, 'associatedWithBattleAt'>
+        name="associatedWithBattleAt"
+        singularDisplayName="Associated With Battle At"
+        pluralDisplayName="Associated With Battle Ats"
+        sortable
+      />
+
+      {/* <InputField<BattleParticipant, 'battleId'> */}
+      {/*   name="battleId" */}
+      {/*   singularDisplayName="Battle Id" */}
+      {/*   pluralDisplayName="Battle Id" */}
+      {/*   sortable */}
+      {/* /> */}
+
+      <BooleanField<BattleParticipant, 'computedDidWinOrTieBattle'>
+        name="computedDidWinOrTieBattle"
+        singularDisplayName="Computed Did Win Or Tie Battle"
+        pluralDisplayName="Computed Did Win Or Tie Battles"
+        sortable
+        getInitialStateWhenCreating={() => false}
+      />
+
+      <ChoiceField<BattleParticipant, 'connectionStatus', BattleParticipant['connectionStatus']>
+        name="connectionStatus"
+        singularDisplayName="Connection Status"
+        pluralDisplayName="Connection Statuss"
+        sortable
+        choices={[
+          {id: 'ONLINE', label: 'Online'},
+          {id: 'OFFLINE', label: 'Offline'},
+          {id: 'UNKNOWN', label: 'Unknown'},
+        ]}
+        getInitialStateWhenCreating={() => 'ONLINE'}
+      />
+
+      <JSONField<BattleParticipant, 'currentContext'>
+        name="currentContext"
+        singularDisplayName="Current Context"
+        pluralDisplayName="Current Contexts"
+        sortable
+      />
+
+      <InputField<BattleParticipant, 'currentState'>
+        name="currentState"
+        singularDisplayName="Current State"
+        pluralDisplayName="Current States"
+        sortable
+      />
+
+      <InputField<BattleParticipant, 'forfeitedAt', true>
+        name="forfeitedAt"
+        singularDisplayName="Forfeited At"
+        pluralDisplayName="Forfeited Ats"
+        sortable
+        nullable
+      />
+
+      <BooleanField<BattleParticipant, 'initialMatchFailed'>
+        name="initialMatchFailed"
+        singularDisplayName="Initial Match Failed"
+        pluralDisplayName="Initial Match Faileds"
+        sortable
+        getInitialStateWhenCreating={() => false}
+      />
+
+      <InputField<BattleParticipant, 'madeInactiveAt', true>
+        name="madeInactiveAt"
+        singularDisplayName="Made Inactive At"
+        pluralDisplayName="Made Inactive Ats"
+        sortable
+        nullable
+      />
+
+      <InputField<BattleParticipant, 'madeInactiveReason', true>
+        name="madeInactiveReason"
+        singularDisplayName="Made Inactive Reason"
+        pluralDisplayName="Made Inactive Reasons"
+        sortable
+        nullable
+      />
+
+      <ChoiceField<BattleParticipant, 'matchingAlgorithm', 'DEFAULT' | 'RANDOM'>
+        name="matchingAlgorithm"
+        singularDisplayName="Matching Algorithm"
+        pluralDisplayName="Matching Algorithms"
+        sortable
+        choices={[
+          {id: 'DEFAULT', label: 'Default'},
+          {id: 'RANDOM', label: 'Random'},
+        ]}
+        getInitialStateWhenCreating={() => 'DEFAULT'}
+      />
+
+      <InputField<BattleParticipant, 'matchingStartedAt', true>
+        name="matchingStartedAt"
+        singularDisplayName="Matching Started At"
+        pluralDisplayName="Matching Started Ats"
+        sortable
+        nullable
+      />
+
+      <NumberField<BattleParticipant, 'order'>
+        name="order"
+        singularDisplayName="Order"
+        pluralDisplayName="Orders"
+        sortable
+      />
+
+      <InputField<BattleParticipant, 'processedVideoCompletedAt', true>
+        name="processedVideoCompletedAt"
+        singularDisplayName="Processed Video Completed At"
+        pluralDisplayName="Processed Video Completed Ats"
+        sortable
+        nullable
+      />
+
+      <InputField<BattleParticipant, 'processedVideoKey', true>
+        name="processedVideoKey"
+        singularDisplayName="Processed Video Key"
+        pluralDisplayName="Processed Video Keys"
+        sortable
+        nullable
+      />
+
+      <InputField<BattleParticipant, 'processedVideoOffsetMilliseconds', true>
+        name="processedVideoOffsetMilliseconds"
+        singularDisplayName="Processed Video Offset Milliseconds"
+        pluralDisplayName="Processed Video Offset Milliseconds"
+        sortable
+        nullable
+      />
+
+      <InputField<BattleParticipant, 'processedVideoQueuedAt', true>
+        name="processedVideoQueuedAt"
+        singularDisplayName="Processed Video Queued At"
+        pluralDisplayName="Processed Video Queued Ats"
+        sortable
+        nullable
+      />
+
+      <InputField<BattleParticipant, 'processedVideoStartedAt', true>
+        name="processedVideoStartedAt"
+        singularDisplayName="Processed Video Started At"
+        pluralDisplayName="Processed Video Started Ats"
+        sortable
+        nullable
+      />
+
+      <InputField<BattleParticipant, 'processedVideoStatus', true>
+        name="processedVideoStatus"
+        singularDisplayName="Processed Video Status"
+        pluralDisplayName="Processed Video Status"
+        sortable
+        nullable
+      />
+
+      <InputField<BattleParticipant, 'readyForBattleAt', true>
+        name="readyForBattleAt"
+        singularDisplayName="Ready For Battle At"
+        pluralDisplayName="Ready For Battle Ats"
+        sortable
+        nullable
+      />
+
+      <ChoiceField<BattleParticipant, 'requestedBattlePrivacyLevel', BattleParticipant['requestedBattlePrivacyLevel'], true>
+        name="requestedBattlePrivacyLevel"
+        singularDisplayName="Requested Battle Privacy Level"
+        pluralDisplayName="Requested Battle Privacy Levels"
+        sortable
+        nullable
+        choices={[
+          {id: 'PUBLIC', label: 'Public'},
+          {id: 'PRIVATE', label: 'Private'},
+        ]}
+        getInitialStateWhenCreating={() => 'PRIVATE'}
+      />
+
+      <InputField<BattleParticipant, 'twilioAudioRecordingId', true>
+        name="twilioAudioRecordingId"
+        singularDisplayName="Twilio Audio Recording Id"
+        pluralDisplayName="Twilio Audio Recording Ids"
+        sortable
+        nullable
+      />
+
+      <InputField<BattleParticipant, 'twilioAudioTrackId', true>
+        name="twilioAudioTrackId"
+        singularDisplayName="Twilio Audio Track Id"
+        pluralDisplayName="Twilio Audio Track Ids"
+        sortable
+        nullable
+      />
+
+      <InputField<BattleParticipant, 'twilioDataTrackId', true>
+        name="twilioDataTrackId"
+        singularDisplayName="Twilio Data Track Id"
+        pluralDisplayName="Twilio Data Track Ids"
+        sortable
+        nullable
+      />
+
+      <InputField<BattleParticipant, 'twilioVideoRecordingId', true>
+        name="twilioVideoRecordingId"
+        singularDisplayName="Twilio Video Recording Id"
+        pluralDisplayName="Twilio Video Recording Ids"
+        sortable
+        nullable
+      />
+
+      <InputField<BattleParticipant, 'twilioVideoTrackId', true>
+        name="twilioVideoTrackId"
+        singularDisplayName="Twilio Video Track Id"
+        pluralDisplayName="Twilio Video Track Ids"
+        sortable
+        nullable
+      />
+    </DataModel>
+  );
+}
+
 export default function AllDataModels({ children }: { children: React.ReactNode}) {
   const stateCache: StateCache = useMemo(() => {
     return {
@@ -469,6 +904,7 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
         <DataModels>
           <BattleDataModel />
           <BattleBeatDataModel />
+          <BattleParticipantDataModel />
 
           {children}
         </DataModels>
