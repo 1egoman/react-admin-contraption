@@ -5,7 +5,7 @@ import Field, { FieldMetadata } from ".";
 import { useControls } from "../controls";
 
 
-type JSONFieldProps<Item = BaseItem, Field = BaseFieldName> = Pick<
+type JSONFieldProps<Item = BaseItem, Field = BaseFieldName, JSONType = JSONValue> = Pick<
   FieldMetadata<Item, Field, string>,
   | 'name'
   | 'singularDisplayName'
@@ -14,13 +14,13 @@ type JSONFieldProps<Item = BaseItem, Field = BaseFieldName> = Pick<
   | 'columnWidth'
   | 'sortable'
 > & {
-  getInitialStateFromItem?: (item: Item) => JSONValue;
-  getInitialStateWhenCreating?: () => JSONValue | undefined;
-  serializeStateToItem?: (initialItem: Partial<Item>, state: JSONValue) => Partial<Item>;
+  getInitialStateFromItem?: (item: Item) => JSONType;
+  getInitialStateWhenCreating?: () => JSONType | undefined;
+  serializeStateToItem?: (initialItem: Partial<Item>, state: JSONType) => Partial<Item>;
 
   type?: HTMLInputElement['type'];
   inputMarkup?: FieldMetadata<Item, Field, [string, boolean]>['modifyMarkup'];
-  csvExportData?: FieldMetadata<Item, Field, JSONValue>['csvExportData'];
+  csvExportData?: FieldMetadata<Item, Field, JSONType>['csvExportData'];
 };
 
 /*
@@ -36,7 +36,8 @@ Example InputField:
 const JSONField = <
   Item = BaseItem,
   FieldName = BaseFieldName,
->(props: JSONFieldProps<Item, FieldName>) => {
+  JSONType = JSONValue,
+>(props: JSONFieldProps<Item, FieldName, JSONType>) => {
   const Controls = useControls();
 
   const getInitialStateFromItem = useCallback((item: Item): [string, boolean] => {
