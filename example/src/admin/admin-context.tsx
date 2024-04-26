@@ -22,7 +22,7 @@ export type StateCache = {
 
 // NOTE: only the methods that are used are defined below so that if somebody wanted to implement
 // their own router (ie, another framework, overriding things, etc) it wouldn't be such a PITA
-type AbstractNextRouter = Pick<NextRouter, 'push' | 'replace'>;
+type AbstractNextRouter = Pick<NextRouter, 'push' | 'replace' | 'query'>;
 
 export type AdminContextData = {
   stateCache?: StateCache;

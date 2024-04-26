@@ -10,12 +10,13 @@ import {
 import styles from '../styles.module.css';
 
 import { FixMe, BaseItem, ItemKey } from '../types';
-import Navigatable from "../navigatable";
+import Navigatable, { generateNavigatableFromReturnToQueryParam } from "../navigatable";
 import { useControls } from '../controls';
 import { DataModel, DataModelsContext } from '../datamodel';
 import { DataContextProvider } from '../data-context';
 import useInFlightAbortControllers from '../utils/use-in-flight-abort-controllers';
 import DetailFields from './fields';
+import { useAdminContext } from '../admin-context';
 
 
 export type DataContextDetail<Item = BaseItem> = {
@@ -79,6 +80,7 @@ const Detail = <Item = BaseItem>(props: DetailProps<Item>) => {
   } = props;
 
   const Controls = useControls();
+  const adminContext = useAdminContext();
 
   // First, get the data model that the list component uses:
   const dataModelsContextData = useContext(DataModelsContext);
@@ -93,7 +95,7 @@ const Detail = <Item = BaseItem>(props: DetailProps<Item>) => {
   const updateItem = props.updateItem || dataModel?.updateItem || null;
   const deleteItem = props.deleteItem || dataModel?.deleteItem || null;
   const detailLinkGenerator = props.detailLinkGenerator || dataModel?.detailLinkGenerator || null;
-  const listLink = props.listLink || dataModel?.listLink || null;
+  const listLink = generateNavigatableFromReturnToQueryParam(adminContext) || props.listLink || dataModel?.listLink || null;
 
   const [detailData, setDetailData] = useState<DetailData<Item>>({ status: 'IDLE' });
 
@@ -196,7 +198,7 @@ const Detail = <Item = BaseItem>(props: DetailProps<Item>) => {
           intent="header"
           title={
             <Fragment>
-              <Controls.NavigationButton navigatable={dataContextData.listLink}>&larr; Back</Controls.NavigationButton>
+              <Controls.NavigationButton navigatable={listLink}>&larr; Back</Controls.NavigationButton>
               {dataContextData.isCreating ? (
                 <strong>
                   Create {dataContextData.singularDisplayName[0].toUpperCase()}{dataContextData.singularDisplayName.slice(1)}

@@ -29,6 +29,7 @@ import { ListData } from '../list';
 import { MultiForeignKeyFieldProps } from './MultiForeignKeyField';
 
 import styles from "../styles.module.css";
+import Navigatable, { injectReturnToQueryParamIntoNavigatable } from '../navigatable';
 
 type SingleForeignKeyFieldProps<
   Item = BaseItem,
@@ -706,6 +707,16 @@ export const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFie
                         props.relatedItems && props.relatedItems.find(i => props.getRelatedKey(i) === key)
                       ) : props.relatedItem && props.getRelatedKey(props.relatedItem) === key);
 
+                      let detailLink: Navigatable | undefined = undefined;
+                      if (relatedDataModel?.detailLinkGenerator) {
+                        detailLink = relatedDataModel.detailLinkGenerator(relatedItem);
+                        detailLink = injectReturnToQueryParamIntoNavigatable(
+                          detailLink,
+                          // FIXME: the below probably should take into account next.js route stuff!!
+                          window.location.href.replace(location.origin, ''),
+                        );
+                      }
+
                       return (
                         <ListTableItem
                           key={key as string}
@@ -714,7 +725,7 @@ export const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFie
                           fields={relatedFields}
                           checkable={true}
                           checkType={props.mode === 'list' ? 'checkbox' : 'radio'}
-                          detailLink={relatedDataModel?.detailLinkGenerator ? relatedDataModel.detailLinkGenerator(relatedItem) : undefined}
+                          detailLink={detailLink}
                           checked={checked}
                           checkboxDisabled={false}
                           onChangeChecked={(checked) => {
