@@ -64,11 +64,22 @@ export const FieldsProvider = <Item = BaseItem>(props: {
   );
 };
 
+type FieldCollectionLayout = Array<
+  | { type: 'field', name: FieldMetadata['name'] }
+  | {
+    type: 'section',
+    id: string;
+    label: React.ReactNode;
+    contents: FieldCollectionLayout;
+  }
+>;
+
 export type FieldCollection<M = FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>> = {
   names: Array<FieldMetadata['name']>,
+  layout: FieldCollectionLayout,
   metadata: Array<M>,
 };
-export const EMPTY_FIELD_COLLECTION: FieldCollection = { names: [], metadata: [] };
+export const EMPTY_FIELD_COLLECTION: FieldCollection = { names: [], layout: [], metadata: [] };
 
 // A FieldMetadata defines a specification for what a field within a data model looks like.
 export type FieldMetadata<Item = BaseItem, FieldName = BaseFieldName, State = BaseFieldState> = {
@@ -167,11 +178,74 @@ const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props: Field
 
   useEffect(() => {
     const name = props.name as string;
-    setFields(old => ({ ...old, names: [...old.names, name] }));
+    setFields(old => ({
+      ...old,
+      names: [...old.names, name],
+    }));
     return () => {
       setFields(old => ({ ...old, names: old.names.filter(n => n !== name) }));
     };
   }, [props.name]);
+
+  const fieldSectionPath = useContext(FieldSectionsContext);
+  useEffect(() => {
+    const name = props.name as string;
+    setFields(old => {
+      const layout = old.layout.slice();
+
+      let pointer = layout;
+      for (const section of fieldSectionPath) {
+        let newSectionIndex = pointer.findIndex(entry => entry.type === "section" && entry.id === section.id);
+        let newSection = pointer[newSectionIndex];
+
+        if (newSectionIndex >= 0 && newSection.type === "field") {
+          break;
+        }
+        if (newSectionIndex >= 0 && newSection.type === "section") {
+          const newContents = newSection.contents.slice();
+          pointer[newSectionIndex] = { ...newSection, contents: newContents };
+          pointer = newContents;
+          continue;
+        }
+
+        newSection = {
+          type: 'section',
+          id: section.id,
+          label: section.label,
+          contents: [],
+        };
+        pointer.push(newSection);
+        pointer = newSection.contents;
+      }
+      pointer.push({ type: 'field', name });
+
+      return { ...old, layout };
+    });
+    return () => {
+      setFields(old => {
+        const recurse = (layout: FieldCollectionLayout): FieldCollectionLayout => {
+          return layout.flatMap(item => {
+            if (item.type === "field" && item.name === name) {
+              // Remove the leaf field added
+              return [];
+            } else if (item.type === "section") {
+              const newContents = recurse(item.contents);
+              if (newContents.length > 0) {
+                return [{...item, contents: newContents }];
+              } else {
+                // Remove empty sections
+                return [];
+              }
+            } else {
+              return [item];
+            }
+          });
+        };
+
+        return { ...old, layout: recurse(old.layout) };
+      });
+    };
+  }, [props.name, fieldSectionPath]);
 
   useEffect(() => {
     const fieldMetadata: FieldMetadata<I, F, S> = {
@@ -219,6 +293,22 @@ const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props: Field
 };
 
 export default Field;
+
+
+// The FieldSection allows fields on the detail page to be subdivided into sections
+export const FieldSectionsContext = React.createContext<Array<{ id: string, label: React.ReactNode }>>([]);
+export const FieldSection: React.FunctionComponent<{ label: string, children: React.ReactNode }> = ({ label, children }) => {
+  const context = useContext(FieldSectionsContext);
+
+  const sectionId = label;
+  const newContextValue = useMemo(() => [...context, { id: sectionId, label }], [context, sectionId, label]);
+
+  return (
+    <FieldSectionsContext.Provider value={newContextValue}>
+      {children}
+    </FieldSectionsContext.Provider>
+  );
+};
 
 
 type NullableWrapperProps<State = BaseFieldState, FieldName = BaseFieldName> = {

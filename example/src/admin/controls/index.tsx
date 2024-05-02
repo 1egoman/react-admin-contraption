@@ -4,6 +4,7 @@ import { useAdminContext } from '../admin-context';
 import AppBar from './AppBar';
 import Button, { IconButton, NavigationButton } from './Button';
 import Checkbox from './Checkbox';
+import FieldSet from './FieldSet';
 import Modal from './Modal';
 import Popover from './Popover';
 import Radiobutton from './Radiobutton';
@@ -19,6 +20,7 @@ const baseControls = {
   IconButton,
   NavigationButton,
   Checkbox,
+  FieldSet,
   Modal,
   Popover,
   Radiobutton,

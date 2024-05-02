@@ -65,8 +65,84 @@ export const DetailFieldItem = <Item = BaseItem, FieldName = BaseFieldName, Stat
   }
 };
 
+type DetailFieldsLayoutProps<Item = BaseItem, FieldName = BaseFieldName, State = BaseFieldState> = {
+  item: Item | null;
+  fields: FieldCollection<FieldMetadata<Item, FieldName>>;
+  fieldStatesData: Map<FieldName, BaseFieldState>;
+  setFieldStatesData: (fn: (old: Map<FieldName, BaseFieldState>) => Map<FieldName, BaseFieldState>) => void;
 
+  currentLayout: FieldCollection<FieldMetadata<Item, FieldName>>["layout"];
 
+  renderFieldItem: (params: {
+    item: Item | null,
+    field: FieldMetadata<Item, FieldName, State>,
+    fieldState: State,
+    onUpdateFieldState: (newState: State) => void,
+  }) => React.ReactNode;
+};
+
+const DetailFieldsLayout = <
+  Item = BaseItem,
+  FieldName = BaseFieldName,
+  State = BaseFieldState,
+>(props: DetailFieldsLayoutProps<Item, FieldName, State>) => {
+  const Controls = useControls();
+  return (
+    <Fragment>
+      {props.currentLayout.map(layout => {
+        switch (layout.type) {
+          case "field": {
+            const field = props.fields.metadata.find(field => field.name === layout.name);
+            if (!field) {
+              return null;
+            }
+
+            const fieldState = props.fieldStatesData.get(field.name);
+            if (typeof fieldState === 'undefined') {
+              return null;
+            }
+
+            return (
+              <Fragment key={`field,${field.name}`}>
+                {props.renderFieldItem({
+                  item: props.item,
+                  field,
+                  fieldState,
+                  onUpdateFieldState: (newFieldState) => {
+                    props.setFieldStatesData(old => {
+                      const newFieldStates = new Map(old);
+                      newFieldStates.set(field.name, newFieldState);
+                      return newFieldStates;
+                    });
+                  },
+                })}
+              </Fragment>
+            );
+          }
+          case "section": {
+            return (
+              <Controls.FieldSet
+                key={`section,${layout.id}`}
+                label={layout.label}
+              >
+                <div className={styles.detailFieldsLayoutInner}>
+                  <DetailFieldsLayout
+                    item={props.item}
+                    fields={props.fields}
+                    fieldStatesData={props.fieldStatesData}
+                    setFieldStatesData={props.setFieldStatesData}
+                    currentLayout={layout.contents}
+                    renderFieldItem={props.renderFieldItem}
+                  />
+                </div>
+              </Controls.FieldSet>
+            );
+          }
+        }
+      })}
+    </Fragment>
+  );
+};
 
 
 
@@ -75,12 +151,7 @@ type DetailFieldsProps<Item = BaseItem, FieldName = BaseFieldName, State = BaseF
     detailDataContextData: DataContextDetail<Item>;
     children: React.ReactNode;
   }) => React.ReactNode;
-  renderFieldItem?: (params: {
-    item: Item | null,
-    field: FieldMetadata<Item, FieldName, State>,
-    fieldState: State,
-    onUpdateFieldState: (newState: State) => void,
-  }) => React.ReactNode;
+  renderFieldItem?: DetailFieldsLayoutProps<Item, FieldName, State>['renderFieldItem'];
   children?: React.ReactNode;
 };
 
@@ -194,45 +265,22 @@ const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
 
   let detailFieldsChildren: React.ReactNode = null;
   if (detailDataContextData.isCreating) {
-    detailFieldsChildren = (
-      <Fragment>
-        {fields.names.map(fieldName => {
-          if (fieldStates.status !== 'COMPLETE') {
-            return null;
-          }
-
-          const field = fields.metadata.find(field => field.name === fieldName);
-          if (!field) {
-            return null;
-          }
-
-          const fieldState = fieldStates.data.get(field.name);
-          if (typeof fieldState === 'undefined') {
-            return null;
-          }
-
-          return (
-            <Fragment key={field.name as string}>
-              {renderFieldItem({
-                item: null,
-                field,
-                fieldState,
-                onUpdateFieldState: (newFieldState) => {
-                  setFieldStates(old => {
-                    if (old.status !== 'COMPLETE') {
-                      return old;
-                    }
-                    const newFieldStates = new Map(old.data);
-                    newFieldStates.set(field.name, newFieldState);
-                    return { status: 'COMPLETE', data: newFieldStates };
-                  });
-                },
-              })}
-            </Fragment>
-          );
-        })}
-      </Fragment>
-    );
+    detailFieldsChildren = fieldStates.status === "COMPLETE" ? (
+      <DetailFieldsLayout
+        fields={fields}
+        fieldStatesData={fieldStates.data}
+        setFieldStatesData={(fn) => {
+          setFieldStates(old => {
+            if (old.status !== 'COMPLETE') {
+              return old;
+            }
+            return { status: 'COMPLETE', data: fn(old.data) };
+          });
+        }}
+        currentLayout={fields.layout}
+        renderFieldItem={renderFieldItem}
+      />
+    ) : "Loading fields...";
   } else {
     switch (detailDataContextData.detailData.status) {
       case 'IDLE':
@@ -269,50 +317,23 @@ const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
             );
             break;
           case "COMPLETE":
-            detailFieldsChildren = (
-              <Fragment>
-                {fields.names.map(fieldName => {
-                  const field = fields.metadata.find(field => field.name === fieldName);
-                  if (!field) {
-                    return null;
-                  }
-
-                  const fieldState = fieldStates.data.get(field.name);
-                  if (typeof fieldState === 'undefined') {
-                    return null;
-                  }
-
-                  return (
-                    <div
-                      key={field.name as string}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'row',
-                        gap: 8,
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        width: '100%',
-                    }}>
-                      {renderFieldItem({
-                        item,
-                        field,
-                        fieldState,
-                        onUpdateFieldState: (newFieldState) => {
-                          setFieldStates(old => {
-                            if (old.status !== 'COMPLETE') {
-                              return old;
-                            }
-                            const newFieldStates = new Map(old.data);
-                            newFieldStates.set(field.name, newFieldState);
-                            return { status: 'COMPLETE', data: newFieldStates };
-                          });
-                        },
-                      })}
-                    </div>
-                  );
-                })}
-              </Fragment>
-            );
+            detailFieldsChildren = fieldStates.status === "COMPLETE" ? (
+              <DetailFieldsLayout
+                item={item}
+                fields={fields}
+                fieldStatesData={fieldStates.data}
+                setFieldStatesData={(fn) => {
+                  setFieldStates(old => {
+                    if (old.status !== 'COMPLETE') {
+                      return old;
+                    }
+                    return { status: 'COMPLETE', data: fn(old.data) };
+                  });
+                }}
+                currentLayout={fields.layout}
+                renderFieldItem={renderFieldItem}
+              />
+            ) : "Loading fields...";
             break;
         }
         break;
