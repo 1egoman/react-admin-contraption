@@ -7,14 +7,14 @@ import styles from '../styles.module.css';
 
 type ListActionBarProps<Item = BaseItem, CanSelectAllAcrossPages = false> = {
   canSelectAllAcrossPages?: CanSelectAllAcrossPages;
-  children: (
+  children?: (
     items: CanSelectAllAcrossPages extends true ? (Array<Item> | typeof ALL_ITEMS) : Array<Item>,
   ) => React.ReactNode;
 };
 
 const ListActionBar = <Item = BaseItem, CanSelectAllAcrossPages = false>({
   canSelectAllAcrossPages = false,
-  children,
+  children = (() => null),
 }: ListActionBarProps<Item, CanSelectAllAcrossPages>) => {
   const listDataContextData = useListDataContext<Item>('ListActionBar');
 
