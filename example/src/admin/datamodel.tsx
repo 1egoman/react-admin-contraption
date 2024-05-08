@@ -1,5 +1,6 @@
 import * as React from 'react';
 import {
+  Fragment,
   useMemo,
   useState,
   useEffect,
@@ -17,6 +18,7 @@ import {
 
 import Navigatable from "./navigatable";
 import { FieldMetadata, FieldCollection, FieldsProvider, EMPTY_FIELD_COLLECTION } from './fields';
+import { RemoteFields } from '.';
 
 // A DataModel defines a type of data that will be shown in the admin interface.
 //
@@ -55,7 +57,44 @@ export const DataModelsContext = React.createContext<[
   Map<string, DataModel>,
   (updateFn: (oldDataModels: Map<string, DataModel>) => Map<string, DataModel>) => void,
 ] | null>(null);
-export const DataModels: React.FunctionComponent<{ children: React.ReactNode }> = ({ children }) => {
+
+export const RemoteDataModelsContext = React.createContext<RemoteDataModelDefinition | null>(null);
+
+export type RemoteDataModelDefinitionColumn = (
+  | { type: 'primaryKey' }
+  | { type: 'text', nullable?: boolean }
+  | { type: 'number', nullable?: boolean }
+  | { type: 'boolean', nullable?: boolean }
+  | { type: 'json' }
+  | { type: 'datetime', nullable?: boolean }
+  | { type: 'singleForeignKey', to: string, nullable?: boolean }
+  | { type: 'multiForeignKey', to: string }
+) & { singularDisplayName: string; pluralDisplayName: string };
+
+export type RemoteDataModelDefinition = {
+  fetchPageOfData: (dataModelName: string) => DataModel["fetchPageOfData"];
+  fetchItem: (dataModelName: string) => DataModel["fetchItem"];
+  createItem?: (dataModelName: string) => NonNullable<DataModel["createItem"]>;
+  updateItem?: (dataModelName: string) => NonNullable<DataModel["updateItem"]>;
+  deleteItem?: (dataModelName: string) => NonNullable<DataModel["deleteItem"]>;
+
+  listLink: (dataModelName: string) => Navigatable;
+  detailLinkGenerator: (dataModelName: string, item: any) => Navigatable; // TODO
+  createLink: (dataModelName: string) => Navigatable;
+
+  definitions: {
+    [dataModelName: string]: {
+      singularDisplayName: DataModel['singularDisplayName'];
+      pluralDisplayName: DataModel['pluralDisplayName'];
+      columns: { [fieldName: string]: RemoteDataModelDefinitionColumn };
+    };
+  };
+};
+
+export const DataModels: React.FunctionComponent<{
+  fetchRemoteDataModels?: () => Promise<RemoteDataModelDefinition>;
+  children: React.ReactNode;
+}> = ({ fetchRemoteDataModels, children }) => {
   const [models, setModels] = useState<Map<string, DataModel>>(new Map());
   const modelsContextData = useMemo(() => [
     models,
@@ -65,9 +104,40 @@ export const DataModels: React.FunctionComponent<{ children: React.ReactNode }> 
     (updateFn: (oldDataModels: Map<string, DataModel>) => Map<string, DataModel>) => void,
   ], [models, setModels]);
 
+  // Remote data models allow a server to define data models that can be used in app to avoid
+  // keeping full model definitions in app.
+  const [remoteDataModels, setRemoteDataModels] = useState<
+    | { status: 'IDLE' }
+    | { status: 'LOADING' }
+    | { status: 'COMPLETE', data: RemoteDataModelDefinition }
+    | { status: 'ERROR', error: any }
+  >({ status: 'IDLE' })
+  useEffect(() => {
+    if (!fetchRemoteDataModels) {
+      return;
+    }
+
+    setRemoteDataModels({ status: 'LOADING' });
+    fetchRemoteDataModels().then(remoteDataModels => {
+      setRemoteDataModels({ status: 'COMPLETE', data: remoteDataModels });
+    }).catch(error => {
+      setRemoteDataModels({ status: 'ERROR', error });
+    });
+  }, [fetchRemoteDataModels]);
+
+  const remoteDataModelsContextData = useMemo(() => {
+    if (remoteDataModels.status !== "COMPLETE") {
+      return null;
+    }
+
+    return remoteDataModels.data;
+  }, [remoteDataModels])
+
   return (
     <DataModelsContext.Provider value={modelsContextData}>
-      {children}
+      <RemoteDataModelsContext.Provider value={remoteDataModelsContextData}>
+        {children}
+      </RemoteDataModelsContext.Provider>
     </DataModelsContext.Provider>
   );
 };
@@ -174,5 +244,61 @@ export const DataModel = <Item = BaseItem>(props: DataModelProps<Item>) => {
     <FieldsProvider onChangeFields={onChangeFields}>
       {props.children}
     </FieldsProvider>
+  );
+};
+
+// Extracts data from any remote data models defined serverside constructs `DataModel` definitions
+// out of them. Use `include` or `exclude` to pick which should be kept - you may want to make a
+// custom implementation for one locally, etc
+export const RemoteDataModels: React.FunctionComponent<{
+  include?: Array<string>,
+  exclude?: Array<string>,
+}> = ({ include, exclude }) => {
+  const remoteDataModels = useContext(RemoteDataModelsContext);
+  if (!remoteDataModels) {
+    // FIXME: maybe throw an error here instead of failing silently if the context is empty?
+    return null;
+  }
+
+  return (
+    <Fragment>
+      {Object.entries(remoteDataModels.definitions).map(([name, remoteFields]) => {
+        if (exclude && exclude.includes(name)) {
+          return null;
+        }
+        if (include && !include.includes(name)) {
+          return null;
+        }
+
+        const primaryKeyResult = Object.entries(remoteFields.columns).find(([_key, field]) => field.type === "primaryKey")
+        if (!primaryKeyResult) {
+          return null;
+        }
+        const primaryKeyName = primaryKeyResult[0];
+
+        return (
+          <DataModel<any>
+            key={name}
+            name={name}
+            singularDisplayName={remoteFields.singularDisplayName}
+            pluralDisplayName={remoteFields.pluralDisplayName}
+
+            fetchPageOfData={remoteDataModels.fetchPageOfData(name)}
+            fetchItem={remoteDataModels.fetchItem(name)}
+            createItem={remoteDataModels.createItem ? remoteDataModels.createItem(name) : undefined}
+            updateItem={remoteDataModels.updateItem ? remoteDataModels.updateItem(name) : undefined}
+            deleteItem={remoteDataModels.deleteItem ? remoteDataModels.deleteItem(name) : undefined}
+
+            listLink={remoteDataModels.listLink(name)}
+
+            keyGenerator={item => item[primaryKeyName]}
+            detailLinkGenerator={item => remoteDataModels.detailLinkGenerator(name, item[primaryKeyName])}
+            createLink={remoteDataModels.createLink(name)}
+          >
+            <RemoteFields name={name} />
+          </DataModel>
+        );
+      })}
+    </Fragment>
   );
 };
