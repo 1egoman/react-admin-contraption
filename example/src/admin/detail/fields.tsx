@@ -201,6 +201,7 @@ const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
     | { status: "ERROR", error: any }
   >({ status: "IDLE" });
   const fieldStatesRequestInProgress = useRef(false);
+  const [fieldStatesRetryCounter, setFieldStatesRetryCounter] = useState(0);
   useEffect(() => {
     if (fieldStatesRequestInProgress.current) {
       return;
@@ -245,6 +246,12 @@ const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
       setFieldStates({ status: "COMPLETE", data: new Map(filteredFieldStatesPairs) });
       fieldStatesRequestInProgress.current = false;
     }).catch(error => {
+      if (error.name === 'AbortError') {
+        fieldStatesRequestInProgress.current = false;
+        setFieldStatesRetryCounter(n => n + 1);
+        return;
+      }
+
       removeInFlightAbortController(abortController);
       console.error('Error loading field state:', error);
       setFieldStates({ status: "ERROR", error });
@@ -252,6 +259,7 @@ const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
       console.error('Waiting 3000ms before retrying...');
       setTimeout(() => {
         fieldStatesRequestInProgress.current = false;
+        setFieldStatesRetryCounter(n => n + 1);
       }, 3000);
     });
 
@@ -261,7 +269,7 @@ const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
       abortController.abort();
       removeInFlightAbortController(abortController);
     };
-  }, [detailDataContextData.detailData, fields]);
+  }, [detailDataContextData.detailData, fields, fieldStatesRetryCounter]);
 
   let detailFieldsChildren: React.ReactNode = null;
   if (detailDataContextData.isCreating) {
