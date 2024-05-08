@@ -17,6 +17,7 @@ import {
 } from '@/admin';
 import JSONField from '@/admin/fields/JSONField';
 import { Filter, Sort } from '@/admin/types';
+import { RemoteDataModelDefinition, RemoteDataModels } from '@/admin/datamodel';
 
 
 export type User = {
@@ -296,10 +297,68 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
     };
   }, []);
 
+  // This function would make a request to the server and get `definitions`, plus then inject all
+  // this extra context about how one could query the server to get information about the given datamodels
+  //
+  // This would be what that "bread specific custom adapter" thing would do:
+  const fetchRemoteDataModels = useCallback(async (): Promise<RemoteDataModelDefinition> => {
+    return {
+      fetchPageOfData: (dataModelName) => {
+        // A mock implementation of `fetchPageOfData` for `dataModelName`
+        // This should actually call out to some dynamic query endpoint thing that can service this
+        // request, do the filters / search / sort, etc
+        return async (page, filters, /* ... */) => ({
+          nextPageAvailable: false,
+          totalCount: 0,
+          data: [{id: 1, textcolumn: 'foo', foreign: '1'}],
+        });
+      },
+      fetchItem: (dataModelName) => {
+        // A mock implementation of `fetchItem` for `dataModelName`
+        // This should actually call out to some dynamic query endpoint thing that can service this
+        // request, do the filters / search / sort, etc
+        return async (key) => ({ id: key, textcolumn: 'foo', foreign: '1' });
+      },
+      // createItem
+      // updateItem
+      // deleteItem
+
+      listLink: (dataModelName) => ({ type: 'next-link', href: `/admin/filteroff/${dataModelName}` }),
+      detailLinkGenerator: (dataModelName, key) => ({ type: 'next-link', href: `/admin/filteroff/${dataModelName}/${key}` }),
+      createLink: dataModelName => ({ type: 'next-link', href: `/admin/filteroff/${dataModelName}/new` }),
+
+      // Somehow generate this from the prisma schema file serverside...
+      definitions: {
+        dynamicmodel: {
+          columns: {
+            id: { type: 'primaryKey', singularDisplayName: 'id', pluralDisplayName: 'ids' },
+            textcolumn: { type: 'text', singularDisplayName: 'text column', pluralDisplayName: 'text columns' },
+            foreign: { type: 'singleForeignKey', to: 'user', singularDisplayName: 'foreign', pluralDisplayName: 'foreign' },
+          },
+        },
+        dynamicmodel2: {
+          columns: {
+            id: { type: 'primaryKey', singularDisplayName: 'id', pluralDisplayName: 'id' },
+            textcolumn: { type: 'text', singularDisplayName: 'text column', pluralDisplayName: 'text columns' },
+          },
+        },
+      },
+    };
+  }, []);
+
   return (
     <div style={{ fontFamily: 'Roboto Mono, menlo, monospace' }}>
       <AdminContextProvider stateCache={stateCache} nextRouter={useRouter()}>
-        <DataModels>
+        <DataModels fetchRemoteDataModels={fetchRemoteDataModels}> {/* <-- fetchRemoteDataModels is passed in here */}
+
+          {/* Finally, a new built in component: This will render custom server generated data models: */}
+          <RemoteDataModels />
+          {/* You could also do this, to exclude certain server generated ones so you can implement your own: */}
+          {/* <RemoteDataModels exclude={["dynamicmodel2"]} /> */}
+          {/* Or the allowlist version */}
+          {/* <RemoteDataModels include={["dynamicmodel"]} /> */}
+
+          {/* Data model that is a fully custom implementation: */}
           <UserDataModel />
 
           {children}
