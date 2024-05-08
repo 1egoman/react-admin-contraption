@@ -236,6 +236,102 @@ Then, wrap all subsequent pages in this component.
 
 In a next.js app, there's probably a more elegant way to do this. If so, do that instead.
 
+#### Remote Data Models
+It's likely you won't want to write out custom `<DataModel />` definitions for all data models in
+the app. Instead, you can let the server drive data models by taking advantage of "remote data
+models". Here is an example:
+
+```typescript
+// This function would make a request to the server and get `definitions`, plus then inject all
+// this extra context about how one could query the server to get information about the given datamodels
+//
+// In the near term, this would probably be some sort of "bread specific custom adapter" to work
+// with the bread starter stuff. In the longer term, this could potentially be a set of adapters
+// for different stacks if the goal was to make this project more generic.
+const fetchRemoteDataModels = useCallback(async (): Promise<RemoteDataModelDefinition> => {
+  return {
+    fetchPageOfData: (dataModelName) => {
+      // A mock implementation of `fetchPageOfData` for `dataModelName`
+      // This should actually call out to some dynamic query endpoint thing that can service this
+      // request, do the filters / search / sort, etc
+      return async (page, filters, /* ... */) => ({
+        nextPageAvailable: false,
+        totalCount: 0,
+        data: [{id: 1, textcolumn: 'foo', foreign: '1'}],
+      });
+    },
+    fetchItem: (dataModelName) => {
+      // A mock implementation of `fetchItem` for `dataModelName`
+      // This should actually call out to some dynamic query endpoint thing that can service this
+      // request, do the filters / search / sort, etc
+      return async (key) => ({ id: key, textcolumn: 'foo', foreign: '1' });
+    },
+    // Similar to the above, these can also be optionally defined here:
+    // createItem
+    // updateItem
+    // deleteItem
+
+    listLink: (dataModelName) => ({ type: 'next-link', href: `/admin/filteroff/${dataModelName}` }),
+    detailLinkGenerator: (dataModelName, key) => ({ type: 'next-link', href: `/admin/filteroff/${dataModelName}/${key}` }),
+    createLink: dataModelName => ({ type: 'next-link', href: `/admin/filteroff/${dataModelName}/new` }),
+
+    // Somehow generate this from the prisma schema file serverside...
+    definitions: {
+      dynamicmodel: {
+        singularDisplayName: "dynamic model",
+        pluralDisplayName: "dynamic models",
+        columns: {
+          id: { type: 'primaryKey', singularDisplayName: "id", pluralDisplayName: "ids", nullable: false },
+          textcolumn: { type: "text", singularDisplayName: "id", pluralDisplayName: "ids", nullable: false},
+          foreign: { type: "singleForeignKey", to: "user", singularDisplayName: "id", pluralDisplayName: "ids", nullable: false },
+        },
+      },
+      dynamicmodel2: {
+        singularDisplayName: "dynamic model",
+        pluralDisplayName: "dynamic models",
+        columns: {
+          id: { type: 'primaryKey', singularDisplayName: "id", pluralDisplayName: "ids", nullable: false },
+          textcolumn: { type: "text", singularDisplayName: "id", pluralDisplayName: "ids", nullable: false},
+        },
+      },
+    },
+  };
+}, []);
+
+// Then, later on, in something like that `CustomWrapperComponentToBringInDataModels` component I mentioned above:
+<AdminContextProvider>
+  <DataModels fetchRemoteDataModels={fetchRemoteDataModels}> {/* <-- fetchRemoteDataModels is passed in here */}
+
+    {/* Finally, a new built in component: This will render custom server generated data models: */}
+    <RemoteDataModels />
+    {/* You could also do this, to exclude certain server generated ones so you can implement your own: */}
+    {/* <RemoteDataModels exclude={["dynamicmodel2"]} /> */}
+    {/* Or the allowlist version */}
+    {/* <RemoteDataModels include={["dynamicmodel"]} /> */}
+
+    {/* Or, it's also possible to define a data model, but rely on fields from the server: */}
+    <DataModel
+      // ... props here, see above for what these would be ...
+    >
+      {/* Include all fields associated with `dynamicmodel`: */}
+      <RemoteFields name="dynamicmodel" />
+
+      {/* Include all but a single field associated with `dynamicmodel`: */}
+      {/* <RemoteFields name="dynamicmodel" excludes={["foreign"]} /> */}
+
+      {/* Include a single field associated with `dynamicmodel`: */}
+      {/* <RemoteFields name="dynamicmodel" includes={["textcolumn"]} /> */}
+    </DataModel>
+
+    {/* Data model that is a fully custom implementation - this component is custom and */}
+    {/* renders a <DataModel></DataModel> inside: */}
+    <UserDataModel />
+
+    {children}
+  </DataModels>
+</AdminContextProvider>
+```
+
 ## List Page
 The list page shows a read only list of all datamodels that are fetched from a server and allows a user to
 filter, sort, and perform actions on them.
@@ -368,5 +464,42 @@ the below from a component defined as that file's default export:
     <DetailFields />
   </Detail>
 </CustomWrapperComponentToBringInDataModels>
+}
+```
+
+## Autorendering List / Detail Pages
+It's likely that if you are taking advantage of remote data models, you wouldn't want to have to
+scaffold out a list and detail page for each remote data model, given there is no way to know for
+sure which models the server will return.
+
+Luckily, there is a "fallback" available - create a file like `src/pages/admin/[...path].tsx` and
+put this inside:
+```typescript
+import { useRouter } from 'next/router';
+import { ListDetailRenderer } from '@/admin';
+import CustomWrapperComponentToBringInDataModels from '...';
+
+export default function Page() {
+  const router = useRouter();
+  const path = router.query.path ? router.query.path as Array<string> : null;
+  if (!path) {
+    return null;
+  }
+
+  return (
+    <CustomWrapperComponentToBringInDataModels>
+
+      {/* This component will render fallback default versions of list and detail pages */}
+      {/* for any models which don't have a pre-existing set of pages defined. */}
+      <ListDetailRenderer
+        basePath="/admin"
+        name={path[0]}
+        view={path.length > 1 ? 'detail' : 'list'}
+        itemKey={path[1] === 'new' ? undefined : path[1]}
+      />
+      {/* ^ Note that as of early may 2024, this component doesn't generate filters properly */}
+
+    </CustomWrapperComponentToBringInDataModels>
+  );
 }
 ```
