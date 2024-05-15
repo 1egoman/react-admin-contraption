@@ -20,6 +20,19 @@ import ListCSVExport from '../csv-export';
 import ListColumnSetSelector from './column-sets';
 import ManuallyStickyTHead from '../utils/ManuallyStickyTHead';
 
+export type ListTableItemProps<Item, FieldName> = {
+  item: Item,
+  visibleFieldNames: Array<FieldName>;
+  fields: FieldCollection<FieldMetadata<Item, FieldName>>,
+
+  detailLink?: Navigatable,
+
+  checkable: boolean,
+  checkType: 'checkbox' | 'radio',
+  checked: boolean,
+  checkboxDisabled: boolean,
+  onChangeChecked: (checked: boolean, shiftKey?: boolean) => void,
+};
 
 export const ListTableItem = <Item = BaseItem, FieldName = BaseFieldName>({
   item,
@@ -30,7 +43,7 @@ export const ListTableItem = <Item = BaseItem, FieldName = BaseFieldName>({
   checkType,
   checked,
   onChangeChecked,
-}: Parameters<ListTableProps<Item, FieldName>['renderTableItem']>[0]) => {
+}: ListTableItemProps<Item, FieldName>) => {
   const Controls = useControls();
   return (
     <tr>
@@ -123,19 +136,7 @@ type ListTableProps<Item, FieldName> = {
     childrenContainsItems: boolean;
     children: React.ReactNode;
   }) => React.ReactNode;
-  renderTableItem?: (params: {
-    item: Item,
-    visibleFieldNames: Array<FieldName>;
-    fields: FieldCollection<FieldMetadata<Item, FieldName>>,
-
-    detailLink?: Navigatable,
-
-    checkable: boolean,
-    checkType: 'checkbox' | 'radio',
-    checked: boolean,
-    checkboxDisabled: boolean,
-    onChangeChecked: (checked: boolean, shiftKey?: boolean) => void,
-  }) => React.ReactNode;
+  renderTableItem?: (params: ListTableItemProps<Item, FieldName>) => React.ReactNode;
   children?: React.ReactNode;
 };
 
@@ -329,7 +330,7 @@ const ListTable = <Item = BaseItem, FieldName = BaseFieldName>({
   children,
 }: ListTableProps<Item, FieldName>) => {
   // First, get the list context data
-  const listDataContextData = useListDataContext<Item>('ListTable');
+  const listDataContextData = useListDataContext<Item, FieldName>('ListTable');
 
   // Then get the data model context data
   const dataModelsContextData = useContext(DataModelsContext);
@@ -416,7 +417,7 @@ const ListTable = <Item = BaseItem, FieldName = BaseFieldName>({
                         let previousItemIndex = index;
                         for (let i = index-1; i >= 0; i -= 1) {
                           previousItemIndex = i;
-                          previousItem = listDataContextData.listData.data[i];
+                          previousItem = listDataContextData.listData.data[i]!;
 
                           const previousItemChecked = listDataContextData.checkedItemKeys.includes(listDataContextData.keyGenerator(previousItem));
                           if (previousItemChecked === checked) {
@@ -428,7 +429,7 @@ const ListTable = <Item = BaseItem, FieldName = BaseFieldName>({
                         // Set the checked value for the items in the check range
                         let newCheckedItemKeys = listDataContextData.checkedItemKeys.slice();
                         for (let i = previousItemIndex+1; i <= index; i += 1) {
-                          const key = listDataContextData.keyGenerator(listDataContextData.listData.data[i]);
+                          const key = listDataContextData.keyGenerator(listDataContextData.listData.data[i]!);
                           if (checked) {
                             newCheckedItemKeys = [ ...newCheckedItemKeys, key ];
                           } else {

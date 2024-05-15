@@ -41,13 +41,12 @@ const FilterDefinition = <State extends JSONValue = JSONValue>(props: FilterMeta
       deserialize: props.deserialize,
       children: props.children,
     };
-    setFilterMetadata(old => [
-      ...old,
-      filterMetadata as (typeof old)[0], // FIXME: the generics make this complex, maybe more complex than it should be
-    ]);
+
+    const castedFilterMetadata = (filterMetadata as unknown) as FilterMetadata<JSONValue>;
+    setFilterMetadata(old => [ ...old, castedFilterMetadata ]);
 
     return () => {
-      setFilterMetadata(old => old.filter(f => f !== filterMetadata));
+      setFilterMetadata(old => old.filter(f => f !== castedFilterMetadata));
     };
   }, [
     props.name,

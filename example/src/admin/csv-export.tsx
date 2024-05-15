@@ -14,7 +14,7 @@ import { useControls } from "./controls";
 function reorder<T>(list: Array<T>, startIndex: number, endIndex: number): Array<T> {
   const result = Array.from(list);
   const [removed] = result.splice(startIndex, 1);
-  result.splice(endIndex, 0, removed);
+  result.splice(endIndex, 0, removed!);
 
   return result;
 }
@@ -30,7 +30,7 @@ type CSVExportPreviewTableProps<Item = BaseItem, FieldName = BaseFieldName> = Pi
 > & {
   shouldIncludeRowInPreview: (item: Item) => boolean;
   columnNamesInOrder: Array<FieldName>;
-  onChangeColumnNamesInOrder: (newNamesInOrder: Array<FieldName>) => void;
+  onChangeColumnNamesInOrder: (newNamesInOrderFn: Array<FieldName> | ((old: Array<FieldName>) => Array<FieldName>)) => void;
   disabled?: boolean;
 };
 
@@ -39,10 +39,12 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
 
   const fieldOptions = useMemo(() => {
     return props.fields.metadata.map(metadata => ({
-      value: metadata.name,
+      value: metadata.name as string,
       label: metadata.csvExportColumnName || metadata.singularDisplayName,
     }));
   }, [props.fields, props.columnNamesInOrder]);
+
+  const fieldNames = useMemo(() => props.fields.names as Array<FieldName>, [props.fields]);
 
   const onDragEnd = useCallback((result: DropResult) => {
     if (result.destination === null) {
@@ -183,16 +185,16 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
                   actions={
                     <div className={styles.csvExportPreviewTableAddButton}>
                       <Controls.IconButton
-                        disabled={props.fields.names.length === props.columnNamesInOrder.length}
+                        disabled={fieldNames.length === props.columnNamesInOrder.length}
                         onClick={() => {
-                          const nextUnSpecifiedColumnName = props.fields.names.find(n => !props.columnNamesInOrder.includes(n));
+                          const nextUnSpecifiedColumnName = fieldNames.find(n => !props.columnNamesInOrder.includes(n));
                           if (!nextUnSpecifiedColumnName) {
                             return;
                           }
 
                           props.onChangeColumnNamesInOrder(columnNames => [
                             ...columnNames,
-                            nextUnSpecifiedColumnName,
+                            nextUnSpecifiedColumnName as FieldName,
                           ]);
                         }}
                         size="small"
@@ -211,7 +213,7 @@ const CSVExportPreviewTable = <Item = BaseItem, FieldName = BaseFieldName>(props
 
 type ListCSVExportProps<Item = BaseItem, FieldName = BaseFieldName> = {
   pluralDisplayName: string;
-  fields: FieldCollection<FieldMetadata<Item>>;
+  fields: FieldCollection<FieldMetadata<Item, FieldName>>;
 
   listData: ListData<Item>;
   fetchListDataFromServer: (signal: AbortSignal) => Promise<Array<Item>>;
@@ -229,10 +231,14 @@ const ListCSVExport = <Item = BaseItem, FieldName = BaseFieldName>(props: ListCS
 
   const [ addInFlightAbortController, removeInFlightAbortController ] = useInFlightAbortControllers();
 
-  const [columnNamesInOrder, setColumnNamesInOrder] = useState(props.fields.names);
+  // FIXME: the types don't seem to properly make this Array<FieldName>, it makes it Array<string>
+  // instead. Figure out why this is, but in the meantime, just mahually cast it:
+  const fieldNames = useMemo(() => props.fields.names as Array<FieldName>, [props.fields]);
+
+  const [columnNamesInOrder, setColumnNamesInOrder] = useState(fieldNames);
   useEffect(() => {
-    setColumnNamesInOrder(props.fields.names);
-  }, [props.fields.names])
+    setColumnNamesInOrder(fieldNames);
+  }, [fieldNames])
 
   const shouldIncludeRowInPreview = useCallback((item: Item) => {
     // If there are checked items and the item isn't checked, then skip it
@@ -349,8 +355,8 @@ const ListCSVExport = <Item = BaseItem, FieldName = BaseFieldName>(props: ListCS
           <div className={styles.listCSVExportBody}>
             <div className={styles.listCSVExportBodySidebar}>
               <span
-                style={{ cursor: 'pointer', backgroundColor: listsPairWiseMatch(columnNamesInOrder, props.fields.names) ? 'var(--gray-5)' : undefined }}
-                onClick={() => setColumnNamesInOrder(props.fields.names)}
+                style={{ cursor: 'pointer', backgroundColor: listsPairWiseMatch(columnNamesInOrder, fieldNames) ? 'var(--gray-5)' : undefined }}
+                onClick={() => setColumnNamesInOrder(fieldNames)}
               >all</span>
 
               {props.columnSets ? (

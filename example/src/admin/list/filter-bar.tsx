@@ -61,7 +61,7 @@ export const ListFilterBar = <Item = BaseItem>({
 
     for (const entry of filterMetadata) {
       if (entry.name.length === 0) {
-        throw new Error('<FilterDefinition /> name prop must be at least 1 string long!');
+        throw new Error('<FilterDefinition /> name prop must not be empty!');
       }
 
       let lastPointer = hierarchy;
@@ -83,7 +83,7 @@ export const ListFilterBar = <Item = BaseItem>({
         pointer = nextPointer;
       }
 
-      lastPointer.set(entry.name.at(-1), true);
+      lastPointer.set(entry.name.at(-1)!, true);
     }
 
     return hierarchy;
@@ -152,7 +152,7 @@ export const ListFilterBar = <Item = BaseItem>({
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 128 }}>
                         {listDataContextData.filters.map((filter, filterIndex) => {
                           const getPeerOptionsForFilterPath = (path: Array<string>) => {
-                            let pointer: typeof filterMetadataNameHierarchy | true = filterMetadataNameHierarchy;
+                            let pointer: typeof filterMetadataNameHierarchy | true | undefined = filterMetadataNameHierarchy;
                             let lastPointer = pointer;
 
                             for (const entry of path) {
@@ -258,12 +258,12 @@ export const ListFilterBar = <Item = BaseItem>({
                                     listDataContextData.onChangeFilters(
                                       listDataContextData.filters.map((f, i) => {
                                         if (i === filterIndex) {
-                                          const isValid = metadata.onIsValid(f.workingState);
+                                          const isValid = metadata!.onIsValid(f.workingState);
                                           return {
                                             ...f,
                                             state: f.workingState,
                                             isValid,
-                                            isComplete: isValid && metadata.onIsComplete(f.workingState),
+                                            isComplete: isValid && metadata!.onIsComplete(f.workingState),
                                           };
                                         } else {
                                           return f;

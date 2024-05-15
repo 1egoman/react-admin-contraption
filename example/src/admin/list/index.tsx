@@ -27,7 +27,7 @@ export type DataContextList<Item = BaseItem, FieldName = BaseFieldName> = {
 
   listData: ListData<Item>;
   onLoadNextPage: () => Promise<void>;
-  fetchListDataFromServer: () => Promise<Array<Item>>;
+  fetchListDataFromServer: (signal: AbortSignal) => Promise<Array<Item>>;
 
   checkable: boolean;
   checkedItemKeys: CheckedItemKeys;
@@ -37,7 +37,7 @@ export type DataContextList<Item = BaseItem, FieldName = BaseFieldName> = {
   onChangeFilters: (newFilters: Array<Filter>) => void;
 
   sort: Sort | null;
-  onChangeSort: (newSort: Sort) => void;
+  onChangeSort: (newSort: Sort | null) => void;
 
   searchText: string;
   onChangeSearchText: (newSearchText: string) => void;

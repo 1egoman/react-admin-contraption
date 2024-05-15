@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { BaseItem, ALL_ITEMS } from "../types";
+import { BaseItem, ALL_ITEMS, FixMe } from "../types";
 import { useControls } from "../controls";
 import { useListDataContext } from "..";
 
@@ -13,7 +13,7 @@ type ListActionBarProps<Item = BaseItem, CanSelectAllAcrossPages = false> = {
 };
 
 const ListActionBar = <Item = BaseItem, CanSelectAllAcrossPages = false>({
-  canSelectAllAcrossPages = false,
+  canSelectAllAcrossPages = (false as FixMe),
   children = (() => null),
 }: ListActionBarProps<Item, CanSelectAllAcrossPages>) => {
   const listDataContextData = useListDataContext<Item>('ListActionBar');

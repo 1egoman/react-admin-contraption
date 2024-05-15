@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useContext } from "react";
 
-import { BaseItem } from "./types";
+import { BaseFieldName, BaseItem } from "./types";
 import { DataContextList } from "./list";
 import { DataContextDetail } from "./detail";
 
@@ -12,7 +12,7 @@ const DataContext = React.createContext<
   | null
 >(null);
 
-export const useListDataContext = <Item = BaseItem>(sourceComponentName?: string) => {
+export const useListDataContext = <Item = BaseItem, FieldName = BaseFieldName>(sourceComponentName?: string) => {
   const value = useContext(DataContext);
   if (value && value.type !== "list") {
     if (sourceComponentName) {
@@ -21,7 +21,7 @@ export const useListDataContext = <Item = BaseItem>(sourceComponentName?: string
       throw new Error(`Admin DataContext has type of '${value.type}', expected 'list'!`);
     }
   }
-  return value as any as DataContextList<Item>;
+  return (value as unknown) as DataContextList<Item, FieldName>;
 };
 export const useDetailDataContext = <Item = BaseItem>(sourceComponentName?: string) => {
   const value = useContext(DataContext);
@@ -32,7 +32,7 @@ export const useDetailDataContext = <Item = BaseItem>(sourceComponentName?: stri
       throw new Error(`Admin DataContext has type of '${value.type}', expected 'detail'!`);
     }
   }
-  return value as any as DataContextDetail<Item>;
+  return (value as unknown) as DataContextDetail<Item>;
 };
 
 export const DataContextProvider = <I = BaseItem>(

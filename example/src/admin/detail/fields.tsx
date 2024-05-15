@@ -529,6 +529,10 @@ const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
                 if (!detailDataContextData.deleteItem) {
                   return;
                 }
+                if (!detailDataContextData.itemKey) {
+                  // Deleting should not be allowed when creating a new item
+                  return;
+                }
                 if (!confirm('Are you sure?')) {
                   return;
                 }

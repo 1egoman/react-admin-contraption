@@ -179,8 +179,8 @@ export const DataModel = <Item = BaseItem>(props: DataModelProps<Item>) => {
       (updateFn: (old: DataModel<Item> | null) => DataModel<Item> | null) => {
         setDataModels(old => {
           const copy = new Map(old);
-          const dataModel = ((copy.get(props.name) as any) as DataModel<Item> | undefined)
-          const result = (updateFn(dataModel || null) as any) as DataModel;
+          const dataModel = ((copy.get(props.name) as unknown) as DataModel<Item> | undefined)
+          const result = (updateFn(dataModel || null) as unknown) as DataModel;
           if (result) {
             copy.set(props.name, result);
             return copy;
@@ -197,7 +197,6 @@ export const DataModel = <Item = BaseItem>(props: DataModelProps<Item>) => {
       const base: Omit<DataModel<Item>, "fields"> = {
         singularDisplayName: props.singularDisplayName,
         pluralDisplayName: props.pluralDisplayName,
-        csvExportColumnName: props.csvExportColumnName,
         fetchPageOfData: props.fetchPageOfData,
         fetchItem: props.fetchItem,
         createItem: props.createItem || null,
@@ -218,7 +217,6 @@ export const DataModel = <Item = BaseItem>(props: DataModelProps<Item>) => {
   }, [
     props.singularDisplayName,
     props.pluralDisplayName,
-    props.csvExportColumnName,
     props.fetchPageOfData,
     props.fetchItem,
     props.createItem,

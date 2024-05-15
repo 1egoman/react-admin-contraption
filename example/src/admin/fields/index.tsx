@@ -21,13 +21,13 @@ export const FieldsContext = React.createContext<[
   (fields: (old: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
 ] | null>(null);
 
-export const FieldsProvider = <Item = BaseItem>(props: {
+export const FieldsProvider = <Item = BaseItem, FieldName = BaseFieldName>(props: {
   dataModel?: DataModel<Item>,
-  onChangeFields: (newFields: FieldCollection<FieldMetadata<Item>>) => void,
+  onChangeFields: (newFields: FieldCollection<FieldMetadata<Item, FieldName>>) => void,
   children: React.ReactNode,
 }) => {
-  const [customFields, setCustomFields] = useState<FieldCollection<FieldMetadata<Item>>>(
-    EMPTY_FIELD_COLLECTION as FieldCollection<FieldMetadata<Item>>
+  const [customFields, setCustomFields] = useState<FieldCollection<FieldMetadata<Item, FieldName>>>(
+    (EMPTY_FIELD_COLLECTION as any) as FieldCollection<FieldMetadata<Item, FieldName>>
   );
 
   // Debouncing `onChangeFields` like this means that all field changes within the same tick are all
@@ -48,8 +48,8 @@ export const FieldsProvider = <Item = BaseItem>(props: {
 
   const fieldsContextData = useMemo(
     () => [
-      (customFields as any) as FieldCollection<FieldMetadata>,
-      (setCustomFields as any) as (updateFn: (oldFields: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
+      (customFields as unknown) as FieldCollection<FieldMetadata>,
+      (setCustomFields as unknown) as (updateFn: (oldFields: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
     ] as [
       FieldCollection<FieldMetadata>,
       (updateFn: (oldFields: FieldCollection<FieldMetadata>) => FieldCollection<FieldMetadata>) => void,
@@ -266,7 +266,7 @@ const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props: Field
 
     // NOTE: convert FieldMetadata<I, F, S> into a generic `FieldMetadata` with base values so it
     // can be put into the field state
-    const castedFieldMetadata = (fieldMetadata as any) as FieldMetadata<BaseItem, BaseFieldName, BaseFieldState>;
+    const castedFieldMetadata = (fieldMetadata as unknown) as FieldMetadata;
 
     setFields(old => ({...old, metadata: [ ...old.metadata, castedFieldMetadata ]}));
 

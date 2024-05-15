@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect } from "react";
 
-const useInFlightAbortControllers = () => {
+const useInFlightAbortControllers = (): [(abort: AbortController) => void, (abort: AbortController) => void] => {
   const inFlightRequestAbortControllers = useRef<Array<AbortController>>([]);
   const addInFlightAbortController = useCallback((abort: AbortController) => {
     inFlightRequestAbortControllers.current.push(abort);
