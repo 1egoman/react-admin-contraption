@@ -26,6 +26,13 @@ import useInFlightAbortControllers from '../utils/use-in-flight-abort-controller
 import { useAdminContext } from '../admin-context';
 import { DataContextDetail } from '.';
 
+export type DetailFieldItemProps<Item = BaseItem, FieldName = BaseFieldName, State = BaseFieldState> = {
+  item: Item | null,
+  field: FieldMetadata<Item, FieldName, State>,
+  fieldState: State,
+  detailLinkGenerator: DataContextDetail<Item>['detailLinkGenerator'],
+  onUpdateFieldState: (newState: State) => void,
+};
 
 export const DetailFieldItem = <Item = BaseItem, FieldName = BaseFieldName, State = BaseFieldState>({
   item,
@@ -33,7 +40,7 @@ export const DetailFieldItem = <Item = BaseItem, FieldName = BaseFieldName, Stat
   fieldState,
   detailLinkGenerator,
   onUpdateFieldState,
-}: Parameters<DetailFieldsProps<Item, FieldName>['renderFieldItem']>[0]) => {
+}: DetailFieldItemProps<Item, FieldName>) => {
   const [state, setState] = useState<State>(fieldState);
   useEffect(() => {
     setState(fieldState);
@@ -80,13 +87,7 @@ type DetailFieldsLayoutProps<Item = BaseItem, FieldName = BaseFieldName, State =
   currentLayout: FieldCollection<FieldMetadata<Item, FieldName>>["layout"];
   detailLinkGenerator: DataContextDetail<Item>['detailLinkGenerator'];
 
-  renderFieldItem: (params: {
-    item: Item | null,
-    field: FieldMetadata<Item, FieldName, State>,
-    fieldState: State,
-    detailLinkGenerator: DataContextDetail<Item>['detailLinkGenerator'],
-    onUpdateFieldState: (newState: State) => void,
-  }) => React.ReactNode;
+  renderFieldItem: (params: DetailFieldItemProps<Item, FieldName, State>) => React.ReactNode;
 };
 
 const DetailFieldsLayout = <
@@ -160,7 +161,7 @@ type DetailFieldsProps<Item = BaseItem, FieldName = BaseFieldName, State = BaseF
     detailDataContextData: DataContextDetail<Item>;
     children: React.ReactNode;
   }) => React.ReactNode;
-  renderFieldItem?: DetailFieldsLayoutProps<Item, FieldName, State>['renderFieldItem'];
+  renderFieldItem?: (props: DetailFieldItemProps<Item, FieldName, State>) => React.ReactNode;
   children?: React.ReactNode;
 };
 
@@ -200,7 +201,9 @@ const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
   const [updateInProgress, setUpdateInProgress] = useState(false);
   const [createInProgress, setCreateInProgress] = useState(false);
 
-  const [fields, setFields] = useState<FieldCollection<FieldMetadata<Item, FieldName>>>(EMPTY_FIELD_COLLECTION);
+  const [fields, setFields] = useState<FieldCollection<FieldMetadata<Item, FieldName>>>(
+    (EMPTY_FIELD_COLLECTION as any) as FieldCollection<FieldMetadata<Item, FieldName>>
+  );
 
   // Store each state for each field centrally
   const [fieldStates, setFieldStates] = useState<
@@ -413,7 +416,7 @@ const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
                     }
                   }
 
-                  item = field.serializeStateToItem(item, state);
+                  item = field.serializeStateToItem(item, state, null);
                 }
 
                 let createResult: Item;
@@ -495,7 +498,7 @@ const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
                       }
                     }
 
-                    item = field.serializeStateToItem(item, state);
+                    item = field.serializeStateToItem(item, state, detailDataContextData.detailData.data);
                   }
 
                   try {

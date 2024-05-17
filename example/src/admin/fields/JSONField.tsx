@@ -16,7 +16,7 @@ type JSONFieldProps<Item = BaseItem, Field = BaseFieldName, JSONType = JSONValue
 > & {
   getInitialStateFromItem?: (item: Item) => JSONType;
   getInitialStateWhenCreating?: () => JSONType | undefined;
-  serializeStateToItem?: (initialItem: Partial<Item>, state: JSONType) => Partial<Item>;
+  serializeStateToItem?: (partialItem: Partial<Item>, state: JSONType, initialItem: Item | null) => Partial<Item>;
 
   type?: HTMLInputElement['type'];
   inputMarkup?: FieldMetadata<Item, Field, [string, boolean]>['modifyMarkup'];
@@ -62,12 +62,12 @@ const JSONField = <
       [props.name as FixMe]: state,
     }));
 
-    return (item: Partial<Item>, state: [string, boolean]) => {
+    return (partialItem: Partial<Item>, state: [string, boolean], initialItemAtPageLoad: Item | null) => {
       const [body, invalid] = state;
       if (invalid) {
-        return item;
+        return partialItem;
       }
-      return preexisting(item, JSON.parse(body));
+      return preexisting(partialItem, JSON.parse(body), initialItemAtPageLoad);
     };
   }, [props.serializeStateToItem, props.name]);
 
@@ -78,7 +78,7 @@ const JSONField = <
     }
 
     if (props.csvExportData) {
-      return props.csvExportData(JSON.parse(text) as JSONValue, item);
+      return props.csvExportData(JSON.parse(text) as JSONType, item);
     } else {
       return text;
     }

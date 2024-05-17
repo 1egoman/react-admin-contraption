@@ -72,7 +72,7 @@ const MultiLineInputField = <
           <Controls.TextArea
             value={state === null ? '' : `${state}`}
             disabled={state === null}
-            onChange={setState}
+            onChange={setState as FixMe} // FIXME: why does this line have a type error without the cast? Fix this!
             onBlur={onBlur}
           />
         );
@@ -82,8 +82,8 @@ const MultiLineInputField = <
             nullable={props.nullable as boolean}
             name={props.name}
             state={state}
-            setState={setState}
-            getInitialStateWhenCreating={props.getInitialStateWhenCreating || (() => '')}
+            setState={setState as FixMe} // FIXME: why does this line have a type error without the cast? Fix this!
+            getInitialStateWhenCreating={async () => props.getInitialStateWhenCreating ? props.getInitialStateWhenCreating() || '' : ''}
             inputRef={inputRef}
           >
             {input}

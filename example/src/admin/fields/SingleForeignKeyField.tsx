@@ -74,7 +74,7 @@ type SingleForeignKeyFieldProps<
   // When creating a new Item, what should the RelatedItem foreign key be set to initially?
   getInitialStateWhenCreating?: () => ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | (Nullable extends true ? ForeignKeyUnset | null : ForeignKeyUnset);
 
-  serializeStateToItem?: (initialItem: Partial<Item>, state: RelatedItem | null) => Partial<Item>;
+  serializeStateToItem?: (partialItem: Partial<Item>, state: RelatedItem | null, initialItemAtPageLoad: Item | null) => Partial<Item>;
 
   nullable?: boolean;
   relatedName: string;
@@ -109,6 +109,8 @@ Example SingleForeignKeyField:
 />
 */
 const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, RelatedItem = BaseItem, Nullable = false>(props: SingleForeignKeyFieldProps<Item, FieldName, RelatedItem, Nullable>) => {
+  type InternalStateType = ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | (Nullable extends true ? ForeignKeyUnset | null : ForeignKeyUnset);
+
   const dataModelsContextData = useContext(DataModelsContext);
   if (!dataModelsContextData) {
     throw new Error('Error: <SingleForeignKeyField ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
@@ -132,8 +134,8 @@ const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, Relat
   }, [props.getInitialStateWhenCreating]);
 
   const injectAsyncDataIntoInitialStateOnDetailPage = useCallback(async (
-    oldState: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null,
-    item: Item,
+    oldState: InternalStateType | null,
+    item: Item | null,
     signal: AbortSignal,
   ): Promise<ForeignKeyFullItem<RelatedItem> | null> => {
     if (oldState === null) {
@@ -185,7 +187,7 @@ const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, Relat
     injectAsyncDataIntoInitialStateOnDetailPage,
   ]);
 
-  const displayMarkup = useCallback((state: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null) => {
+  const displayMarkup = useCallback((state: InternalStateType) => {
     if (state === null) {
       return <span>null</span>;
     } else if (state.type === "KEY_ONLY") {
@@ -228,8 +230,8 @@ const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, Relat
   }, [props.createRelatedItem, relatedDataModel, addInFlightAbortController, removeInFlightAbortController]);
 
   const modifyMarkup = useCallback((
-    state: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null,
-    setState: (newState: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null, blurAfterStateSet?: boolean) => void,
+    state: InternalStateType,
+    setState: (newState: InternalStateType, blurAfterStateSet?: boolean) => void,
     item: Item | null,
   ) => {
     if (state && state.type === 'KEY_ONLY') {
@@ -239,7 +241,7 @@ const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, Relat
     }
 
     const relatedFields = state ? (
-      <ForeignKeyFieldModifyMarkup<Item, FieldName, RelatedItem>
+      <ForeignKeyFieldModifyMarkup<Item, FieldName, RelatedItem, Nullable>
         mode="detail"
         item={item}
         relatedItem={state.type !== "UNSET" ? state.item : null}
@@ -256,16 +258,26 @@ const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, Relat
     if (props.nullable) {
       return (
         <div style={{ width: '100%' }}>
-          <NullableWrapper<ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset, FieldName>
+          <NullableWrapper<NonNullable<InternalStateType>, FieldName>
             nullable={props.nullable as boolean}
             name={props.name}
             state={state}
-            setState={setState}
+
+            // FIXME: There is probably a better way to define setState that works better with the
+            // Nullable switching stuff...
+            setState={setState as unknown as (newState: NonNullable<InternalStateType> | null, blurAfterStateSet?: boolean | undefined) => void}
+
             // FIXME: the below getInitialStateWhenCreating can return null (and that is its default
             // value). The better way to do this probably is to make the
             // `ForeignKeyFieldModifyMarkup` component aware of `nullable` when in
             // SingleForeignKeyField mode and get rid of the `NullableWrapper` stuff in here.
-            getInitialStateWhenCreating={() => getInitialStateAfterMakingNotNull(item)}
+            getInitialStateWhenCreating={async () => {
+              const result = await getInitialStateAfterMakingNotNull(item);
+              if (!result) {
+                throw new Error(`Error: SingleForeignKeyField.getInitialStateWhenCreating returned null, which means that unnullifying ${props.name} won't work. Figure out a way to fix this!`);
+              }
+              return result;
+            }}
           />
 
           {state !== null ? relatedFields : null}
@@ -276,7 +288,7 @@ const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, Relat
     }
   }, [props, createRelatedItem, getRelatedKey]);
 
-  const csvExportData = useCallback((state: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null, item: Item) => {
+  const csvExportData = useCallback((state: InternalStateType, item: Item) => {
     if (props.csvExportData) {
       return props.csvExportData(state, item);
     }
@@ -296,47 +308,52 @@ const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, Relat
   }, [props.csvExportData, getRelatedKey]);
 
   const serializeStateToItem = useCallback((
-    initialItem: Partial<Item>,
-    state: ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null,
+    partialItem: Partial<Item>,
+    state: InternalStateType,
+    initialItem: Item | null,
   ): Partial<Item> => {
-    const preexistingSerializeStateToItem = props.serializeStateToItem || ((initialItem: Partial<Item>, state: RelatedItem | null) => {
+    const preexistingSerializeStateToItem = props.serializeStateToItem || ((partialItem: Partial<Item>, state: RelatedItem | null, initialItem: Item | null) => {
       // As a default, use the value from `getInitialStateFromItem` to determine if the item key
       // should be serialized or if the full object should be embedded.
-      const initialState = props.getInitialStateFromItem(initialItem);
+      const initialState = initialItem ? props.getInitialStateFromItem(initialItem) : getInitialStateWhenCreating();
 
       if (!state || !initialState) {
-        return { ...initialItem, [props.name as FixMe]: null };
+        return { ...partialItem, [props.name as FixMe]: null };
       } else if (initialState.type === 'KEY_ONLY') {
-        return { ...initialItem, [props.name as FixMe]: getRelatedKey(state) };
+        return { ...partialItem, [props.name as FixMe]: getRelatedKey(state) };
       } else {
-        return { ...initialItem, [props.name as FixMe]: state };
+        return { ...partialItem, [props.name as FixMe]: state };
       };
     });
 
     if (!state) {
-      return preexistingSerializeStateToItem(initialItem, null);
+      return preexistingSerializeStateToItem(partialItem, null, initialItem);
     }
     if (state.type === "KEY_ONLY") {
       console.warn(`SingleForeignKeyField.serializeStateToItem ran with a field state of ${JSON.stringify(state)}, this is not allowed!`);
-      return initialItem;
+      return partialItem;
     }
     if (state.type === "UNSET") {
       console.warn(`SingleForeignKeyField.serializeStateToItem ran with a field state of ${JSON.stringify(state)}, this is not allowed!`);
-      return initialItem;
+      return partialItem;
     }
-    return preexistingSerializeStateToItem(initialItem, state.item);
+    return preexistingSerializeStateToItem(partialItem, state.item, initialItem);
   }, [props.serializeStateToItem, props.getInitialStateFromItem, getRelatedKey]);
 
   return (
-    <Field<Item, FieldName, ForeignKeyKeyOnlyItem | ForeignKeyFullItem<RelatedItem> | ForeignKeyUnset | null>
+    <Field<Item, FieldName, InternalStateType>
       name={props.name}
       singularDisplayName={singularDisplayName}
       pluralDisplayName={pluralDisplayName}
       csvExportColumnName={props.csvExportColumnName}
       columnWidth={props.columnWidth}
       sortable={props.sortable}
-      getInitialStateFromItem={props.getInitialStateFromItem}
-      injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage}
+
+      // FIXME: both of the below props have type errors, because they have quite a bit of logic to
+      // handle `null`s and I can't figure out how to make the types work right...
+      getInitialStateFromItem={props.getInitialStateFromItem as FixMe}
+      injectAsyncDataIntoInitialStateOnDetailPage={injectAsyncDataIntoInitialStateOnDetailPage as FixMe}
+
       getInitialStateWhenCreating={getInitialStateWhenCreating}
       serializeStateToItem={serializeStateToItem}
       displayMarkup={displayMarkup}
@@ -349,7 +366,7 @@ const SingleForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, Relat
 export default SingleForeignKeyField;
 
 
-export const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName, RelatedItem = BaseItem>(props:
+export const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFieldName, RelatedItem = BaseItem, Nullable = false>(props:
   | {
     mode: 'list',
     item: Item | null,
@@ -369,7 +386,7 @@ export const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFie
     onChangeRelatedItem: (newRelatedItem: RelatedItem) => void,
     disabled?: boolean;
     checkboxesWidth: null | string | number;
-    foreignKeyFieldProps: SingleForeignKeyFieldProps<Item, FieldName, RelatedItem>,
+    foreignKeyFieldProps: SingleForeignKeyFieldProps<Item, FieldName, RelatedItem, Nullable>,
     getRelatedKey: (relatedItem: RelatedItem) => ItemKey;
     createRelatedItem: ((item: Item | null, relatedItem: Partial<RelatedItem>) => Promise<RelatedItem>) | null;
     children: React.ReactNode;
@@ -817,7 +834,7 @@ export const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFie
                           continue;
                         }
 
-                        relatedItem = field.serializeStateToItem(relatedItem, state);
+                        relatedItem = field.serializeStateToItem(relatedItem, state, null);
                       }
 
                       // FIXME: add abort controller

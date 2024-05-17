@@ -41,7 +41,7 @@ export const FieldsProvider = <Item = BaseItem, FieldName = BaseFieldName>(props
 
   useEffect(() => {
     if (customFields.metadata.length === 0 && props.dataModel) {
-      debouncedOnChangeFields(props.dataModel.fields);
+      debouncedOnChangeFields(props.dataModel.fields as unknown as FieldCollection<FieldMetadata<Item, FieldName>>);
     } else {
       debouncedOnChangeFields(customFields);
     }
@@ -99,7 +99,7 @@ export type FieldMetadata<Item = BaseItem, FieldName = BaseFieldName, State = Ba
   // representation)
   getInitialStateFromItem: (item: Item) => State;
   getInitialStateWhenCreating?: () => State | undefined;
-  serializeStateToItem: (initialItem: Partial<Item>, state: State) => Partial<Item>;
+  serializeStateToItem: (partialItem: Partial<Item>, state: State, initialItemAtPageLoad: Item | null) => Partial<Item>;
 
   // When in the detail view, a common pattern is to show more information about the item. Only when
   // a field is rendered on the detail view, this function is called to allow extra information to
@@ -197,7 +197,7 @@ const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props: Field
       let pointer = layout;
       for (const section of fieldSectionPath) {
         let newSectionIndex = pointer.findIndex(entry => entry.type === "section" && entry.id === section.id);
-        let newSection = pointer[newSectionIndex];
+        let newSection = pointer[newSectionIndex]!;
 
         if (newSectionIndex >= 0 && newSection.type === "field") {
           break;
@@ -225,7 +225,7 @@ const Field = <I = BaseItem, F = BaseFieldName, S = BaseFieldState>(props: Field
     return () => {
       setFields(old => {
         const recurse = (layout: FieldCollectionLayout): FieldCollectionLayout => {
-          return layout.flatMap(item => {
+          return layout.flatMap((item: FieldCollectionLayout[0]): FieldCollectionLayout => {
             if (item.type === "field" && item.name === name) {
               // Remove the leaf field added
               return [];
@@ -317,7 +317,7 @@ type NullableWrapperProps<State = BaseFieldState, FieldName = BaseFieldName> = {
   name: FieldName;
   state: State | null;
   setState: (newState: State | null, blurAfterStateSet?: boolean) => void;
-  getInitialStateWhenCreating: () => State;
+  getInitialStateWhenCreating: () => Promise<State>;
   inputRef?: React.MutableRefObject<{ focus: () => void } | null>;
   children?: React.ReactNode;
 };
@@ -333,11 +333,25 @@ export const NullableWrapper = <
   State = BaseFieldState,
   FieldName = BaseFieldName
 >(props: NullableWrapperProps<State, FieldName>) => {
-  // FIXME: there's something not working right here with switching back and forth where the non
-  // null radio button needs to be clicked twice for it to be set
+  const [nonNullDataLoading, setNonNullDataLoading] = useState(false);
 
-  const onMakeNotNull = useCallback(() => {
-    props.setState(props.getInitialStateWhenCreating(), true);
+  const onMakeNotNull = useCallback(async () => {
+    setNonNullDataLoading(true);
+
+    let initialState;
+    try {
+      initialState = await props.getInitialStateWhenCreating();
+    } catch (err) {
+      // FIXME: handle this in a better way - maybe store the error in the component and render it
+      // to the page?
+      alert(`Error loading non null data for ${props.name}!`);
+      console.error(`Error loading non null data for ${props.name}: ${err}`);
+      setNonNullDataLoading(false);
+      return;
+    }
+    setNonNullDataLoading(false);
+
+    props.setState(initialState, true);
 
     // Focus the control now that it is the active one
     if (props.inputRef?.current) {
@@ -351,7 +365,7 @@ export const NullableWrapper = <
         }
       }, 0);
     }
-  }, [props.setState, props.getInitialStateWhenCreating, props.inputRef]);
+  }, [props.setState, props.getInitialStateWhenCreating, props.inputRef, setNonNullDataLoading]);
 
   const onMakeNull = useCallback(() => {
     props.setState(null, true);
@@ -366,6 +380,7 @@ export const NullableWrapper = <
       <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
         <Radiobutton
           checked={props.state !== null}
+          disabled={nonNullDataLoading}
           onChange={(checked) => {
             if (checked) {
               onMakeNotNull();
@@ -375,9 +390,14 @@ export const NullableWrapper = <
         <div
           style={{ position: 'relative' }}
           onClick={() => {
-            if (props.state === null) {
-              onMakeNotNull();
+            if (nonNullDataLoading) {
+              return;
             }
+            if (props.state !== null) {
+              return;
+            }
+
+            onMakeNotNull();
           }}
         >
           {/*
@@ -394,6 +414,7 @@ export const NullableWrapper = <
         <Radiobutton
           checked={props.state === null}
           id={`${props.name}-null`}
+          disabled={nonNullDataLoading}
           onChange={checked => {
             if (checked) {
               onMakeNull();

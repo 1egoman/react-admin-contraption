@@ -64,7 +64,7 @@ const ListActionBar = <Item = BaseItem, CanSelectAllAcrossPages = false>({
             {/*   checkedItemKeys={listDataContextData.checkedItemKeys} */}
             {/* /> */}
             {listDataContextData.checkedItemKeys === ALL_ITEMS ? (
-              children(ALL_ITEMS)
+              children(ALL_ITEMS as FixMe) // FIXME: there is a type error on this line because of the CanSelectAllAcrossPages conditional type stuff, fix this!
             ) : children(
               listDataContextData.listData.data.filter((item) => {
                 const key = listDataContextData.keyGenerator(item)

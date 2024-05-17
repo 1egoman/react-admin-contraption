@@ -22,7 +22,7 @@ export type InputFieldProps<
 > & {
   getInitialStateFromItem?: (item: Item) => (Nullable extends true ? (string | null) : string);
   getInitialStateWhenCreating?: () => (Nullable extends true ? (string | null) : string) | undefined;
-  serializeStateToItem?: (initialItem: Partial<Item>, state: Nullable extends true ? (string | null) : string) => Partial<Item>;
+  serializeStateToItem?: (partialItem: Partial<Item>, state: Nullable extends true ? (string | null) : string, initialItemAtPageLoad: Item | null) => Partial<Item>;
 
   type?: HTMLInputElement['type'];
   nullable?: Nullable;
@@ -89,7 +89,7 @@ const InputField = <
             type={props.type || "text"}
             value={state === null ? '' : `${state}`}
             disabled={state === null}
-            onChange={setState}
+            onChange={setState as FixMe} // FIXME: the Nullable stuff causes a type error here, fix this!
             onBlur={onBlur}
           />
         );
@@ -99,8 +99,8 @@ const InputField = <
             nullable={props.nullable as boolean}
             name={props.name}
             state={state}
-            setState={setState}
-            getInitialStateWhenCreating={props.getInitialStateWhenCreating || (() => '')}
+            setState={setState as FixMe} // FIXME: the Nullable stuff causes a type error here, fix this!
+            getInitialStateWhenCreating={async () => props.getInitialStateWhenCreating ? props.getInitialStateWhenCreating() || '' : ''}
             inputRef={inputRef}
           >
             {input}

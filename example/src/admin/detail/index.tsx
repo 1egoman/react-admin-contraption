@@ -201,7 +201,7 @@ const Detail = <Item = BaseItem>(props: DetailProps<Item>) => {
               <Controls.NavigationButton navigatable={listLink}>&larr; Back</Controls.NavigationButton>
               {dataContextData.isCreating ? (
                 <strong>
-                  Create {dataContextData.singularDisplayName[0].toUpperCase()}{dataContextData.singularDisplayName.slice(1)}
+                  Create {dataContextData.singularDisplayName[0]!.toUpperCase()}{dataContextData.singularDisplayName.slice(1)}
                 </strong>
               ) : (
                 <Fragment>
@@ -211,7 +211,7 @@ const Detail = <Item = BaseItem>(props: DetailProps<Item>) => {
                     </strong>
                   ) : (
                     <strong>
-                      {dataContextData.singularDisplayName[0].toUpperCase()}{dataContextData.singularDisplayName.slice(1)}{' '}
+                      {dataContextData.singularDisplayName[0]!.toUpperCase()}{dataContextData.singularDisplayName.slice(1)}{' '}
                       {dataContextData.itemKey}
                     </strong>
                   )}

@@ -17,7 +17,7 @@ export type ChoiceFieldProps<Item = BaseItem, FieldName = BaseFieldName, State =
 > & {
   getInitialStateFromItem?: (item: Item) => Nullable extends true ? State | null : State;
   getInitialStateWhenCreating: () => (Nullable extends true ? State | null : State);
-  serializeStateToItem?: (initialItem: Partial<Item>, state: Nullable extends true ? State | null : State) => Partial<Item>;
+  serializeStateToItem?: (partialItem: Partial<Item>, state: Nullable extends true ? State | null : State, initialItemAtPageLoad: Item | null) => Partial<Item>;
   choices: Array<{ id: State; disabled?: boolean; label: React.ReactNode; }>;
 
   nullable?: Nullable;
@@ -106,8 +106,8 @@ const ChoiceField = <
           <Controls.Select
             value={stateAsString}
             onChange={newValue => {
-              if (newValue === 'NULL') {
-                setState(null);
+              if (props.nullable && newValue === 'NULL') {
+                setState(null as FixMe);
                 return;
               }
 
@@ -115,7 +115,7 @@ const ChoiceField = <
               if (!choice) {
                 return;
               }
-              setState(choice.id);
+              setState(choice.id as FixMe); // FIXME: I don't get why this line has a type error without the cast... Fix this!
             }}
             onBlur={() => onBlur()}
             options={options}

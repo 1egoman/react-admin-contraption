@@ -16,7 +16,7 @@ type NumberFieldProps<Item = BaseItem, FieldName = BaseFieldName> = Pick<
 > & {
   getInitialStateFromItem?: (item: Item) => number;
   getInitialStateWhenCreating?: () => number | undefined;
-  serializeStateToItem?: (initialItem: Partial<Item>, state: number) => Partial<Item>;
+  serializeStateToItem?: (partialItem: Partial<Item>, state: number, initialItemAtPageLoad: Item | null) => Partial<Item>;
 
   nullable?: boolean;
   inputMarkup?: FieldMetadata<Item, FieldName, [string, boolean]>['modifyMarkup'];
@@ -50,23 +50,23 @@ const NumberField = <Item = BaseItem, FieldName = BaseFieldName>(props: NumberFi
   }, [props.getInitialStateWhenCreating]);
 
   const serializeStateToItem = useMemo(() => {
-    const preexisting = props.serializeStateToItem || ((item: Partial<Item>, state: JSONValue) => ({
-      ...item,
+    const preexisting = props.serializeStateToItem || ((partialItem: Partial<Item>, state: JSONValue) => ({
+      ...partialItem,
       [props.name as FixMe]: state,
     }));
 
-    return (item: Partial<Item>, state: [string, boolean]) => {
+    return (partialItem: Partial<Item>, state: [string, boolean], initialItem: Item | null) => {
       const [body, invalid] = state;
       if (invalid) {
-        return item;
+        return partialItem;
       }
 
       const value = parseFloat(body);
       if (isNaN(value)) {
-        return item;
+        return partialItem;
       }
 
-      return preexisting(item, value);
+      return preexisting(partialItem, value, initialItem);
     };
   }, [props.serializeStateToItem, props.name]);
 

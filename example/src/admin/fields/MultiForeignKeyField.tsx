@@ -51,7 +51,7 @@ export type MultiForeignKeyFieldProps<Item = BaseItem, FieldName = BaseFieldName
     signal: AbortSignal,
   ) => Promise<ForeignKeyFullItem<Array<RelatedItem>>>;
 
-  serializeStateToItem?: (initialItem: Partial<Item>, state: Array<RelatedItem>) => Partial<Item>;
+  serializeStateToItem?: (partialItem: Partial<Item>, state: Array<RelatedItem>, initialItem: Item | null) => Partial<Item>;
 
   relatedName: string;
   getRelatedKey?: (relatedItem: RelatedItem) => ItemKey;
@@ -106,30 +106,31 @@ const MultiForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, Relate
   }, [props.getInitialStateWhenCreating]);
 
   const serializeStateToItem = useCallback((
-    initialItem: Partial<Item>,
+    partialItem: Partial<Item>,
     state: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>,
+    initialItem: Item | null,
   ): Partial<Item> => {
-    const preexistingSerializeStateToItem = props.serializeStateToItem || ((initialItem: Partial<Item>, state: Array<RelatedItem>) => {
+    const preexistingSerializeStateToItem = props.serializeStateToItem || ((partialItem: Partial<Item>, state: Array<RelatedItem>, initialItem: Item | null) => {
       // As a default, use the value from `getInitialStateFromItem` to determine if the item key
       // should be serialized or if the full object should be embedded.
-      const initialState = props.getInitialStateFromItem(initialItem);
+      const initialState = initialItem ? props.getInitialStateFromItem(initialItem) : getInitialStateWhenCreating();
 
       if (state.length === 0) {
-        return { ...initialItem, [props.name as FixMe]: [] };
-      } else if (initialState.type === 'KEY_ONLY') {
-        return { ...initialItem, [props.name as FixMe]: state.map(getRelatedKey) };
+        return { ...partialItem, [props.name as FixMe]: [] };
+      } else if (initialState?.type === 'KEY_ONLY') {
+        return { ...partialItem, [props.name as FixMe]: state.map(getRelatedKey) };
       } else {
-        return { ...initialItem, [props.name as FixMe]: state };
+        return { ...partialItem, [props.name as FixMe]: state };
       };
     });
 
     if (state.type === "KEY_ONLY") {
       console.warn(`MultiForeignKeyField.serializeStateToItem ran with a field state of ${JSON.stringify(state)}, this is not allowed!`);
-      return initialItem;
+      return partialItem;
     } else {
-      return preexistingSerializeStateToItem(initialItem, state.item);
+      return preexistingSerializeStateToItem(partialItem, state.item, initialItem);
     }
-  }, [props.serializeStateToItem, props.getInitialStateFromItem, getRelatedKey]);
+  }, [props.serializeStateToItem, props.getInitialStateFromItem, getRelatedKey, getInitialStateWhenCreating]);
 
   const injectAsyncDataIntoInitialStateOnDetailPage = useCallback(async (
     oldState: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>,

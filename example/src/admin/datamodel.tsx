@@ -211,7 +211,10 @@ export const DataModel = <Item = BaseItem>(props: DataModelProps<Item>) => {
       if (old) {
         return { ...old, ...base };
       } else {
-        return { ...base, fields: EMPTY_FIELD_COLLECTION };
+        return {
+          ...base,
+          fields: (EMPTY_FIELD_COLLECTION as any) as FieldCollection<FieldMetadata<Item>>
+        };
       }
     });
   }, [
