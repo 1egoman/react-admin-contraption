@@ -137,7 +137,7 @@ export function PostDataModel() {
       listLink={{ type: 'href' as const, href: `/admin/rest-example/posts` }}
       createLink={{ type: 'href', href: `/admin/rest-example/posts/new` }}
     >
-      <Field<Post, 'id', number>
+      <Field<Post, 'id', Post['id']>
         name="id"
         singularDisplayName="Id"
         pluralDisplayName="Ids"
@@ -346,7 +346,7 @@ export function UserDataModel() {
       listLink={{ type: 'href' as const, href: `/admin/rest-example/users` }}
       createLink={{ type: 'href', href: `/admin/rest-example/users/new` }}
     >
-      <Field<User, 'id', number>
+      <Field<User, 'id', User['id']>
         name="id"
         singularDisplayName="Id"
         pluralDisplayName="Ids"
