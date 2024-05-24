@@ -327,6 +327,8 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
       // Somehow generate this from the prisma schema file serverside...
       definitions: {
         dynamicmodel: {
+          singularDisplayName: 'Dynamic Model',
+          pluralDisplayName: 'Dynamic Models',
           columns: {
             id: { type: 'primaryKey', singularDisplayName: 'id', pluralDisplayName: 'ids' },
             textcolumn: { type: 'text', singularDisplayName: 'text column', pluralDisplayName: 'text columns' },
@@ -334,6 +336,8 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
           },
         },
         dynamicmodel2: {
+          singularDisplayName: 'Dynamic Model 2',
+          pluralDisplayName: 'Dynamic Model 2s',
           columns: {
             id: { type: 'primaryKey', singularDisplayName: 'id', pluralDisplayName: 'id' },
             textcolumn: { type: 'text', singularDisplayName: 'text column', pluralDisplayName: 'text columns' },
