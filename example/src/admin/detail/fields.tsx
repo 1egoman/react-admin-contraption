@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   useContext,
+  useMemo,
   useRef,
 } from 'react';
 
@@ -11,7 +12,7 @@ import styles from '../styles.module.css';
 
 import { FixMe, BaseItem, BaseFieldName, BaseFieldState } from '../types';
 
-import { imperativelyNavigateToNavigatable } from "../navigatable";
+import Navigatable, { imperativelyNavigateToNavigatable } from "../navigatable";
 import { useControls } from '../controls';
 
 import { DataModel, DataModelsContext } from '../datamodel';
@@ -30,12 +31,17 @@ export const DetailFieldItem = <Item = BaseItem, FieldName = BaseFieldName, Stat
   item,
   field,
   fieldState,
+  detailLinkGenerator,
   onUpdateFieldState,
 }: Parameters<DetailFieldsProps<Item, FieldName>['renderFieldItem']>[0]) => {
   const [state, setState] = useState<State>(fieldState);
   useEffect(() => {
     setState(fieldState);
   }, [fieldState]);
+
+  const otherContext = useMemo(() => ({
+    detailLink: item && detailLinkGenerator ? detailLinkGenerator(item) : null
+  }), [detailLinkGenerator]);
 
   if (field.modifyMarkup) {
     return (
@@ -59,7 +65,7 @@ export const DetailFieldItem = <Item = BaseItem, FieldName = BaseFieldName, Stat
   } else {
     return (
       <div>
-        <strong>{field.singularDisplayName}</strong>: {field.displayMarkup(state, item)}
+        <strong>{field.singularDisplayName}</strong>: {field.displayMarkup(state, item, otherContext)}
       </div>
     );
   }
@@ -72,11 +78,13 @@ type DetailFieldsLayoutProps<Item = BaseItem, FieldName = BaseFieldName, State =
   setFieldStatesData: (fn: (old: Map<FieldName, BaseFieldState>) => Map<FieldName, BaseFieldState>) => void;
 
   currentLayout: FieldCollection<FieldMetadata<Item, FieldName>>["layout"];
+  detailLinkGenerator: DataContextDetail<Item>['detailLinkGenerator'];
 
   renderFieldItem: (params: {
     item: Item | null,
     field: FieldMetadata<Item, FieldName, State>,
     fieldState: State,
+    detailLinkGenerator: DataContextDetail<Item>['detailLinkGenerator'],
     onUpdateFieldState: (newState: State) => void,
   }) => React.ReactNode;
 };
@@ -108,6 +116,7 @@ const DetailFieldsLayout = <
                   item: props.item,
                   field,
                   fieldState,
+                  detailLinkGenerator: props.detailLinkGenerator,
                   onUpdateFieldState: (newFieldState) => {
                     props.setFieldStatesData(old => {
                       const newFieldStates = new Map(old);
@@ -275,6 +284,7 @@ const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
   if (detailDataContextData.isCreating) {
     detailFieldsChildren = fieldStates.status === "COMPLETE" ? (
       <DetailFieldsLayout
+        item={null}
         fields={fields}
         fieldStatesData={fieldStates.data}
         setFieldStatesData={(fn) => {
@@ -286,6 +296,7 @@ const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
           });
         }}
         currentLayout={fields.layout}
+        detailLinkGenerator={detailDataContextData.detailLinkGenerator}
         renderFieldItem={renderFieldItem}
       />
     ) : "Loading fields...";
@@ -339,6 +350,7 @@ const DetailFields = <Item = BaseItem, FieldName = BaseFieldName>({
                   });
                 }}
                 currentLayout={fields.layout}
+                detailLinkGenerator={detailDataContextData.detailLinkGenerator}
                 renderFieldItem={renderFieldItem}
               />
             ) : "Loading fields...";

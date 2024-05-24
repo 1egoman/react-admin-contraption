@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Fragment, useState, useContext } from 'react';
+import { Fragment, useState, useContext, useMemo } from 'react';
 
 import styles from '../styles.module.css';
 
@@ -45,6 +45,8 @@ export const ListTableItem = <Item = BaseItem, FieldName = BaseFieldName>({
   onChangeChecked,
 }: ListTableItemProps<Item, FieldName>) => {
   const Controls = useControls();
+  const otherContext = useMemo(() => ({ detailLink: detailLink || null }), [detailLink]);
+
   return (
     <tr>
       {checkable ? (
@@ -84,7 +86,7 @@ export const ListTableItem = <Item = BaseItem, FieldName = BaseFieldName>({
 
         return (
           <td key={field.name as string}>
-            {field.displayMarkup(field.getInitialStateFromItem(item), item)}
+            {field.displayMarkup(field.getInitialStateFromItem(item), item, otherContext)}
           </td>
         );
       })}

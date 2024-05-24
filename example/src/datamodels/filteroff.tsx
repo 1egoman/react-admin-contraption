@@ -18,6 +18,7 @@ import {
 import JSONField from '@/admin/fields/JSONField';
 import { Filter, Sort } from '@/admin/types';
 import { RemoteDataModelDefinition, RemoteDataModels } from '@/admin/datamodel';
+import PrimaryKeyField from '@/admin/fields/PrimaryKeyField';
 
 
 export type User = {
@@ -156,16 +157,12 @@ export function UserDataModel() {
       listLink={{ type: 'next-link' as const, href: `/admin/filteroff/users` }}
       createLink={{ type: 'next-link', href: `/admin/filteroff/users/new` }}
     >
-      <Field<User, "id", User["id"]>
+      <PrimaryKeyField<User, "id">
         name="id"
         singularDisplayName="Id"
         pluralDisplayName="Ids"
         csvExportColumnName="id"
         columnWidth={100}
-        getInitialStateFromItem={user => user.id}
-        injectAsyncDataIntoInitialStateOnDetailPage={async state => state}
-        serializeStateToItem={(item) => item}
-        displayMarkup={state => <span>{state}</span>}
         sortable
       />
       <ChoiceField<User, "provider">

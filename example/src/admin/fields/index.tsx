@@ -15,6 +15,7 @@ import {
 } from '../types';
 import Radiobutton from '../controls/Radiobutton';
 import { DataModel } from '..';
+import Navigatable from '../navigatable';
 
 export const FieldsContext = React.createContext<[
   FieldCollection,
@@ -131,7 +132,7 @@ export type FieldMetadata<Item = BaseItem, FieldName = BaseFieldName, State = Ba
   // The presentation of the field when in a read only context
   //
   // Note that the `item` parameter is null when creating (ie, there's no pre-existing item known)
-  displayMarkup: (state: State, item: Item | null) => React.ReactNode;
+  displayMarkup: (state: State, item: Item | null, other: { detailLink: Navigatable | null }) => React.ReactNode;
 
   // The presentation of the component in a read-write context. `state` and `setState` act just like
   // the parameters that are returned from a `useState` hook and allow the field to update its local

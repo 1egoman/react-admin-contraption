@@ -8,6 +8,7 @@ import NumberField from './NumberField';
 import InputField from './InputField';
 import SingleForeignKeyField from './SingleForeignKeyField';
 import MultiForeignKeyField from './MultiForeignKeyField';
+import PrimaryKeyField from './PrimaryKeyField';
 
 const RemoteFields: React.FunctionComponent<{
   name: string;
@@ -36,15 +37,12 @@ const RemoteFields: React.FunctionComponent<{
     switch (definition.type) {
       case "primaryKey": {
         return (
-          <Field
+          <PrimaryKeyField
             key={fieldName}
             name={fieldName}
             singularDisplayName={definition.singularDisplayName}
             pluralDisplayName={definition.pluralDisplayName}
             getInitialStateFromItem={user => (user as any)[fieldName]}
-            injectAsyncDataIntoInitialStateOnDetailPage={async state => state}
-            serializeStateToItem={(item) => item}
-            displayMarkup={state => <span>{state}</span>}
             sortable
           />
         );
