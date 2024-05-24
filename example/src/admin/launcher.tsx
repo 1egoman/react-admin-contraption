@@ -1,9 +1,11 @@
 import { useContext } from "react";
 
 import { DataModelsContext } from "./datamodel";
-import { NavigationButton } from "./controls/Button";
+import { useControls } from "./controls";
 
 const Launcher = () => {
+  const Controls = useControls();
+
   const dataModelsContextData = useContext(DataModelsContext);
   if (!dataModelsContextData) {
     throw new Error('Error: <Launcher ... /> was not rendered inside of a container component! Try rendering this inside of a <DataModels> ... </DataModels>.');
@@ -22,7 +24,9 @@ const Launcher = () => {
 
           return (
             <li key={name}>
-              <NavigationButton navigatable={datamodel.listLink}>{datamodel.pluralDisplayName}</NavigationButton>
+              <Controls.NavigationLink navigatable={datamodel.listLink}>
+                {datamodel.pluralDisplayName}
+              </Controls.NavigationLink>
             </li>
           );
         })}
