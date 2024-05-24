@@ -141,6 +141,7 @@ const DetailFieldsLayout = <
                     fields={props.fields}
                     fieldStatesData={props.fieldStatesData}
                     setFieldStatesData={props.setFieldStatesData}
+                    detailLinkGenerator={props.detailLinkGenerator}
                     currentLayout={layout.contents}
                     renderFieldItem={props.renderFieldItem}
                   />
