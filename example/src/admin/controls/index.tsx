@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useAdminContext } from '../admin-context';
 
 import AppBar from './AppBar';
-import Button, { IconButton, NavigationButton } from './Button';
+import Button, { IconButton, NavigationButton, NavigationLink } from './Button';
 import Checkbox from './Checkbox';
 import FieldSet from './FieldSet';
 import Modal from './Modal';
@@ -19,6 +19,7 @@ const baseControls = {
   Button,
   IconButton,
   NavigationButton,
+  NavigationLink,
   Checkbox,
   FieldSet,
   Modal,

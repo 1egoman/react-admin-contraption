@@ -70,5 +70,36 @@ export const NavigationButton: React.FunctionComponent<{
   }
 };
 
+export const NavigationLink: React.FunctionComponent<{
+  navigatable: Navigatable | null,
+  children: React.ReactNode,
+}> = ({ navigatable, children }) => {
+  switch (navigatable?.type) {
+    case 'href':
+      return (
+        <a
+          href={navigatable.href}
+          target={navigatable.target}
+          className={styles.navigationLink}
+        >{children}</a>
+      );
+    case 'next-link':
+      const { type, ...rest } = navigatable;
+      return (
+        <Link {...rest} className={styles.navigationLink}>
+          {children}
+        </Link>
+      );
+    case 'function':
+      return (
+        <span onClick={navigatable.onClick} className={styles.navigationLink}>
+          {children}
+        </span>
+      );
+    default:
+      return null;
+  }
+};
+
 
 export default Button;
