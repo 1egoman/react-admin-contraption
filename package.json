@@ -29,6 +29,7 @@
     "@hello-pangea/dnd": "^16.6.0",
     "@radix-ui/colors": "^3.0.0",
     "csv-stringify": "^6.5.0",
-    "lodash.debounce": "^4.0.8"
+    "lodash.debounce": "^4.0.8",
+    "zod": "^3.23.8"
   }
 }
