@@ -798,7 +798,7 @@ export const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFie
                   }
 
                   return (
-                    <DetailFieldItem
+                    <DetailFieldItem<RelatedItem, FieldName>
                       key={relatedField.name as string}
                       item={null}
                       field={relatedField}
@@ -810,6 +810,7 @@ export const ForeignKeyFieldModifyMarkup = <Item = BaseItem, FieldName = BaseFie
                           return newRelatedFieldStates;
                         });
                       }}
+                      detailLinkGenerator={relatedDataModel.detailLinkGenerator}
                     />
                   );
                 })}

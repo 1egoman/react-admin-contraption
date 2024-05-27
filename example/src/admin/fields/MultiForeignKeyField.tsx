@@ -15,6 +15,7 @@ import {
 
 import { DataModel, DataModelsContext } from '../datamodel';
 import Field, { FieldMetadata } from '../fields';
+import Navigatable from '../navigatable';
 
 import useInFlightAbortControllers from '../utils/use-in-flight-abort-controllers';
 import { ForeignKeyFieldModifyMarkup } from './SingleForeignKeyField';
@@ -200,9 +201,13 @@ const MultiForeignKeyField = <Item = BaseItem, FieldName = BaseFieldName, Relate
     return null;
   }, [props.createRelatedItem, relatedDataModel, addInFlightAbortController, removeInFlightAbortController]);
 
-  const displayMarkup = useCallback((state: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>, item: Item | null) => {
+  const displayMarkup = useCallback((
+    state: ForeignKeyKeyOnlyItem<Array<ItemKey>> | ForeignKeyFullItem<Array<RelatedItem>>,
+    item: Item | null,
+    context: { detailLink: Navigatable | null },
+  ) => {
     if (props.displayMarkup) {
-      return props.displayMarkup(state, item);
+      return props.displayMarkup(state, item, context);
     } else {
       return (
         <span>{computeStateKeyList(state).join(', ')}</span>
