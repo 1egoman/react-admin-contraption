@@ -3,22 +3,7 @@ import { useContext } from "react";
 import { NextRouter } from "next/router";
 
 import { Controls } from './controls';
-import { Filter, Sort } from "./types";
-
-export type StateCache = {
-  store: (
-    filters: Array<[Filter['name'], string]>,
-    sort: Sort | null,
-    searchText: string,
-    columnSet: 'all' | string | Array<string>,
-  ) => Promise<void>;
-  read: () => Promise<[
-    Array<[Filter['name'], string]>,
-    Sort | null,
-    string,
-    'all' | string | Array<string>,
-  ]>;
-};
+import { StateCache } from "./state-cache";
 
 // NOTE: only the methods that are used are defined below so that if somebody wanted to implement
 // their own router (ie, another framework, overriding things, etc) it wouldn't be such a PITA
