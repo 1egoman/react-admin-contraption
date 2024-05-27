@@ -139,7 +139,7 @@ export default function PrismaDataStoreProvider(
       pageSize: number,
       filters: Array<[Filter['name'], Filter['state']]>,
       searchText: string,
-      sort: Sort,
+      sort: Sort | null,
     ) {
       const modelPrisma: any = prismaClient[modelName as any];
       if (!modelPrisma) {

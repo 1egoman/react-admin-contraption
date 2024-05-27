@@ -243,7 +243,7 @@ export const useGenerateRemoteDataModelsTRPCClient = (rawApi: any, rawUtils: any
         functionalitiesToImplement: Array<AdditionalFunctionalities> = [],
       ) => {
         const result: Pick<
-          DataModel<Item>,
+          DataModel,
           'fetchItem' | 'fetchPageOfData' | NonNullable<AdditionalFunctionalities>
         > = {
           fetchPageOfData: async (page, filters, sort, search, abort) => get().then(
