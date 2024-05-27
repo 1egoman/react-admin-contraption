@@ -3,6 +3,8 @@ A tool that allows one to create django admin / active admin like interfaces in 
 
 https://github.com/1egoman/react-admin-contraption/assets/1704236/d127b193-5c19-44ab-803b-68a5e71afb9f
 
+Docs site: https://bread-1.gitbook.io/react-admin-contraption/
+
 # Getting started
 There is a next.js app in `example`. Run `npm install && npm run dev`, then go to the root web page
 it serves for some example admin implementations.
