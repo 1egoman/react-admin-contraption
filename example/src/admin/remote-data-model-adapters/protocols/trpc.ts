@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { z } from "zod";
 
 import { DataModel, RemoteDataModelDefinition } from "../../datamodel";
-import { BaseItem, Paginated } from "../../types"
+import { BaseItem, FixMe, Paginated } from "../../types"
 import { DataStoreProvider } from "../datastores";
 
 
@@ -242,28 +242,25 @@ export const useGenerateRemoteDataModelsTRPCClient = (rawApi: any, rawUtils: any
         name: string,
         functionalitiesToImplement: Array<AdditionalFunctionalities> = [],
       ) => {
-        const result: Pick<
-          DataModel,
-          'fetchItem' | 'fetchPageOfData' | NonNullable<AdditionalFunctionalities>
-        > = {
+        const result: Partial<DataModel> = {
           fetchPageOfData: async (page, filters, sort, search, abort) => get().then(
             result => result.fetchPageOfData(name)(page, filters, sort, search, abort)
           ),
           fetchItem: async (itemKey, abort) => get().then(result => result.fetchItem(name)(itemKey, abort)),
 
-          createItem: functionalitiesToImplement.includes('createItem') ? (async (createData, abort) => get().then(result => {
+          createItem: functionalitiesToImplement.includes('createItem' as FixMe) ? (async (createData, abort) => get().then(result => {
             if (!result.createItem) {
               throw new Error(`getPropsForRemoteDataModel: createItem not implemented on remote data model definition for ${name}! To silence this, remove "createItem" from the getPropsForRemoteDataModel argument.`);
             }
             return result.createItem(name)(createData, abort);
           })) : undefined,
-          updateItem: functionalitiesToImplement.includes('updateItem') ? (async (key, updateData, abort) => get().then(result => {
+          updateItem: functionalitiesToImplement.includes('updateItem' as FixMe) ? (async (key, updateData, abort) => get().then(result => {
             if (!result.updateItem) {
               throw new Error(`getPropsForRemoteDataModel: updateItem not implemented on remote data model definition for ${name}! To silence this, remove "createItem" from the getPropsForRemoteDataModel argument.`);
             }
             return result.updateItem(name)(key, updateData, abort);
           })) : undefined,
-          deleteItem: functionalitiesToImplement.includes('deleteItem') ? (async (key, abort) => get().then(result => {
+          deleteItem: functionalitiesToImplement.includes('deleteItem' as FixMe) ? (async (key, abort) => get().then(result => {
             if (!result.deleteItem) {
               throw new Error(`getPropsForRemoteDataModel: deleteItem not implemented on remote data model definition for ${name}! To silence this, remove "createItem" from the getPropsForRemoteDataModel argument.`);
             }
@@ -271,7 +268,9 @@ export const useGenerateRemoteDataModelsTRPCClient = (rawApi: any, rawUtils: any
           })) : undefined,
         };
 
-        // NOTE: Do this cast here because the remote data model functions are not generic
+        // NOTE: Do this cast here because the remote data model functions are not generic, and also
+        // to get the types right so when spread into a DataModel, erronious type errors won't show
+        // up
         return (result as unknown) as Pick<DataModel<Item>, 'fetchItem' | 'fetchPageOfData' | NonNullable<AdditionalFunctionalities>>;
       },
     };
