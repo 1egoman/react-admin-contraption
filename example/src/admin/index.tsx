@@ -15,8 +15,10 @@ export { useListDataContext, useDetailDataContext };
 import ListCSVExport from './csv-export';
 export { ListCSVExport };
 
-import { AdminContextProvider, StateCache } from './admin-context';
+import { AdminContextProvider } from './admin-context';
 export { AdminContextProvider };
+
+import { StateCache } from './state-cache';
 export type { StateCache };
 
 import FilterDefinition from './filter-definitions';
