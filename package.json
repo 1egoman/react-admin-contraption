@@ -10,12 +10,20 @@
   "peerDependencies": {
     "@types/react": "*",
     "@types/react-dom": "*",
+    "body-parser": "*",
+    "express": "*",
     "next": "*",
     "react": "*",
     "react-dom": "*"
   },
   "peerDependenciesMeta": {
     "next": {
+      "optional": true
+    },
+    "express": {
+      "optional": true
+    },
+    "body-parser": {
       "optional": true
     }
   },
@@ -28,6 +36,8 @@
   "dependencies": {
     "@hello-pangea/dnd": "^16.6.0",
     "@radix-ui/colors": "^3.0.0",
+    "@types/body-parser": "^1.19.5",
+    "@types/express": "^4.17.21",
     "csv-stringify": "^6.5.0",
     "lodash.debounce": "^4.0.8",
     "zod": "^3.23.8"
