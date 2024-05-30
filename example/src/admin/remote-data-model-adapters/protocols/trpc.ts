@@ -12,6 +12,14 @@ type RemoteDataModelsTRPCParams = {
 
 const PAGE_SIZE = 20;
 
+// FIXME: somehow figure out how to get the real trpc type definition in here - that would require
+// making trpc an optional peer dependency maybe?
+type MockTrpc = {
+  input: (arg: any) => MockTrpc;
+  query: (arg: (arg: { input: any }) => Promise<any>) => MockTrpc;
+  mutation: (arg: (arg: { input: any }) => Promise<any>) => MockTrpc;
+};
+
 // SERVER-SIDE HALF of the trpc remote data models adapter. As parameters, this requires a reference
 // to `publicProcedure` (or whatever you'd like your trpc procedures to "hang off of"), and a data
 // store provider to use for perfoming underlying actions.
@@ -30,7 +38,7 @@ const PAGE_SIZE = 20;
 //     ),
 //   ),
 // });
-export const generateRemoteDataModelsTRPCRouter = <T extends any>(
+export const generateRemoteDataModelsTRPCRouter = <T extends MockTrpc>(
   trpcProcedure: T,
   dataStoreProvider: DataStoreProvider,
   params: RemoteDataModelsTRPCParams = {},
@@ -71,11 +79,7 @@ export const generateRemoteDataModelsTRPCRouter = <T extends any>(
         // FIXME: convert errors thrown by this into trpc errors
         return dataStoreProvider.read(
           input.model,
-          input.page,
-          pageSize,
-          input.filters,
-          input.searchText,
-          input.sort,
+          input.itemKey,
         );
       }),
 
@@ -93,7 +97,7 @@ export const generateRemoteDataModelsTRPCRouter = <T extends any>(
       .input(z.object({ model: z.string(), itemKey: z.string(), updateData: z.any() }))
       .mutation(async ({ input }) => {
         // FIXME: convert errors thrown by this into trpc errors
-        return dataStoreProvider.create(
+        return dataStoreProvider.update(
           input.model,
           input.itemKey,
           input.updateData,

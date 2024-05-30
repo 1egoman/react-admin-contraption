@@ -15,7 +15,7 @@ export default function PrismaDataStoreProvider(
     prismaClient: any;//PrismaClient | undefined;
   };
 
-  const prismaClient: any /*PrismaClient*/ = globalForPrisma.prismaClient ?? (constructPrismaClient ? constructPrismaClient() : new PrismaClient({
+  const prismaClient: any /*PrismaClient*/ = globalForPrisma.prismaClient ?? (constructPrismaClient ? constructPrismaClient() : new prismaRaw.PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   }));
 
@@ -32,7 +32,7 @@ export default function PrismaDataStoreProvider(
         return str.replace(
           /(^[a-z]+)|[0-9]+|[A-Z][a-z]+|[A-Z]+(?=[A-Z][a-z]|[0-9])/g,
           function(match, first){
-            if (first) match = match[0].toUpperCase() + match.substr(1);
+            if (first) match = match[0]!.toUpperCase() + match.slice(1);
             return match + ' ';
           }
         )
@@ -157,6 +157,9 @@ export default function PrismaDataStoreProvider(
         }
 
         const [fieldName, fieldOperator] = nameList;
+        if (!fieldName) {
+          return false;
+        }
         const field = fields[fieldName];
         if (!field) {
           throw new Error(`Cannot find prisma field ${fieldName} within model with name ${modelName}!`);
@@ -239,9 +242,9 @@ export default function PrismaDataStoreProvider(
         }
       }, {});
 
-      if (searchText.length > 0) {
-        filters.event = { eventName: { contains: input.searchText } };
-      }
+      // if (searchText.length > 0) {
+      //   filters.event = { eventName: { contains: searchText } };
+      // }
 
       const orderBy = sort ? {
         [sort.fieldName]: sort.direction
