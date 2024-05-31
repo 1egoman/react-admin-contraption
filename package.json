@@ -16,7 +16,8 @@
     "./*": "./*.js"
   },
   "scripts": {
-    "prepublishOnly": "./build.sh"
+    "prepublishOnly": "./build.sh",
+    "clean": "./clean.sh"
   },
   "keywords": [],
   "author": "",
