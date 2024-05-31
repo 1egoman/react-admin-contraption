@@ -51,6 +51,7 @@
 .tableWrapper table tr td.floatingCheckbox {
   position: sticky;
   left: 0px;
+  width: 47px;
   height: 47px;
   display: flex;
   justify-content: flex-start;
@@ -84,6 +85,7 @@
 .tableWrapper table tr th.floatingCheckbox {
   position: sticky;
   left: 0px;
+  /* width: 47px; */
   height: 47px;
   display: flex;
   justify-content: flex-start;
@@ -311,6 +313,7 @@
 .foreignKeyFieldTableWrapper table tr td.floatingCheckbox {
   position: sticky;
   left: 0px;
+  width: 47px;
   height: 47px;
   display: flex;
   justify-content: flex-start;
