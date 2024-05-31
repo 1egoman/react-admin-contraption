@@ -2,8 +2,7 @@ import * as React from 'react';
 import { useMemo, useCallback } from 'react';
 
 import { FixMe, BaseItem, BaseFieldName, BaseFieldState } from '../types';
-import { useControls } from '../controls';
-import { SelectOption } from '../controls/Select';
+import { useControls, SelectOption } from '../controls';
 import Field, { FieldMetadata } from '../fields';
 
 export type ChoiceFieldProps<Item = BaseItem, FieldName = BaseFieldName, State = BaseFieldState, Nullable = false> = Pick<

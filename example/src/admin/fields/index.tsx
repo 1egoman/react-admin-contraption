@@ -13,9 +13,9 @@ import {
   BaseFieldName,
   BaseFieldState, 
 } from '../types';
-import Radiobutton from '../controls/Radiobutton';
 import { DataModel } from '..';
 import Navigatable from '../navigatable';
+import { useControls } from '../controls';
 
 export const FieldsContext = React.createContext<[
   FieldCollection,
@@ -333,6 +333,7 @@ export const NullableWrapper = <
   State = BaseFieldState,
   FieldName = BaseFieldName
 >(props: NullableWrapperProps<State, FieldName>) => {
+  const Controls = useControls();
   const [nonNullDataLoading, setNonNullDataLoading] = useState(false);
 
   const onMakeNotNull = useCallback(async () => {
@@ -378,7 +379,7 @@ export const NullableWrapper = <
   return (
     <div style={{display: 'inline-flex', gap: 8, alignItems: 'center'}}>
       <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-        <Radiobutton
+        <Controls.Radiobutton
           checked={props.state !== null}
           disabled={nonNullDataLoading}
           onChange={(checked) => {
@@ -411,7 +412,7 @@ export const NullableWrapper = <
         </div>
       </div>
       <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
-        <Radiobutton
+        <Controls.Radiobutton
           checked={props.state === null}
           id={`${props.name}-null`}
           disabled={nonNullDataLoading}

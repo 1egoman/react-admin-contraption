@@ -1,7 +1,7 @@
 import { LegacyRef, forwardRef, useCallback } from "react";
 import styles from "./Select.module.css";
 
-export type SelectOption = { value: string, label: React.ReactNode, disabled?: boolean };
+import { SelectOption } from "..";
 
 type SelectProps = {
   size?: 'regular' | 'small';
