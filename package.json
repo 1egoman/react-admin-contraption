@@ -1,21 +1,21 @@
 {
   "name": "react-admin-contraption-unstable",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A tool that allows one to create django admin / active admin like interfaces in react.",
-  "main": "dist/index.js",
+  "main": "index.js",
   "exports": {
-    ".": "./dist/index.js",
-    "./controls/*.js": "./dist/controls/*.js",
-    "./detail/*.js": "./dist/detail/*.js",
-    "./fields/*.js": "./dist/fields/*.js",
-    "./filter-definitions/*.js": "./dist/filter-definitions/*.js",
-    "./list/*.js": "./dist/list/*.js",
-    "./remote-data-model-adapters/*/*.js": "./dist/remote-data-model-adapters/*/*.js",
-    "./utils/*.js": "./dist/utils/*.js",
-    "./*": "./dist/*.js"
+    ".": "./index.js",
+    "./controls/*.js": "./controls/*.js",
+    "./detail/*.js": "./detail/*.js",
+    "./fields/*.js": "./fields/*.js",
+    "./filter-definitions/*.js": "./filter-definitions/*.js",
+    "./list/*.js": "./list/*.js",
+    "./remote-data-model-adapters/*/*.js": "./remote-data-model-adapters/*/*.js",
+    "./utils/*.js": "./utils/*.js",
+    "./*": "./*.js"
   },
   "scripts": {
-    "prepublish": "./build.sh"
+    "prepublishOnly": "./build.sh"
   },
   "keywords": [],
   "author": "",

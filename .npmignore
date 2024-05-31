@@ -10,6 +10,8 @@ jsonserver
 docs
 # - Avoid publishing large readme assets
 readme-assets
+# - The contents of the `dist` directory is copied into the package root before publishing
+dist
 
 
 #
