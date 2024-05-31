@@ -8,6 +8,8 @@ example
 jsonserver
 # - Avoid publishing all the documentation
 docs
+# - Avoid publishing large readme assets
+readme-assets
 
 
 #
