@@ -12,6 +12,7 @@
     "./list/*.js": "./list/*.js",
     "./remote-data-model-adapters/*/*.js": "./remote-data-model-adapters/*/*.js",
     "./utils/*.js": "./utils/*.js",
+    "./styles.css": "./styles.css",
     "./*": "./*.js"
   },
   "scripts": {

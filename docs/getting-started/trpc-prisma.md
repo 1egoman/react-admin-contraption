@@ -96,6 +96,12 @@ export default function Page() {
 }
 ```
 
+5. Wherever you add global css files, make sure to include `@/admin/styles.css`:
+```typescript
+import "@admin/styles.css";
+// import "../../node_modules/react-admin-contraption-unstable/styles.css";
+```
+
 ### Server Setup
 4. Add the `admin` router into `server/api/root.ts`:
 ```typescript

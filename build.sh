@@ -9,4 +9,4 @@ npx tsup \
 cp -R dist/* .
 
 # Combine css files together
-cat dist/global.css dist/index.css > styles.css
+cat dist/global.css dist/index.css dist/controls/*.css > styles.css
