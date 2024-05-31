@@ -1,6 +1,6 @@
 {
   "name": "react-admin-contraption-unstable",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "description": "A tool that allows one to create django admin / active admin like interfaces in react.",
   "main": "index.js",
   "exports": {

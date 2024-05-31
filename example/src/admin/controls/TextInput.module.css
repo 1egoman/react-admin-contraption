@@ -1,4 +1,24 @@
 .inputSmall {
+  /* Perform css reset to undo the reset done by things like tailwind */
+  color: fieldtext;
+  letter-spacing: normal;
+  word-spacing: normal;
+  line-height: normal;
+  text-transform: none;
+  text-indent: 0px;
+  text-shadow: none;
+  display: inline-block;
+  text-align: start;
+  appearance: auto;
+  -webkit-rtl-ordering: logical;
+  cursor: text;
+  background-color: field;
+  margin: 0em;
+  border-width: 2px;
+  border-style: inset;
+  border-color: light-dark(rgb(118, 118, 118), rgb(133, 133, 133));
+  border-image: initial;
+
   font-family: 'Roboto Mono', 'menlo', 'monospace';
   font-size: 14px;
   height: 24px;
@@ -7,6 +27,26 @@
 }
 
 .inputRegular {
+  /* Perform css reset to undo the reset done by things like tailwind */
+  color: fieldtext;
+  letter-spacing: normal;
+  word-spacing: normal;
+  line-height: normal;
+  text-transform: none;
+  text-indent: 0px;
+  text-shadow: none;
+  display: inline-block;
+  text-align: start;
+  appearance: auto;
+  -webkit-rtl-ordering: logical;
+  cursor: text;
+  background-color: field;
+  margin: 0em;
+  border-width: 2px;
+  border-style: inset;
+  border-color: light-dark(rgb(118, 118, 118), rgb(133, 133, 133));
+  border-image: initial;
+
   font-family: 'Roboto Mono', 'menlo', 'monospace';
   font-size: 16px;
   height: 32px;
