@@ -1,9 +1,22 @@
 {
-  "name": "admin-contraption",
-  "version": "1.0.0",
+  "name": "react-admin-contraption-unstable",
+  "version": "0.0.1",
   "description": "A tool that allows one to create django admin / active admin like interfaces in react.",
   "main": "dist/index.js",
-  "scripts": {},
+  "exports": {
+    ".": "./dist/index.js",
+    "./controls/*.js": "./dist/controls/*.js",
+    "./detail/*.js": "./dist/detail/*.js",
+    "./fields/*.js": "./dist/fields/*.js",
+    "./filter-definitions/*.js": "./dist/filter-definitions/*.js",
+    "./list/*.js": "./dist/list/*.js",
+    "./remote-data-model-adapters/*/*.js": "./dist/remote-data-model-adapters/*/*.js",
+    "./utils/*.js": "./dist/utils/*.js",
+    "./*": "./dist/*.js"
+  },
+  "scripts": {
+    "prepublish": "./build.sh"
+  },
   "keywords": [],
   "author": "",
   "license": "UNLICENSED",
