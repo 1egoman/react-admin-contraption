@@ -35,7 +35,7 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
   );
 
   return (
-    <div style={{ padding: 16 }}>
+    <div style={{ padding: 8 }}>
       <AdminContextProvider stateCache={queryParameterStateCache} nextRouter={useRouter()}>
         {/* 2. Give the data models provider the way to get remote data models */}
         <DataModels fetchRemoteDataModels={fetchRemoteDataModels}>
@@ -69,7 +69,7 @@ export default function Page() {
 
   return (
     <AllDataModels>
-      <div style={{ padding: 16 }}>
+      <div style={{ padding: 8 }}>
         <ListDetailRenderer
           basePath="/admin"
           name={path[0]}

@@ -23,7 +23,7 @@ import {
 
 export default function AllDataModels({ children }: { children: React.ReactNode}) {
   return (
-    <div style={{ padding: 16 }}>
+    <div style={{ padding: 8 }}>
       <AdminContextProvider stateCache={queryParameterStateCache} nextRouter={useRouter()}>
         <DataModels>
           {/* Put all data models here! */}
