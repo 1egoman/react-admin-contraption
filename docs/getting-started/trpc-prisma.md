@@ -13,10 +13,10 @@ import {
   AdminContextProvider,
   queryParameterStateCache,
   RemoteDataModels,
-} from '@/admin';
+} from 'react-admin-contraption-unstable';
 import {
   useGenerateRemoteDataModelsTRPCClient,
-} from "@/admin/remote-data-model-adapters/protocols/trpc";
+} from "react-admin-contraption-unstable/remote-data-model-adapters/protocols/trpc";
 
 import { api } from "@/utils/api";
 
@@ -53,7 +53,7 @@ export default function AllDataModels({ children }: { children: React.ReactNode}
 3. Create a new directory `src/pages/admin` and put a file named `[...path].tsx` inside containing:
 ```typescript
 import { useRouter } from 'next/router';
-import { ListDetailRenderer } from '@/admin';
+import { ListDetailRenderer } from 'react-admin-contraption-unstable';
 import AllDataModels from '@/datamodels';
 
 // If no other route matches, this component will render a default / "fallback" list or detail page
@@ -84,7 +84,7 @@ export default function Page() {
 
 4. Create a new file `index.tsx` inside `src/pages/admin` containing:
 ```typescript
-import { Launcher } from "@/admin";
+import { Launcher } from "react-admin-contraption-unstable";
 import AllDataModels from "@/datamodels";
 
 export default function Page() {
@@ -96,7 +96,7 @@ export default function Page() {
 }
 ```
 
-5. Wherever you add global css files, make sure to include `@/admin/styles.css`:
+5. Wherever you add global css files, make sure to include `react-admin-contraption-unstable/styles.css`:
 ```typescript
 import "@admin/styles.css";
 // import "../../node_modules/react-admin-contraption-unstable/styles.css";
@@ -107,8 +107,8 @@ import "@admin/styles.css";
 ```typescript
 import prisma from "@prisma/client";
 
-import { generateRemoteDataModelsTRPCRouter } from "@/admin/remote-data-model-adapters/protocols/trpc";
-import PrismaRemoteDataModelProvider from "@/admin/remote-data-model-adapters/datastores/prisma";
+import { generateRemoteDataModelsTRPCRouter } from "react-admin-contraption-unstable/remote-data-model-adapters/protocols/trpc";
+import PrismaRemoteDataModelProvider from "react-admin-contraption-unstable/remote-data-model-adapters/datastores/prisma";
 
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 

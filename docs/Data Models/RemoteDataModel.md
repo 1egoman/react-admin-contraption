@@ -30,7 +30,7 @@ import {
   DataModels,
   AdminContextProvider,
   queryParameterStateCache,
-} from '@/admin';
+} from 'react-admin-contraption-unstable';
 
 export default function AllDataModels({ children }: { children: React.ReactNode}) {
   return (
@@ -89,8 +89,8 @@ Server side - add this to your main trpc router:
 ```typescript
 import prisma from "@prisma/client";
 
-import { generateRemoteDataModelsTRPCRouter } from "@/admin/remote-data-model-adapters/protocols/trpc";
-import PrismaRemoteDataModelProvider from "@/admin/remote-data-model-adapters/datastores/prisma";
+import { generateRemoteDataModelsTRPCRouter } from "react-admin-contraption-unstable/remote-data-model-adapters/protocols/trpc";
+import PrismaRemoteDataModelProvider from "react-admin-contraption-unstable/remote-data-model-adapters/datastores/prisma";
 
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 

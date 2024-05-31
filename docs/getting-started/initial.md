@@ -1,9 +1,10 @@
-
 # Installation
-The core code currently lives within the https://github.com/MadeByBread/react-admin-contraption
+As of early june 2024, this is now published to npm under [`react-admin-contraption-unstable`](https://npmjs.com/react-admin-contraption-unstable).
+
+~The core code currently lives within the https://github.com/MadeByBread/react-admin-contraption
 repository, inside the admin/ directory at the root (note that this currently a symlink to
 example/src/admin). As of late may 2024, this package is not published anywhere, so copy this code
-into a project's `src` directory to add this to a project.
+into a project's `src` directory to add this to a project.~
 
 # Creating data models
 Next, to power the admin interface, you'll want to make some `DataModel`s.

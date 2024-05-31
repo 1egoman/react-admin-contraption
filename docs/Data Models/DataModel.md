@@ -19,7 +19,7 @@ import {
   DataModels,
   AdminContextProvider,
   queryParameterStateCache,
-} from '@/admin';
+} from 'react-admin-contraption-unstable';
 
 export default function AllDataModels({ children }: { children: React.ReactNode}) {
   return (
@@ -43,7 +43,7 @@ Now, anytime you implement an admin-related page, surround the admin specific co
 
 ## Example
 ```typescript
-import { DataModel, PrimaryKeyField } from '@/admin';
+import { DataModel, PrimaryKeyField } from 'react-admin-contraption-unstable';
 
 // Example type data to give an idea of this demo schema:
 export type Vehicle = {
