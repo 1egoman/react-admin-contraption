@@ -1,7 +1,7 @@
 // import "./global.css";
 
-import { DataModel, DataModels } from './datamodel';
-export { DataModel, DataModels };
+import { DataModel, DataModels, RemoteDataModels } from './datamodel';
+export { DataModel, DataModels, RemoteDataModels };
 
 import Field from './fields';
 export { Field };
@@ -18,7 +18,8 @@ export { ListCSVExport };
 import { AdminContextProvider } from './admin-context';
 export { AdminContextProvider };
 
-import { StateCache } from './state-cache';
+import { StateCache, queryParameterStateCache } from './state-cache';
+export { queryParameterStateCache };
 export type { StateCache };
 
 import FilterDefinition from './filter-definitions';
