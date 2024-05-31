@@ -142,7 +142,7 @@ export const DataModels: React.FunctionComponent<{
   );
 };
 
-type DataModelProps<Item = BaseItem> = Omit<
+export type DataModelProps<Item = BaseItem> = Omit<
   DataModel<Item>,
   | "createItem"
   | "updateItem"

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { z } from "zod";
 
-import { DataModel, RemoteDataModelDefinition } from "../../datamodel";
+import { DataModel, DataModelProps, RemoteDataModelDefinition } from "../../datamodel";
 import { BaseItem, FixMe, Paginated } from "../../types"
 import { DataStoreProvider } from "../datastores";
 
@@ -246,7 +246,7 @@ export const useGenerateRemoteDataModelsTRPCClient = (rawApi: any, rawUtils: any
         name: string,
         functionalitiesToImplement: Array<AdditionalFunctionalities> = [],
       ) => {
-        const result: Partial<DataModel> = {
+        const result: Partial<DataModelProps> = {
           fetchPageOfData: async (page, filters, sort, search, abort) => get().then(
             result => result.fetchPageOfData(name)(page, filters, sort, search, abort)
           ),
@@ -275,7 +275,7 @@ export const useGenerateRemoteDataModelsTRPCClient = (rawApi: any, rawUtils: any
         // NOTE: Do this cast here because the remote data model functions are not generic, and also
         // to get the types right so when spread into a DataModel, erronious type errors won't show
         // up
-        return (result as unknown) as Pick<DataModel<Item>, 'fetchItem' | 'fetchPageOfData' | NonNullable<AdditionalFunctionalities>>;
+        return (result as unknown) as Pick<DataModelProps<Item>, 'fetchItem' | 'fetchPageOfData' | NonNullable<AdditionalFunctionalities>>;
       },
     };
   }, [fetchRemoteDataModelsResultRef]);
