@@ -1,24 +1,6 @@
 .buttonRegular {
-  /* Perform css reset to undo the reset done by things like tailwind */
-  appearance: auto;
-  text-rendering: auto;
-  color: buttontext;
-  letter-spacing: normal;
-  word-spacing: normal;
-  line-height: normal;
-  text-transform: none;
-  text-indent: 0px;
-  text-shadow: none;
-  display: inline-block;
-  text-align: center;
-  cursor: default;
-  box-sizing: border-box;
-  background-color: buttonface;
-  margin: 0em;
-  border-width: 2px;
-  border-style: outset;
-  border-color: buttonborder;
-  border-image: initial;
+  border: 1px solid var(--gray-10);
+  border-radius: 2px;
 
   font-family: 'Roboto Mono', 'menlo', 'monospace';
   font-size: 14px;
@@ -27,28 +9,20 @@
   padding-right: 8px;
   cursor: pointer;
 }
+.buttonRegular:active {
+  background-color: var(--gray-6);
+}
+.buttonRegular:focus {
+  background-color: var(--blue-3);
+  border-color: var(--blue-8);
+}
+.buttonRegular:disabled {
+  border-color: var(--gray-8);
+}
 
 .buttonSmall {
-  /* Perform css reset to undo the reset done by things like tailwind */
-  appearance: auto;
-  text-rendering: auto;
-  color: buttontext;
-  letter-spacing: normal;
-  word-spacing: normal;
-  line-height: normal;
-  text-transform: none;
-  text-indent: 0px;
-  text-shadow: none;
-  display: inline-block;
-  text-align: center;
-  cursor: default;
-  box-sizing: border-box;
-  background-color: buttonface;
-  margin: 0em;
-  border-width: 2px;
-  border-style: outset;
-  border-color: buttonborder;
-  border-image: initial;
+  border: 1px solid var(--gray-10);
+  border-radius: 2px;
 
   font-family: 'Roboto Mono', 'menlo', 'monospace';
   font-size: 14px;
@@ -56,6 +30,16 @@
   padding-left: 8px;
   padding-right: 8px;
   cursor: pointer;
+}
+.buttonSmall:active {
+  background-color: var(--gray-6);
+}
+.buttonSmall:focus {
+  background-color: var(--blue-3);
+  border-color: var(--blue-8);
+}
+.buttonSmall:disabled {
+  border-color: var(--gray-8);
 }
 
 .navigationLink {
