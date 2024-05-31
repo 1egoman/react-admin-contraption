@@ -1,7 +1,6 @@
 import { useContext } from 'react';
 import { RemoteDataModelsContext, RemoteDataModelDefinition } from '../datamodel';
 
-import Field from '.';
 import BooleanField from './BooleanField';
 import JSONField from './JSONField';
 import NumberField from './NumberField';
