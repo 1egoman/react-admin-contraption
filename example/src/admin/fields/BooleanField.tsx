@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { useMemo } from 'react';
 import { FixMe, BaseItem, BaseFieldName } from '../types';
 import ChoiceField, { ChoiceFieldProps } from './ChoiceField';
 
@@ -18,6 +18,10 @@ Example BooleanField:
 />
 */
 const BooleanField = <Item = BaseItem, FieldName = BaseFieldName, Nullable = false>(props: BooleanFieldProps<Item, FieldName, Nullable>) => {
+  const getInitialStateFromItem = useMemo(() => {
+    return props.getInitialStateFromItem || ((item: Item) => (item as FixMe)[props.name as FixMe] as boolean);
+  }, [props.getInitialStateFromItem, props.name]);
+
   return (
     <ChoiceField<Item, FieldName, boolean, Nullable>
       name={props.name}
@@ -27,7 +31,7 @@ const BooleanField = <Item = BaseItem, FieldName = BaseFieldName, Nullable = fal
       columnWidth={props.columnWidth}
       sortable={props.sortable}
       nullable={props.nullable}
-      getInitialStateFromItem={props.getInitialStateFromItem}
+      getInitialStateFromItem={getInitialStateFromItem}
       getInitialStateWhenCreating={props.getInitialStateWhenCreating}
       serializeStateToItem={props.serializeStateToItem || ((initialItem, state) => ({ ...initialItem, [props.name as FixMe]: state }))}
       displayMarkup={props.displayMarkup || (state => state === null ? <em style={{color: 'silver'}}>null</em> : <span>{`${state}`}</span>)}
