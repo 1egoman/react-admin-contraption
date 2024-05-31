@@ -1,4 +1,7 @@
 .textAreaSmall {
+  border: 1px solid var(--gray-10);
+  border-radius: 4px;
+
   font-family: 'Roboto Mono', 'menlo', 'monospace';
   font-size: 14px;
   min-height: 72px;
@@ -7,6 +10,9 @@
 }
 
 .textAreaRegular {
+  border: 1px solid var(--gray-10);
+  border-radius: 4px;
+
   font-family: 'Roboto Mono', 'menlo', 'monospace';
   font-size: 16px;
   min-height: 128px;

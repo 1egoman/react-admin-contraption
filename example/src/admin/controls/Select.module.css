@@ -1,4 +1,7 @@
 .selectSmall {
+  border: 1px solid var(--gray-10);
+  border-radius: 4px;
+
   font-family: 'Roboto Mono', 'menlo', 'monospace';
   font-size: 12px;
   height: 24px;
@@ -8,6 +11,9 @@
 }
 
 .selectRegular {
+  border: 1px solid var(--gray-10);
+  border-radius: 4px;
+
   font-family: 'Roboto Mono', 'menlo', 'monospace';
   font-size: 16px;
   height: 32px;
