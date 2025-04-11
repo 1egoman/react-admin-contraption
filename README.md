@@ -3,8 +3,6 @@ A tool that allows one to create django admin / active admin like interfaces in 
 
 https://github.com/1egoman/react-admin-contraption/assets/1704236/d127b193-5c19-44ab-803b-68a5e71afb9f
 
-Docs site: https://bread-1.gitbook.io/react-admin-contraption/
-
 # Getting started
 There is a next.js app in `example`. Run `npm install && npm run dev`, then go to the root web page
 it serves for some example admin implementations.
@@ -161,9 +159,9 @@ server somewhere. Each is a very generic interface that can be implemented no ma
 technology the project uses - as of april 2023, I've experimented with REST and TRPC, but any data
 async source should work fine.
 
-I wouldn't be surprised if a set of standardized, bread specific components that use trpc/react
-server actions/etc were developed that would be largely drop in to standardize the api interface.
-But, that is for the future!
+I wouldn't be surprised if a set of standardized specific components that use trpc/react server
+actions/etc were developed that would be largely drop in to standardize the api interface.  But,
+that is for the future!
 
 ```typescript
 const fetchPageOfData = useCallback(async (
@@ -246,10 +244,6 @@ models". Here is an example:
 ```typescript
 // This function would make a request to the server and get `definitions`, plus then inject all
 // this extra context about how one could query the server to get information about the given datamodels
-//
-// In the near term, this would probably be some sort of "bread specific custom adapter" to work
-// with the bread starter stuff. In the longer term, this could potentially be a set of adapters
-// for different stacks if the goal was to make this project more generic.
 const fetchRemoteDataModels = useCallback(async (): Promise<RemoteDataModelDefinition> => {
   return {
     fetchPageOfData: (dataModelName) => {
