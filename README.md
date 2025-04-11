@@ -1,4 +1,4 @@
-# Admin Contraption Thing
+# React Admin Contraption
 A tool that allows one to create django admin / active admin like interfaces in react.
 
 https://github.com/1egoman/react-admin-contraption/assets/1704236/d127b193-5c19-44ab-803b-68a5e71afb9f
